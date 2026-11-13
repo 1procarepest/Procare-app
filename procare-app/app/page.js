@@ -54,7 +54,28 @@ export default async function Home() {
 
   const todayName = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'America/New_York' }).format(new Date());
   const today = DAY_NAMES.indexOf(todayName);
-
+  // This week's dates (Monday first, Atlanta time) and any time off in them
+  const todayYmd = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+  const base = new Date(`${todayYmd}T12:00:00Z`);
+  const back = (base.getUTCDay() + 6) % 7;
+  const dates = {};
+  WEEK_ORDER.forEach((d, i) => {
+    const dt = new Date(base);
+    dt.setUTCDate(base.getUTCDate() - back + i);
+    dates[d] = dt.toISOString().slice(0, 10);
+  });
+  const { data: timeOff } = await supabase
+    .from('time_off_requests')
+    .select('start_date, end_date, status')
+    .eq('employee_id', me.id)
+    .in('status', ['pending', 'approved'])
+    .lte('start_date', dates[0])
+    .gte('end_date', dates[1]);
+  function offStatus(ymd) {
+    const hits = (timeOff || []).filter((r) => r.start_date <= ymd && r.end_date >= ymd);
+    if (hits.some((r) => r.status === 'approved')) return 'approved';
+    return hits.length ? 'pending' : null;
+  }
   const initials = `${me.first_name?.[0] || ''}${me.last_name?.[0] || ''}`.toUpperCase();
   const hasPhoto = typeof me.photo_url === 'string' && me.photo_url.startsWith('http');
   const officeName = me.offices?.name;
@@ -83,7 +104,20 @@ export default async function Home() {
         <section className="section" aria-labelledby="week-heading">
           <h2 id="week-heading">Your schedule</h2>
           <ul className="week">
-            {WEEK_ORDER.map((d) => (
+                        {WEEK_ORDER.map((d) => {
+              const st = offStatus(dates[d]);
+              const working = hours[d] && st !== 'approved';
+              return (
+                <li key={d} className={`day${working ? '' : ' off'}${d === today ? ' today' : ''}`}>
+                  <span className="day-name">{DAY_NAMES[d]}, {shortDate(dates[d])}</span>
+                  <span className="day-hours">
+                    {st === 'approved' ? 'Time off'
+                      : st === 'pending' ? `${hours[d] || 'Off'} (time off requested)`
+                      : hours[d] || 'Off'}
+                  </span>
+                </li>
+              );
+            })}
               <li key={d} className={`day${hours[d] ? '' : ' off'}${d === today ? ' today' : ''}`}>
                 <span className="day-name">{DAY_NAMES[d]}</span>
                 <span className="day-hours">{hours[d] || 'Off'}</span>
