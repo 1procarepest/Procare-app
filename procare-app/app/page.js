@@ -14,6 +14,15 @@ const APPS = {
   operations: { name: 'Operations suite', blurb: 'Sales, cancels, job pool, reservice and AR for every office.' },
 };
 
+// How far the schedule arrows can go, in weeks from this week
+const WEEKS_BACK = 4;
+const WEEKS_AHEAD = 8;
+
+/** Sales reps (team members) are 1099 and can't request time off; sales leads and up can. */
+function canRequestTimeOff(me) {
+  return !(me.department === 'sales' && me.level === 'team_member');
+}
+
 /** Which suites each person sees, from the role map. */
 function appsFor(department, level) {
   if (level === 'c_suite' || level === 'president') return ['technician', 'sales', 'operations'];
@@ -23,7 +32,7 @@ function appsFor(department, level) {
   return ['operations', 'technician'];
 }
 
-export default async function Home() {
+export default async function Home({ searchParams }) {
   const supabase = createClient();
   const { user, me } = await getMe(supabase);
   if (!user) redirect('/login');
@@ -54,10 +63,15 @@ export default async function Home() {
 
   const todayName = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'America/New_York' }).format(new Date());
   const today = DAY_NAMES.indexOf(todayName);
-  // This week's dates (Monday first, Atlanta time) and any time off in them
+  // Which week to show: ?week=0 is this week, 1 is next week, -1 is last week
+  const asked = parseInt(searchParams?.week, 10);
+  const week = Number.isNaN(asked) ? 0 : Math.min(WEEKS_AHEAD, Math.max(-WEEKS_BACK, asked));
+  const weekHref = (n) => (n === 0 ? '/' : `/?week=${n}`);
+
+  // That week's dates (Monday first, Atlanta time) and any time off in them
   const todayYmd = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
   const base = new Date(`${todayYmd}T12:00:00Z`);
-  const back = (base.getUTCDay() + 6) % 7;
+  const back = (base.getUTCDay() + 6) % 7 - week * 7;
   const dates = {};
   WEEK_ORDER.forEach((d, i) => {
     const dt = new Date(base);
@@ -102,13 +116,26 @@ export default async function Home() {
         </section>
 
         <section className="section" aria-labelledby="week-heading">
-          <h2 id="week-heading">Your schedule</h2>
+          <div className="week-head">
+            <h2 id="week-heading">Your schedule</h2>
+            <nav className="week-nav" aria-label="Choose a week">
+              {week > -WEEKS_BACK
+                ? <Link className="week-arrow" href={weekHref(week - 1)} aria-label="Previous week" scroll={false}>‹</Link>
+                : <span className="week-arrow" aria-hidden="true">‹</span>}
+              {week === 0
+                ? <span className="week-label">This week</span>
+                : <Link className="week-label" href="/" scroll={false}>Week of {shortDate(dates[1])}</Link>}
+              {week < WEEKS_AHEAD
+                ? <Link className="week-arrow" href={weekHref(week + 1)} aria-label="Next week" scroll={false}>›</Link>
+                : <span className="week-arrow" aria-hidden="true">›</span>}
+            </nav>
+          </div>
           <ul className="week">
             {WEEK_ORDER.map((d) => {
               const st = offStatus(dates[d]);
               const working = hours[d] && st !== 'approved';
               return (
-                <li key={d} className={`day${working ? '' : ' off'}${d === today ? ' today' : ''}`}>
+                <li key={d} className={`day${working ? '' : ' off'}${week === 0 && d === today ? ' today' : ''}`}>
                   <span className="day-name">{DAY_NAMES[d]}, {shortDate(dates[d])}</span>
                   <span className="day-hours">
                     {st === 'approved' ? 'Time off'
@@ -121,7 +148,7 @@ export default async function Home() {
           </ul>
         </section>
 
-        <ProfileActions employeeId={me.id} canRequestTimeOff={me.department !== 'sales'} />
+        <ProfileActions employeeId={me.id} canRequestTimeOff={canRequestTimeOff(me)} />
 
         <section className="section" aria-labelledby="apps-heading">
           <h2 id="apps-heading">Your apps</h2>

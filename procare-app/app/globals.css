@@ -161,6 +161,26 @@ input:focus, textarea:focus { border-color: var(--forest); outline: none; box-sh
 .day.today { background: var(--lime); border-bottom-color: var(--lime); }
 .day.today .day-name::after { content: ' (today)'; font-weight: 400; }
 
+/* Week picker: ‹ This week › beside the schedule heading */
+.week-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.week-head h2 { margin-bottom: 0; }
+.week-nav { display: flex; align-items: center; gap: 4px; }
+.week-arrow {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--ink);
+  text-decoration: none;
+}
+a.week-arrow:hover { background: var(--sage); }
+span.week-arrow { color: var(--line); }
+.week-label { font-size: 14px; font-weight: 500; color: var(--ink); min-width: 104px; text-align: center; }
+a.week-label { text-decoration: underline; }
+
 .actions { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
 .actions > .panel { grid-column: 1 / -1; }
 @media (max-width: 480px) { .actions { grid-template-columns: 1fr; } }
