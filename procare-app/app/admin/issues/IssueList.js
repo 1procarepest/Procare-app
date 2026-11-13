@@ -36,6 +36,11 @@ function Issue({ i }) {
         <Link className="person-name" href={`/admin/people/${e.id}`}>{e.first_name} {e.last_name}</Link>
         <span className="person-role">{roleTitle(e.department, e.level)}, {OFFICE_NAME[e.office] || 'No office'}. Reported {shortDate(i.created_at)}</span>
         <span>“{i.message}”</span>
+        {i.status === 'resolved' && (
+          <span className="note">
+            Resolved{i.resolver ? ` by ${i.resolver.first_name} ${i.resolver.last_name}` : ''}{i.resolved_at ? `, ${shortDate(i.resolved_at)}` : ''}
+          </span>
+        )}
       </div>
       {i.status === 'open'
         ? <button className="btn btn-quiet btn-small" type="button" disabled={busy} onClick={resolve}>Mark resolved</button>
