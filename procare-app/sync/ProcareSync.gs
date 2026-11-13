@@ -260,15 +260,20 @@ function since_(o, entity, pull) {
 function pullLists_(o) {
   const now = new Date().toISOString();
   const emps = frFetch_(o, 'employee', { active: { operator: 'IN', value: [0, 1] } });
+  // Every key sees every employee, so each is filed under their own office.
   supaUpsert_('fr_employees', emps.map(e => ({
-    office: o.key, employee_id: id_(e.employeeID), first_name: str_(e.fname), last_name: str_(e.lname),
-    type: num_(e.type), active: bool_(e.active), pic: str_(e.pic), synced_at: now
+    office: officeOf_(e, o), employee_id: id_(e.employeeID), first_name: str_(e.fname), last_name: str_(e.lname),
+    type: num_(e.type), active: bool_(e.active), pic: str_(e.pic), email: str_(e.email),
+    linked_employee_ids: idList_(e.linkedEmployeeIDs), supervisor_id: id_(e.supervisorID), synced_at: now
   })).filter(r => r.employee_id), ['office', 'employee_id']);
 
   const types = frFetch_(o, 'serviceType', {});
   supaUpsert_('fr_service_types', types.map(t => ({
     office: o.key, type_id: id_(t.typeID !== undefined ? t.typeID : t.serviceTypeID),
-    description: str_(t.description || t.name), is_reservice: t.reservice === undefined ? null : bool_(t.reservice), synced_at: now
+    description: str_(t.description || t.name), is_reservice: t.reservice === undefined ? null : bool_(t.reservice),
+    category: str_(t.category), is_initial: t.initial === undefined ? null : bool_(t.initial),
+    regular_service: t.regularService === undefined ? null : bool_(t.regularService),
+    visible: t.visible === undefined ? null : bool_(t.visible), synced_at: now
   })).filter(r => r.type_id), ['office', 'type_id']);
 
   let reasons = [];
@@ -293,7 +298,9 @@ function pullSubs_(o, params) {
     subscription_id: id_(s.subscriptionID), office: officeOf_(s, o), customer_id: id_(s.customerID),
     service_id: id_(s.serviceID), service_type: str_(s.serviceType), active: bool_(s.active),
     date_added: ts_(s.dateAdded), date_cancelled: day_(s.dateCancelled), date_updated: ts_(s.dateUpdated),
-    sold_by: id_(s.soldBy), sold_by_2: id_(s.soldBy2), source: str_(s.source),
+    sold_by: id_(s.soldBy), sold_by_2: id_(s.soldBy2), sold_by_3: id_(s.soldBy3), source: str_(s.source),
+    preferred_tech: id_(s.preferredTech), annual_recurring_value: num_(s.annualRecurringValue),
+    last_completed: day_(s.lastCompleted), expiration_date: day_(s.expirationDate),
     frequency: num_(s.frequency), billing_frequency: str_(s.billingFrequency),
     recurring_charge: num_(s.recurringCharge), contract_value: num_(s.contractValue),
     initial_service_total: num_(s.initialServiceTotal), initial_appointment_id: id_(s.initialAppointmentID),
@@ -312,7 +319,9 @@ function pullAppts_(o, params) {
     appointment_id: id_(a.appointmentID), office: officeOf_(a, o), customer_id: id_(a.customerID),
     subscription_id: id_(a.subscriptionID), date: day_(a.date), start_time: time_(a.start), end_time: time_(a.end),
     status: num_(a.status), status_text: str_(a.statusText), type_id: id_(a.type),
-    employee_id: id_(a.employeeID), serviced_by: id_(a.servicedBy), route_id: id_(a.routeID), spot_id: id_(a.spotID),
+    employee_id: id_(a.employeeID), serviced_by: id_(a.servicedBy), completed_by: id_(a.completedBy),
+    route_id: id_(a.routeID), spot_id: id_(a.spotID),
+    cancellation_reason_id: id_(a.cancellationReasonID), date_cancelled: ts_(a.dateCancelled),
     is_initial: bool_(a.isInitial), production_value: num_(a[SYNC.PRODUCTION_FIELD]),
     original_appointment_id: id_(a.originalAppointmentID), reservice_reason_id: id_(a.reserviceReasonID),
     date_added: ts_(a.dateAdded), date_completed: ts_(a.dateCompleted), date_updated: ts_(a.dateUpdated),
@@ -342,6 +351,8 @@ function pullCustomers_(o, params) {
     status: num_(c.status), autopay: str_(c.aPay), autopay_profile_id: id_(c.autoPayPaymentProfileID),
     balance: num_(c.responsibleBalance !== undefined ? c.responsibleBalance : c.balance),
     balance_age: num_(c.responsibleBalanceAge !== undefined ? c.responsibleBalanceAge : c.balanceAge),
+    salesman_apay: str_(c.salesmanAPay), pending_cancel: bool_(c.pendingCancel), commercial: bool_(c.commercialAccount),
+    preferred_tech_id: id_(c.preferredTechID), date_cancelled: day_(c.dateCancelled),
     date_added: ts_(c.dateAdded), date_updated: ts_(c.dateUpdated), synced_at: now
   })).filter(r => r.customer_id), ['customer_id']);
 }
@@ -365,9 +376,10 @@ function pullReviews_(o, from, to) {
   supaUpsert_('fr_reviews', reviews
     .filter(r => { const d = day_(first_(r, ['date', 'dateAdded'])); return d && d >= from && d <= to; })   // in case the date filter is ignored
     .map(r => ({
-      review_id: id_(r.reviewID || r.id), office: officeOf_(r, o), appointment_id: id_(r.appointmentID),
+      review_id: id_(first_(r, ['feedbackID', 'reviewID', 'id'])), office: officeOf_(r, o), appointment_id: id_(r.appointmentID),
       customer_id: id_(r.customerID), employee_id: id_(r.employeeID), review_date: ts_(first_(r, ['date', 'dateAdded'])),
-      stars: num_(first_(r, ['starRating', 'rating', 'stars'])), synced_at: now
+      stars: num_(first_(r, ['starRating', 'rating', 'stars'])),
+      favorable: r.favorable === undefined ? null : bool_(r.favorable), synced_at: now
     })).filter(r => r.review_id), ['review_id']);
 }
 
@@ -518,7 +530,9 @@ function officeIds_() {
 
 /** Which office a record belongs to: its own officeID when it has one, else the office whose key pulled it. */
 function officeOf_(rec, o) {
-  const id = rec && rec.officeID !== undefined ? Number(rec.officeID) : 0;
+  let raw = rec ? rec.officeID : undefined;
+  if (raw === undefined && rec && rec.officeIDs !== undefined) raw = idList_(rec.officeIDs) ? idList_(rec.officeIDs)[0] : undefined;
+  const id = raw !== undefined && raw !== null ? Number(raw) : 0;
   if (id) {
     const ids = officeIds_();
     const match = Object.keys(ids).find(k => Number(ids[k]) === id);

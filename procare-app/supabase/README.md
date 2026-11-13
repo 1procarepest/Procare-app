@@ -24,7 +24,7 @@ new table (`rls_auto_enable`), which means a new table is locked until it has ru
 ## FieldRoutes copy (`fr_*` tables)
 
 Filled by the Procare Sync script (`../sync/`); defined in
-`changes/2026-11-13-7-fieldroutes-copy-tables.sql`. Customers are stored with last name only.
+`changes/2026-11-13-7-fieldroutes-copy-tables.sql` and `-8-fieldroutes-more-fields.sql`. Customers are stored with last name only.
 No read rules yet: only the sync's secret key can read or write them until each app adds rules.
 
 ## Who can do what (summary)
