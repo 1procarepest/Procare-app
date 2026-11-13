@@ -150,8 +150,9 @@ export default function ProfileActions({ employeeId, email, isSales = false }) {
             <h3>{w.timeOffButton}</h3>
             <p className="note">{w.timeOffNote}</p>
           </div>
-          <label className="check">
-            <input type="checkbox" checked={partial} onChange={(e) => setPartial(e.target.checked)} />
+          <label className="toggle">
+            <input type="checkbox" role="switch" checked={partial} onChange={(e) => setPartial(e.target.checked)} />
+            <span className="toggle-track" aria-hidden="true" />
             Part of a day
           </label>
           {partial ? (
