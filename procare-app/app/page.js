@@ -88,7 +88,9 @@ export default async function Home() {
 
   const initials = `${me.first_name?.[0] || ''}${me.last_name?.[0] || ''}`.toUpperCase();
   const hasPhoto = typeof me.photo_url === 'string' && me.photo_url.startsWith('http');
-  const role = `${DEPT_LABEL[me.department] || ''} ${LEVEL_LABEL[me.level] || ''}`.trim();
+       const role = ['c_suite', 'president'].includes(me.level)
+       ? LEVEL_LABEL[me.level]
+       : `${DEPT_LABEL[me.department] || ''} ${LEVEL_LABEL[me.level] || ''}`.trim();
   const officeName = me.offices?.name;
 
   return (
