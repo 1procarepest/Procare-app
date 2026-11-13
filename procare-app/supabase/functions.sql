@@ -8,7 +8,8 @@
 --   Who am I:        my_id, my_rank, my_department, level_rank
 --   Permissions:     can_manage, can_edit_schedule, can_see_private,
 --                    is_hr_approver, can_approve_time_off
---   Trigger guards:  guard_employee, guard_time_off
+--   Lookups:         employee_contacts
+--   Trigger guards:  guard_employee, guard_time_off, guard_issue
 --   Other triggers:  default_schedule, log_change, link_auth_user
 --   Supabase:        rls_auto_enable
 
@@ -165,6 +166,32 @@ AS $function$
 $function$;
 
 -- ======================================================================
+-- Lookups
+-- ======================================================================
+
+-- Email and phone by employee. Signed-in people can't read those two columns from
+-- employees directly (see policies/employees.sql); they come from here instead.
+-- You always get your own; leads and up get everyone they can see. (Added 2026-11-13.)
+create or replace function public.employee_contacts(target uuid default null)
+returns table (id uuid, email text, phone text)
+language sql
+stable
+security definer
+set search_path to 'public'
+as $$
+  select e.id, e.email, e.phone
+  from public.employees e
+  where (target is null or e.id = target)
+    and (
+         e.id = public.my_id()
+      or (public.my_rank() >= 2 and (e.active or public.can_manage(e.id)))
+    )
+$$;
+
+revoke execute on function public.employee_contacts(uuid) from public, anon;
+grant execute on function public.employee_contacts(uuid) to authenticated;
+
+-- ======================================================================
 -- Trigger guards
 -- ======================================================================
 
@@ -271,6 +298,26 @@ begin
   raise exception 'Only the approver can approve or deny this time off';
 end
 $function$;
+
+-- schedule_issue_reports, before update. Records who resolved an issue and when;
+-- clears both if it's reopened. (Added 2026-11-13.)
+create or replace function public.guard_issue()
+returns trigger
+language plpgsql
+security definer
+set search_path to 'public'
+as $$
+begin
+  if new.status = 'resolved' and old.status is distinct from 'resolved' then
+    new.resolved_by := coalesce(public.my_id(), new.resolved_by);
+    new.resolved_at := now();
+  elsif new.status = 'open' then
+    new.resolved_by := null;
+    new.resolved_at := null;
+  end if;
+  return new;
+end
+$$;
 
 -- ======================================================================
 -- Other triggers

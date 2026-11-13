@@ -5,7 +5,7 @@ rules and helper functions. The real setup lives in Supabase. **The app never
 runs these files.** They're here so the rules are written down, show up in
 GitHub history, and can be rebuilt if needed.
 
-Exported 2026-11-13.
+Exported 2026-11-13, then updated by hand for that day's later changes.
 
 ## What's here
 
@@ -14,6 +14,7 @@ Exported 2026-11-13.
 | `schema.sql` | Types, tables, columns and constraints |
 | `functions.sql` | Helper functions (`my_id`, `can_manage`, `can_approve_time_off`, …) and trigger functions |
 | `policies/<table>.sql` | One file per table: its row level security rules and triggers |
+| `changes/` | One-time scripts that were run in Supabase, in date order, kept for history |
 
 Every table has row level security on, so a signed-in person only sees and
 changes what the rules allow. Supabase also switches it on automatically for any
@@ -31,6 +32,10 @@ new table (`rls_auto_enable`), which means a new table is locked until it has ru
   the President; everyone else's by whoever manages them.
 - **Home addresses** (`employee_private`): C-Suite, the President, office managers,
   and office leads for their own office.
+- **Email and phone**: team members see only their own; leads and up see
+  everyone's (through `employee_contacts()`; the columns can't be read directly).
+- **Schedule issues**: managers resolve their team's; the President can resolve
+  their own. The database records who resolved each one.
 - **Activity log**: every change to every table is recorded; C-Suite and the
   President can read it.
 

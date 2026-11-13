@@ -10,6 +10,7 @@ alter table public.schedule_issue_reports enable row level security;
 --   2026-11-13  issues_update: the President can also resolve their own reports.
 --               Before, only someone who manages the reporter could, so nobody
 --               could resolve a report the President made.
+--   2026-11-13  issues_guard trigger: records who resolved each issue (resolved_by).
 
 -- Anyone can report an issue about their own schedule.
 create policy issues_insert on public.schedule_issue_reports
@@ -37,6 +38,11 @@ create policy issues_update on public.schedule_issue_reports
     )
   )
   with check (true);
+
+-- Fills in resolved_by and resolved_at when an issue is resolved.
+create trigger issues_guard
+  before update on public.schedule_issue_reports
+  for each row execute function guard_issue();
 
 create trigger log_schedule_issues
   after insert or delete or update on public.schedule_issue_reports

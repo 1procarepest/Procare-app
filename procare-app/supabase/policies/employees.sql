@@ -6,6 +6,19 @@
 
 alter table public.employees enable row level security;
 
+-- History
+--   2026-11-13  Email and phone hidden from direct reads. Signed-in people can read
+--               every other column; email and phone come from employee_contacts()
+--               (team members: their own only; leads and up: everyone).
+
+-- Column access. Row level security below still decides which rows.
+-- When adding a column to employees, grant it here too or the app can't read it.
+revoke select on public.employees from anon, authenticated;
+grant select (
+  id, auth_user_id, first_name, last_name, photo_url, office, department, level,
+  hr_approver, active, fr_employee_type, fr_ids, samsara_driver_id, created_at, updated_at
+) on public.employees to authenticated;
+
 -- Every signed-in person can see active employees, plus themselves and anyone they manage.
 create policy employees_read on public.employees
   for select to authenticated
