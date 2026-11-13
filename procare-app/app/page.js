@@ -143,7 +143,7 @@ export default async function Home({ searchParams }) {
           </ul>
         </section>
 
-        <ProfileActions employeeId={me.id} />
+        <ProfileActions employeeId={me.id} email={user.email} />
 
         <section className="section" aria-labelledby="apps-heading">
           <h2 id="apps-heading">Your apps</h2>

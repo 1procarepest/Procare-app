@@ -181,9 +181,9 @@ span.week-arrow { color: var(--line); }
 .week-label { font-size: 14px; font-weight: 500; color: var(--ink); min-width: 104px; text-align: center; }
 a.week-label { text-decoration: underline; }
 
-.actions { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+.actions { display: grid; gap: 10px; grid-template-columns: repeat(3, 1fr); }
 .actions > .panel { grid-column: 1 / -1; }
-@media (max-width: 480px) { .actions { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .actions { grid-template-columns: 1fr; } }
 
 .panel {
   background: var(--sage);
@@ -194,6 +194,7 @@ a.week-label { text-decoration: underline; }
 }
 .panel h3 { font-size: 18px; }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 480px) { .row { grid-template-columns: 1fr; } }
 .panel-buttons { display: flex; gap: 10px; }
 .panel-buttons .btn { width: auto; }
 .done { background: var(--sage); border-radius: 14px; padding: 16px 18px; grid-column: 1 / -1; }

@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-export default function ProfileActions({ employeeId }) {
-  const [open, setOpen] = useState(null); // 'issue' | 'timeoff' | null
+export default function ProfileActions({ employeeId, email }) {
+  const [open, setOpen] = useState(null); // 'issue' | 'timeoff' | 'passcode' | null
   const [done, setDone] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -12,6 +12,9 @@ export default function ProfileActions({ employeeId }) {
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
   const [note, setNote] = useState('');
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [again, setAgain] = useState('');
 
   function show(which) {
     setOpen(open === which ? null : which);
@@ -48,6 +51,25 @@ export default function ProfileActions({ employeeId }) {
     setDone('Time off requested. It’s waiting for approval.');
   }
 
+  async function changePasscode(event) {
+    event.preventDefault();
+    if (!/^\S{6,64}$/.test(next)) { setError('Passcodes are 6 to 64 letters, numbers or symbols, with no spaces.'); return; }
+    if (next !== again) { setError('The new passcodes don’t match. Type it the same way both times.'); return; }
+    if (next === current) { setError('Choose a passcode that’s different from your current one.'); return; }
+    setBusy(true);
+    setError('');
+    const supabase = createClient();
+    // Check the current passcode first, so nobody can change it from a device left signed in.
+    const { error: wrong } = await supabase.auth.signInWithPassword({ email, password: current });
+    if (wrong) { setBusy(false); setError('Your current passcode isn’t right. Check it and try again.'); return; }
+    const { error: e } = await supabase.auth.updateUser({ password: next });
+    setBusy(false);
+    if (e) { setError(e.message); return; }
+    setCurrent(''); setNext(''); setAgain('');
+    setOpen(null);
+    setDone('Passcode changed. Use the new one next time you sign in.');
+  }
+
   return (
     <section className="actions" aria-label="Schedule actions">
       <button className="btn btn-quiet" type="button" onClick={() => show('issue')} aria-expanded={open === 'issue'}>
@@ -55,6 +77,9 @@ export default function ProfileActions({ employeeId }) {
       </button>
       <button className="btn btn-quiet" type="button" onClick={() => show('timeoff')} aria-expanded={open === 'timeoff'}>
         Request time off
+      </button>
+      <button className="btn btn-quiet" type="button" onClick={() => show('passcode')} aria-expanded={open === 'passcode'}>
+        Change passcode
       </button>
 
       {open === 'issue' && (
@@ -95,6 +120,34 @@ export default function ProfileActions({ employeeId }) {
           {error && <p className="error" role="alert">{error}</p>}
           <div className="panel-buttons">
             <button className="btn" type="submit" disabled={busy}>{busy ? 'Sending…' : 'Send request'}</button>
+            <button className="btn btn-quiet" type="button" onClick={() => setOpen(null)}>Cancel</button>
+          </div>
+        </form>
+      )}
+
+      {open === 'passcode' && (
+        <form className="panel" onSubmit={changePasscode}>
+          <div>
+            <h3>Change passcode</h3>
+            <p className="note">6 to 64 letters, numbers or symbols, with no spaces. Your lead or manager can still reset it if you forget it.</p>
+          </div>
+          <div>
+            <label htmlFor="current-passcode">Current passcode</label>
+            <input id="current-passcode" type="password" autoComplete="current-password" autoCapitalize="off" required value={current} onChange={(e) => setCurrent(e.target.value)} />
+          </div>
+          <div className="row">
+            <div>
+              <label htmlFor="new-passcode">New passcode</label>
+              <input id="new-passcode" type="password" autoComplete="new-password" autoCapitalize="off" required minLength={6} maxLength={64} value={next} onChange={(e) => setNext(e.target.value)} />
+            </div>
+            <div>
+              <label htmlFor="again-passcode">New passcode again</label>
+              <input id="again-passcode" type="password" autoComplete="new-password" autoCapitalize="off" required minLength={6} maxLength={64} value={again} onChange={(e) => setAgain(e.target.value)} />
+            </div>
+          </div>
+          {error && <p className="error" role="alert">{error}</p>}
+          <div className="panel-buttons">
+            <button className="btn" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Change passcode'}</button>
             <button className="btn btn-quiet" type="button" onClick={() => setOpen(null)}>Cancel</button>
           </div>
         </form>
