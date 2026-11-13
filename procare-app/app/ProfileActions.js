@@ -77,7 +77,10 @@ export default function ProfileActions({ employeeId, canRequestTimeOff }) {
       {open === 'timeoff' && (
         <form className="panel" onSubmit={sendTimeOff}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
                <h3>Request time off</h3>
+               <p className="note">A time-off request isn’t guaranteed until it’s approved.</p>
+             </div>
                <p className="note">*A time-off request isn’t guaranteed until it’s approved.*</p>
              </div> 
           <div className="row">
