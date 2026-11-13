@@ -12,6 +12,7 @@
  *   SOUTH_KEY SOUTH_TOKEN
  *   SUPABASE_URL         https://<project>.supabase.co
  *   SUPABASE_SECRET_KEY  Supabase secret key (Project Settings → API Keys)
+ *   SAMSARA_TOKEN        Samsara API token (read: Safety + Vehicles). Optional; without it Samsara is skipped.
  *
  * First time (see sync/README.md):
  *   1. testConnections   checks every key, FieldRoutes and Supabase
@@ -38,7 +39,9 @@ const SYNC = {
     changes: 15,                          // subscriptions, appointments, doors changed since last time
     customers: 30,                        // customers changed since last time (auto-pay tracking)
     reviews: 30,
-    lists: 120                            // employees, service types, cancellation reasons
+    lists: 120,                           // employees, service types, cancellation reasons
+    samsaraEvents: 30,                    // dash-cam safety events, last 3 days
+    samsaraScores: 60                     // safety scores for the scorecard periods
   },
   FULL_HOURS: [7, 13],                    // full refresh of active customers, services, cards on file
   OVERLAP_MIN: 10,                        // re-check this many minutes before the last run, to miss nothing
@@ -50,6 +53,7 @@ const SYNC = {
 
 const PROPS = PropertiesService.getScriptProperties();
 let CALLS = 0;                            // FieldRoutes calls made in this run
+let SS_CALLS = 0;                         // Samsara calls made in this run
 
 /* ======================================================================
  * Schedule
@@ -62,6 +66,7 @@ function tick() {
   const started = Date.now();
   const startedIso = new Date().toISOString();
   CALLS = 0;
+  SS_CALLS = 0;
   const ran = [], errors = [], retry = [];
   try {
     let queue = loadQueue_();
@@ -105,12 +110,17 @@ function dueSteps_() {
   if (due('changes', SYNC.EVERY_MIN.changes)) every(['subs:since', 'appts:since', 'doors:since']);
   if (due('customers', SYNC.EVERY_MIN.customers)) every(['cust:since']);
   if (due('reviews', SYNC.EVERY_MIN.reviews)) every(['reviews:recent']);
+  if (ssToken_()) {
+    if (due('ssEvents', SYNC.EVERY_MIN.samsaraEvents)) steps.push({ o: '-', job: 'ss:events:recent' });
+    if (due('ssScores', SYNC.EVERY_MIN.samsaraScores)) steps.push({ o: '-', job: 'ss:scores' });
+  }
 
   const hour = Number(Utilities.formatDate(new Date(), SYNC.TZ, 'H'));
   const slot = Utilities.formatDate(new Date(), SYNC.TZ, 'yyyy-MM-dd') + ' ' + hour;
   if (SYNC.FULL_HOURS.indexOf(hour) >= 0 && PROPS.getProperty('LAST_FULL_SLOT') !== slot) {
     PROPS.setProperty('LAST_FULL_SLOT', slot);
     every(['full:customers', 'full:subs', 'full:cards']);
+    if (ssToken_()) steps.push({ o: '-', job: 'ss:vehicles' });
   }
   return steps;
 }
@@ -210,6 +220,7 @@ function runStep_(s) {
     PROPS.setProperty('BACKFILL_DONE', Utilities.formatDate(new Date(), SYNC.TZ, 'MMM d, h:mm a'));
     return;
   }
+  if (s.job.indexOf('ss:') === 0) return runSamsaraStep_(s);
   const o = office_(s.o);
   switch (s.job) {
     case 'lists': return pullLists_(o);
@@ -542,6 +553,191 @@ function officeOf_(rec, o) {
 }
 
 /* ======================================================================
+ * Samsara (driving safety for the Tech Scorecard)
+ * ====================================================================== */
+
+const SS_BASE = 'https://api.samsara.com';
+const SS_SKIP_STATES = ['dismissed', 'autoDismissed', 'invalid'];
+
+function ssToken_() { return PROPS.getProperty('SAMSARA_TOKEN') || ''; }
+
+/** One-time load of Samsara events since BACKFILL_START, plus trucks and scores. Run from the editor. */
+function runSamsaraBackfill() {
+  if (!ssToken_()) { Logger.log('Add SAMSARA_TOKEN to Script Properties first.'); return; }
+  const steps = [{ o: '-', job: 'ss:vehicles' }];
+  months_(SYNC.BACKFILL_START, ymd_(new Date())).forEach(m => steps.push({ o: '-', job: 'ss:events:range', from: m[0], to: m[1] }));
+  steps.push({ o: '-', job: 'ss:scores' });
+  saveQueue_(loadQueue_().concat(steps));
+  Logger.log('Samsara backfill queued: ' + steps.length + ' steps. Starting now…');
+  tick();
+}
+
+function runSamsaraStep_(s) {
+  if (!ssToken_()) throw new Error('SAMSARA_TOKEN is not set');
+  if (s.job === 'ss:vehicles') return ssVehicles_();
+  if (s.job === 'ss:events:recent') {
+    const now = Date.now();
+    return ssEvents_(now - 3 * 86400000, now);
+  }
+  if (s.job === 'ss:events:range') {
+    const from = Utilities.parseDate(s.from, SYNC.TZ, 'yyyy-MM-dd').getTime();
+    const to = Utilities.parseDate(addDays_(s.to, 1), SYNC.TZ, 'yyyy-MM-dd').getTime();
+    return ssEvents_(from, Math.min(to, Date.now()));
+  }
+  if (s.job === 'ss:scores') return ssScores_();
+  throw new Error('Unknown step ' + s.job);
+}
+
+function ssGet_(path, params) {
+  const qs = Object.keys(params || {}).filter(k => params[k] !== undefined && params[k] !== null && params[k] !== '')
+    .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k])).join('&');
+  const url = SS_BASE + path + (qs ? '?' + qs : '');
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    SS_CALLS++;
+    const r = UrlFetchApp.fetch(url, { headers: { Authorization: 'Bearer ' + ssToken_() }, muteHttpExceptions: true });
+    const code = r.getResponseCode();
+    if (code === 429 || code >= 500) { Utilities.sleep(1000 * attempt); continue; }
+    if (code >= 300) throw new Error('Samsara ' + path + ' (HTTP ' + code + '): ' + r.getContentText().slice(0, 200));
+    return JSON.parse(r.getContentText());
+  }
+  throw new Error('Samsara kept rate-limiting ' + path);
+}
+
+/** Trucks, then match each active tech in the app to the truck whose name starts with theirs. */
+function ssVehicles_() {
+  const now = new Date().toISOString();
+  let after = '', vehicles = [];
+  do {
+    const r = ssGet_('/fleet/vehicles', { limit: 512, after: after });
+    vehicles = vehicles.concat((r.data || []).map(v => ({ vehicle_id: String(v.id), name: str_(v.name), synced_at: now })));
+    after = r.pagination && r.pagination.hasNextPage ? r.pagination.endCursor : '';
+  } while (after);
+  supaUpsert_('samsara_vehicles', vehicles, ['vehicle_id']);
+
+  const norm = x => String(x || '').toLowerCase().replace(/[^a-z]/g, '');
+  const techs = supaGet_('employees?select=id,first_name,last_name&department=eq.technician&active=is.true');
+  const manual = {};
+  supaGet_('tech_vehicles?select=employee_id&set_by=eq.manual').forEach(r => { manual[r.employee_id] = true; });
+  const rows = [];
+  techs.forEach(t => {
+    if (manual[t.id]) return;
+    const name = norm((t.first_name || '') + (t.last_name || ''));
+    if (!name) return;
+    const v = vehicles.find(x => norm(x.name).indexOf(name) === 0);
+    rows.push({ employee_id: t.id, vehicle_id: v ? v.vehicle_id : null, vehicle_name: v ? v.name : null, set_by: 'auto', updated_at: now });
+  });
+  supaUpsert_('tech_vehicles', rows, ['employee_id']);
+}
+
+/** Safety events between two times (ms), 31 days per request window. */
+function ssEvents_(fromMs, toMs) {
+  const now = new Date().toISOString();
+  for (let cursor = fromMs; cursor < toMs; cursor += 31 * 86400000) {
+    const end = Math.min(cursor + 31 * 86400000, toMs);
+    let after = '';
+    do {
+      const r = ssGet_('/fleet/safety-events', { startTime: new Date(cursor).toISOString(), endTime: new Date(end).toISOString(), after: after });
+      const rows = [];
+      (r.data || []).forEach(e => {
+        if (SS_SKIP_STATES.indexOf(e.coachingState) >= 0) return;
+        const labels = (e.behaviorLabels || []).map(l => l.label).filter(Boolean);
+        if (!labels.length || !e.id) return;
+        rows.push({ event_id: String(e.id), vehicle_id: e.vehicle ? String(e.vehicle.id) : null, event_time: e.time || null,
+          labels: labels, coaching_state: str_(e.coachingState), synced_at: now });
+      });
+      supaUpsert_('samsara_events', rows, ['event_id']);
+      after = r.pagination && r.pagination.hasNextPage ? r.pagination.endCursor : '';
+    } while (after);
+  }
+}
+
+/**
+ * Scorecard periods, matching the Tech Scorecard: this week (Mon–today), last week, this month,
+ * last month, this year, each with an earlier period for trend arrows ("same point last month").
+ * Periods still in progress end now; earlier ones end at midnight Eastern.
+ */
+function ssWindows_() {
+  const today = ymd_(new Date());
+  const at = d => Utilities.parseDate(d, SYNC.TZ, 'yyyy-MM-dd').getTime();
+  const nowMs = Date.now();
+  const dow = new Date(today + 'T12:00:00Z').getUTCDay() || 7;            // 1 = Monday … 7 = Sunday
+  const weekStart = addDays_(today, 1 - dow);
+  const monthStart = today.slice(0, 8) + '01';
+  const yearStart = today.slice(0, 4) + '-01-01';
+  const lastMonthStart = addMonths_(monthStart, -1);
+  const prevYearStart = (Number(today.slice(0, 4)) - 1) + '-01-01';
+  const daysIn = (a, b) => Math.round((at(b) - at(a)) / 86400000);
+  const toDate = (start, priorStart, priorCap) => {
+    let priorEnd = addDays_(priorStart, daysIn(start, today) + 1);            // same number of days, through end of day
+    if (priorCap && priorEnd > addDays_(priorCap, 1)) priorEnd = addDays_(priorCap, 1);
+    return [{ s: at(start), e: nowMs, open: true }, { s: at(priorStart), e: at(priorEnd) }];
+  };
+  const full = (s1, e1, s2, e2) => [{ s: at(s1), e: at(addDays_(e1, 1)) }, { s: at(s2), e: at(addDays_(e2, 1)) }];
+  const w = {
+    thisWeek: toDate(weekStart, addDays_(weekStart, -7)),
+    lastWeek: full(addDays_(weekStart, -7), addDays_(weekStart, -1), addDays_(weekStart, -14), addDays_(weekStart, -8)),
+    thisMonth: toDate(monthStart, lastMonthStart, addDays_(monthStart, -1)),
+    lastMonth: full(lastMonthStart, addDays_(monthStart, -1), addMonths_(monthStart, -2), addDays_(lastMonthStart, -1)),
+    thisYear: toDate(yearStart, prevYearStart)
+  };
+  const out = [];
+  Object.keys(w).forEach(k => ['cur', 'prior'].forEach((c, i) => {
+    const x = w[k][i];
+    out.push({ key: k + ':' + c, s: x.s, e: Math.max(x.e, x.s + 3600000), open: !!x.open });  // Samsara needs at least an hour
+  }));
+  return out;
+}
+
+/** Safety score per tech truck per period. Finished periods are fetched once; open ones every run. */
+function ssScores_() {
+  const vehicles = supaGet_('tech_vehicles?select=vehicle_id&vehicle_id=not.is.null').map(r => r.vehicle_id);
+  if (!vehicles.length) return;
+  const have = {};
+  supaGet_('samsara_scores?select=vehicle_id,window_key,start_at,end_at').forEach(r => {
+    have[r.vehicle_id + '|' + r.window_key] = new Date(r.start_at).getTime() + '|' + new Date(r.end_at).getTime();
+  });
+  const todo = [];
+  ssWindows_().forEach(win => vehicles.forEach(v => {
+    if (!win.open && have[v + '|' + win.key] === win.s + '|' + win.e) return;   // already stored
+    todo.push({ v: v, win: win });
+  }));
+  const now = new Date().toISOString();
+  for (let i = 0; i < todo.length; i += 20) {
+    let batch = todo.slice(i, i + 20);
+    const rows = [];
+    for (let attempt = 0; attempt < 4 && batch.length; attempt++) {
+      if (attempt) Utilities.sleep(1500 * attempt);
+      SS_CALLS += batch.length;
+      const res = UrlFetchApp.fetchAll(batch.map(t => ({
+        url: SS_BASE + '/v1/fleet/vehicles/' + encodeURIComponent(t.v) + '/safety/score?startMs=' + t.win.s + '&endMs=' + t.win.e,
+        headers: { Authorization: 'Bearer ' + ssToken_() }, muteHttpExceptions: true
+      })));
+      const retry = [];
+      res.forEach((r, j) => {
+        const code = r.getResponseCode();
+        if (code === 429 || code >= 500) { retry.push(batch[j]); return; }
+        if (code >= 300) return;                                                // truck without data
+        const x = JSON.parse(r.getContentText());
+        const driveMs = Number(x.totalTimeDrivenMs) || 0;
+        rows.push({
+          vehicle_id: batch[j].v, window_key: batch[j].win.key,
+          start_at: new Date(batch[j].win.s).toISOString(), end_at: new Date(batch[j].win.e).toISOString(),
+          score: Math.round(Number(x.safetyScore) || 0), miles: Math.round((Number(x.totalDistanceDrivenMeters) || 0) / 1609.344),
+          drive_hours: Math.round(driveMs / 360000) / 10, harsh_brake: Number(x.harshBrakingCount) || 0,
+          harsh_accel: Number(x.harshAccelCount) || 0, harsh_turn: Number(x.harshTurningCount) || 0,
+          crash: Number(x.crashCount) || 0,
+          speed_pct: driveMs ? Math.round((Number(x.timeOverSpeedLimitMs) || 0) / driveMs * 1000) / 10 : 0,
+          updated_at: now
+        });
+      });
+      batch = retry;
+    }
+    supaUpsert_('samsara_scores', rows, ['vehicle_id', 'window_key']);
+    Utilities.sleep(250);
+  }
+}
+
+/* ======================================================================
  * Supabase
  * ====================================================================== */
 
@@ -597,7 +793,7 @@ function logRun_(startedIso, ran, errors) {
   try {
     supaFetch_('post', 'fr_sync_runs', [{
       started_at: startedIso, finished_at: new Date().toISOString(), steps: ran,
-      api_calls: CALLS, ok: errors.length === 0, errors: errors.length ? errors.join(' | ').slice(0, 4000) : null
+      api_calls: CALLS, samsara_calls: SS_CALLS, ok: errors.length === 0, errors: errors.length ? errors.join(' | ').slice(0, 4000) : null
     }], { Prefer: 'return=minimal' });
   } catch (e) {
     console.log('Could not log the run: ' + e.message);

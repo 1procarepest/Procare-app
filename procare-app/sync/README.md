@@ -15,6 +15,9 @@ from Supabase instead of calling FieldRoutes itself, so each record is downloade
 | Reviews | Every 30 minutes | Last 3 days |
 | Employees, service types, cancel reasons | Every 2 hours | Full lists |
 | Active customers, active services, cards on file | 7 AM and 1 PM | Full refresh |
+| Samsara trucks (and matching techs to trucks) | 7 AM and 1 PM | Full list |
+| Samsara safety events | Every 30 minutes | Last 3 days (picks up coaching changes) |
+| Samsara safety scores | Every hour | Periods still in progress; finished periods once |
 
 Every run is logged in `fr_sync_runs` with the number of FieldRoutes calls it used. Calls per day:
 
@@ -43,12 +46,16 @@ tables have no read rules yet, so signed-in people can't read them; each app add
    - `FR_BASE_URL`: also from the Operations Suite (for example `https://procarepest.fieldroutes.com/api`).
    - `SUPABASE_URL`: Supabase → Project Settings → Data API (ends in `.supabase.co`).
    - `SUPABASE_SECRET_KEY`: Supabase → Project Settings → API Keys → secret key (the same one in Vercel).
+   - `SAMSARA_TOKEN`: copy it from the Tech Scorecard project's Script Properties (same name).
 4. **Check it:** choose `testConnections` in the function menu and click **Run**. Google asks for
    permission the first time (Advanced → Go to Procare Sync → Allow). Every line should show ✅.
 5. **Check field names (optional):** run `inspectFields` and send the log; it lists field names only.
 6. **Turn it on:** run `setup` (5-minute schedule), then `runBackfill`. The backfill loads everything
    since Jan 1, 2025 a few minutes at a time. Run `showStatus` to see progress. Regular syncing
    starts by itself when it's done.
+7. **Samsara:** after running `supabase/changes/2026-11-13-9-samsara-tables.sql`, run `runSamsaraBackfill`
+   once. It loads trucks, safety events since Jan 1, 2025, and the scorecard periods' safety scores.
+   Techs are matched to trucks whose name starts with theirs (for example "Adin Sanford -118").
 
 ## Running alongside the old scripts
 
