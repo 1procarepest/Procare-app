@@ -6,6 +6,18 @@ import { createClient } from '@/lib/supabase/client';
 import { clock, fromMinutes } from '@/lib/labels';
 
 // Times people can pick for part of a day: every 15 minutes, 5 AM to 10 PM
+// Asks the server to send the automatic email for something just saved. Never blocks or
+// shows errors: the save already worked, and the email is a bonus.
+function notify(event, id) {
+  if (!id) return;
+  fetch('/api/notify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event, id }),
+    keepalive: true,
+  }).catch(() => {});
+}
+
 const TIMES = Array.from({ length: (22 - 5) * 4 + 1 }, (_, i) => fromMinutes(5 * 60 + i * 15));
 
 // Sales are 1099: they tell us their plans instead of asking. Same forms, different words,
@@ -62,11 +74,14 @@ export default function ProfileActions({ employeeId, email, isSales = false }) {
     event.preventDefault();
     setBusy(true);
     setError('');
-    const { error: e } = await createClient()
+    const { data: saved, error: e } = await createClient()
       .from('schedule_issue_reports')
-      .insert({ employee_id: employeeId, message: message.trim() });
+      .insert({ employee_id: employeeId, message: message.trim() })
+      .select('id')
+      .single();
     setBusy(false);
     if (e) { setError('The report didn’t save. Check your connection and try again.'); return; }
+    notify('issue', saved?.id);
     setMessage('');
     setOpen(null);
     setDone(w.issueDone);
@@ -79,7 +94,7 @@ export default function ProfileActions({ employeeId, email, isSales = false }) {
     if (partial && !(fromTime < toTime)) { setError('The “to” time needs to be after the “from” time.'); return; }
     setBusy(true);
     setError('');
-    const { error: e } = await createClient()
+    const { data: saved, error: e } = await createClient()
       .from('time_off_requests')
       .insert({
         employee_id: employeeId,
@@ -89,9 +104,12 @@ export default function ProfileActions({ employeeId, email, isSales = false }) {
         end_time: partial ? toTime : null,
         use_pto: !isSales && usePto,
         note: note.trim() || null,
-      });
+      })
+      .select('id')
+      .single();
     setBusy(false);
     if (e) { setError('That didn’t save. Check your connection and try again.'); return; }
+    notify('time_off', saved?.id);
     setStart(''); setEnd(''); setNote(''); setPartial(false); setFromTime(''); setToTime(''); setUsePto(false);
     setOpen(null);
     setDone(w.timeOffDone);

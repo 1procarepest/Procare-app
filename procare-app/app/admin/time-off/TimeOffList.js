@@ -53,6 +53,13 @@ function Request({ r, canDecide }) {
       setError('This request wasn’t updated. The database didn’t allow the change for your account.');
       return;
     }
+    // Email the employee about the decision (switch: Email settings → time_off_decision)
+    fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'time_off_decided', id: r.id }),
+      keepalive: true,
+    }).catch(() => {});
     router.refresh();
   }
 
