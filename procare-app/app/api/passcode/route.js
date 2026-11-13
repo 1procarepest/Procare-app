@@ -9,8 +9,8 @@ function reply(status, message) {
 /** Creates a login or resets a passcode, for someone the signed-in person manages. */
 export async function POST(request) {
   const { employeeId, passcode } = await request.json().catch(() => ({}));
-  if (!employeeId || !/^\d{6,10}$/.test(String(passcode || ''))) {
-    return reply(400, 'Passcodes are 6 to 10 digits.');
+  if (!employeeId || !/^\S{6,64}$/.test(String(passcode || ''))) {
+    return reply(400, 'Passcodes are 6 to 64 letters, numbers or symbols, with no spaces.');
   }
 
   const supabase = createClient();

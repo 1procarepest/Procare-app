@@ -200,8 +200,8 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
               : `${person.first_name} signs in with ${person.email} and the passcode you choose here.`}
           </p>
           <div>
-            <label htmlFor="passcode">New passcode (6 to 10 digits)</label>
-            <input id="passcode" inputMode="numeric" autoComplete="off" pattern="\d{6,10}" required value={passcode} onChange={(e) => setPasscode(e.target.value.replace(/\D/g, ''))} />
+            <label htmlFor="passcode">New passcode (6 to 64 letters, numbers or symbols)</label>
+            <input id="passcode" autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck={false} minLength={6} maxLength={64} pattern="\S{6,64}" title="6 to 64 letters, numbers or symbols, with no spaces" required value={passcode} onChange={(e) => setPasscode(e.target.value.replace(/\s/g, ''))} />
           </div>
           {loginMsg.text && <p className={loginMsg.bad ? 'error' : 'ok'} role="status">{loginMsg.text}</p>}
           <div className="panel-buttons">

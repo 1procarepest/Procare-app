@@ -15,12 +15,18 @@ function Issue({ i }) {
   async function resolve() {
     setBusy(true);
     setError('');
-    const { error: err } = await createClient()
+    const { data, error: err } = await createClient()
       .from('schedule_issue_reports')
       .update({ status: 'resolved', resolved_at: new Date().toISOString() })
-      .eq('id', i.id);
+      .eq('id', i.id)
+      .select('id');
     setBusy(false);
     if (err) { setError(err.message); return; }
+    // Supabase skips rows the database's permission rules don't allow, without an error.
+    if (!data || data.length === 0) {
+      setError('This issue wasn’t marked resolved. The database didn’t allow the change for your account.');
+      return;
+    }
     router.refresh();
   }
 
@@ -34,7 +40,7 @@ function Issue({ i }) {
       {i.status === 'open'
         ? <button className="btn btn-quiet btn-small" type="button" disabled={busy} onClick={resolve}>Mark resolved</button>
         : <span className="badge">Resolved</span>}
-      {error && <p className="error" role="alert">{error}</p>}
+      {error && <p className="error" role="alert" style={{ gridColumn: '1 / -1' }}>{error}</p>}
     </li>
   );
 }

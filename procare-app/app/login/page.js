@@ -49,7 +49,7 @@ export default function LoginPage() {
           <input
             id="passcode"
             type="password"
-            inputMode="numeric"
+            autoCapitalize="off"
             autoComplete="current-password"
             required
             value={passcode}
