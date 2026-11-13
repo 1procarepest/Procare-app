@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
-import { DAY_NAMES, WEEK_ORDER, clock, roleTitle } from '@/lib/labels';
+import { DAY_NAMES, WEEK_ORDER, clock, roleTitle, shortDate } from '@/lib/labels';
 import ProfileActions from './ProfileActions';
 import SignOut from './SignOut';
 
