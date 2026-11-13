@@ -45,14 +45,20 @@ export function clock(t) {
   return m ? `${hour}:${String(m).padStart(2, '0')} ${suffix}` : `${hour} ${suffix}`;
 }
 
-function minutes(t) {
+/** "13:30:00" → 810 (minutes from midnight) */
+export function toMinutes(t) {
   const [h, m] = String(t).split(':').map(Number);
   return h * 60 + (m || 0);
 }
 
+/** 810 → "13:30" */
+export function fromMinutes(n) {
+  return `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
+}
+
 /** "2 hours", "1.5 hours", "45 minutes" between two "HH:MM" times. */
 export function hoursBetween(from, to) {
-  const mins = minutes(to) - minutes(from);
+  const mins = toMinutes(to) - toMinutes(from);
   if (mins < 60) return `${mins} minutes`;
   const h = Math.round((mins / 60) * 100) / 100;
   return `${h} hour${h === 1 ? '' : 's'}`;

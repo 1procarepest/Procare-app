@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
-import { DAY_NAMES, WEEK_ORDER, clock, roleTitle, shortDate } from '@/lib/labels';
+import { DAY_NAMES, WEEK_ORDER, clock, fromMinutes, roleTitle, shortDate, toMinutes } from '@/lib/labels';
 import ProfileActions from './ProfileActions';
 import SignOut from './SignOut';
 
@@ -51,9 +51,10 @@ export default async function Home({ searchParams }) {
     .select('weekday, start_time, end_time')
     .eq('employee_id', me.id);
 
-  const hours = {};
+  // Scheduled hours per weekday, in minutes from midnight
+  const shifts = {};
   (schedule || []).forEach((d) => {
-    if (d.start_time && d.end_time) hours[d.weekday] = `${clock(d.start_time)} – ${clock(d.end_time)}`;
+    if (d.start_time && d.end_time) shifts[d.weekday] = [toMinutes(d.start_time), toMinutes(d.end_time)];
   });
 
   const todayName = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'America/New_York' }).format(new Date());
@@ -80,21 +81,32 @@ export default async function Home({ searchParams }) {
     .in('status', ['pending', 'approved'])
     .lte('start_date', dates[0])
     .gte('end_date', dates[1]);
-  // The time off that matters most on a day: approved full day, then approved part of a
-  // day, then anything requested.
-  function offOn(ymd) {
+  // What a day's row says. Approved time off is taken out of the scheduled hours
+  // ("9 AM – 5 PM" when someone leaves at 5); requested time off is shown alongside.
+  function dayInfo(d, ymd) {
+    const shift = shifts[d];
     const hits = (timeOff || []).filter((r) => r.start_date <= ymd && r.end_date >= ymd);
-    return hits.find((r) => r.status === 'approved' && !r.start_time)
-      || hits.find((r) => r.status === 'approved')
-      || hits[0]
-      || null;
-  }
-  function dayText(d, r) {
-    const base = hours[d] || 'Off';
-    if (!r) return base;
-    const span = r.start_time ? `${clock(r.start_time)} – ${clock(r.end_time)}` : '';
-    if (r.status === 'approved') return span ? `${base}, off ${span}` : 'Time off';
-    return span ? `${base} (requested off ${span})` : `${base} (time off requested)`;
+    const approved = hits.filter((r) => r.status === 'approved');
+    const pending = hits.filter((r) => r.status === 'pending');
+
+    if (approved.some((r) => !r.start_time)) return { text: 'Time off', working: false };
+
+    // Scheduled hours minus every approved part-day
+    let pieces = shift ? [shift] : [];
+    approved.forEach((r) => {
+      const [a, b] = [toMinutes(r.start_time), toMinutes(r.end_time)];
+      pieces = pieces.flatMap(([x, y]) => [[x, Math.min(y, a)], [Math.max(x, b), y]].filter(([p, q]) => q > p));
+    });
+    if (shift && pieces.length === 0) return { text: 'Time off', working: false };
+    let text = pieces.length ? pieces.map(([x, y]) => `${clock(fromMinutes(x))} – ${clock(fromMinutes(y))}`).join(', ') : 'Off';
+
+    const ask = pending.find((r) => !r.start_time) || pending[0];
+    if (ask) {
+      text += ask.start_time
+        ? ` (requested off ${clock(ask.start_time)} – ${clock(ask.end_time)})`
+        : ' (time off requested)';
+    }
+    return { text, working: pieces.length > 0 };
   }
   const initials = `${me.first_name?.[0] || ''}${me.last_name?.[0] || ''}`.toUpperCase();
   const hasPhoto = typeof me.photo_url === 'string' && me.photo_url.startsWith('http');
@@ -138,12 +150,11 @@ export default async function Home({ searchParams }) {
           </div>
           <ul className="week">
             {WEEK_ORDER.map((d) => {
-              const r = offOn(dates[d]);
-              const working = hours[d] && !(r && r.status === 'approved' && !r.start_time);
+              const { text, working } = dayInfo(d, dates[d]);
               return (
                 <li key={d} className={`day${working ? '' : ' off'}${week === 0 && d === today ? ' today' : ''}`}>
                   <span className="day-name">{DAY_NAMES[d]}, {shortDate(dates[d])}</span>
-                  <span className="day-hours">{dayText(d, r)}</span>
+                  <span className="day-hours">{text}</span>
                 </li>
               );
             })}

@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { clock, fromMinutes } from '@/lib/labels';
+
+// Times people can pick for part of a day: every 15 minutes, 5 AM to 10 PM
+const TIMES = Array.from({ length: (22 - 5) * 4 + 1 }, (_, i) => fromMinutes(5 * 60 + i * 15));
 
 // Sales are 1099: they tell us their plans instead of asking. Same forms, different words,
 // and the database confirms their time off right away (guard_time_off).
@@ -158,12 +162,18 @@ export default function ProfileActions({ employeeId, email, isSales = false }) {
               </div>
               <div className="row">
                 <div>
-                  <label htmlFor="from-time">From</label>
-                  <input id="from-time" type="time" step={900} required value={fromTime} onChange={(e) => setFromTime(e.target.value)} />
+                  <label htmlFor="from-time">Off from</label>
+                  <select id="from-time" required value={fromTime} onChange={(e) => { setFromTime(e.target.value); if (toTime && toTime <= e.target.value) setToTime(''); }}>
+                    <option value="" disabled>Choose a time</option>
+                    {TIMES.slice(0, -1).map((t) => <option key={t} value={t}>{clock(t)}</option>)}
+                  </select>
                 </div>
                 <div>
-                  <label htmlFor="to-time">To</label>
-                  <input id="to-time" type="time" step={900} required min={fromTime || undefined} value={toTime} onChange={(e) => setToTime(e.target.value)} />
+                  <label htmlFor="to-time">Until</label>
+                  <select id="to-time" required value={toTime} onChange={(e) => setToTime(e.target.value)}>
+                    <option value="" disabled>Choose a time</option>
+                    {TIMES.filter((t) => !fromTime || t > fromTime).map((t) => <option key={t} value={t}>{clock(t)}</option>)}
+                  </select>
                 </div>
               </div>
             </>
@@ -180,8 +190,9 @@ export default function ProfileActions({ employeeId, email, isSales = false }) {
             </div>
           )}
           {!isSales && (
-            <label className="check">
+            <label className="toggle">
               <input type="checkbox" role="switch" checked={usePto} onChange={(e) => setUsePto(e.target.checked)} />
+              <span className="toggle-track" aria-hidden="true" />
               Use paid time off (PTO)
             </label>
           )}
