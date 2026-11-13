@@ -14,11 +14,18 @@ Exported 2026-11-13, then updated by hand for that day's later changes.
 | `schema.sql` | Types, tables, columns and constraints |
 | `functions.sql` | Helper functions (`my_id`, `can_manage`, `can_approve_time_off`, …) and trigger functions |
 | `policies/<table>.sql` | One file per table: its row level security rules and triggers |
+| `../sync/` | The Procare Sync Apps Script that fills the `fr_*` FieldRoutes copy tables |
 | `changes/` | One-time scripts that were run in Supabase, in date order, kept for history |
 
 Every table has row level security on, so a signed-in person only sees and
 changes what the rules allow. Supabase also switches it on automatically for any
 new table (`rls_auto_enable`), which means a new table is locked until it has rules.
+
+## FieldRoutes copy (`fr_*` tables)
+
+Filled by the Procare Sync script (`../sync/`); defined in
+`changes/2026-11-13-7-fieldroutes-copy-tables.sql`. Customers are stored with last name only.
+No read rules yet: only the sync's secret key can read or write them until each app adds rules.
 
 ## Who can do what (summary)
 
