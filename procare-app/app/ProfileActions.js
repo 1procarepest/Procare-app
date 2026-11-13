@@ -55,7 +55,7 @@ export default function ProfileActions({ employeeId, canRequestTimeOff }) {
       </button>
       {canRequestTimeOff && (
         <button className="btn btn-quiet" type="button" onClick={() => show('timeoff')} aria-expanded={open === 'timeoff'}>
-          Request time off 
+          Request time off
         </button>
       )}
 
@@ -76,13 +76,7 @@ export default function ProfileActions({ employeeId, canRequestTimeOff }) {
 
       {open === 'timeoff' && (
         <form className="panel" onSubmit={sendTimeOff}>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-               <h3>Request time off</h3>
-               <p className="note">A time-off request isn’t guaranteed until it’s approved.</p>
-             </div>
-               <p className="note">*A time-off request isn’t guaranteed until it’s approved.*</p>
-             </div> 
+          <h3>Request time off</h3>
           <div className="row">
             <div>
               <label htmlFor="start">First day off</label>

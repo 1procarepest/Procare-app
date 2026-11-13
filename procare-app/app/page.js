@@ -1,20 +1,12 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getMe } from '@/lib/me';
+import { DAY_NAMES, WEEK_ORDER, clock, roleTitle } from '@/lib/labels';
 import ProfileActions from './ProfileActions';
+import SignOut from './SignOut';
 
 export const dynamic = 'force-dynamic';
-
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]; // Monday first
-
-const LEVEL_LABEL = {
-  team_member: 'Team member',
-  lead: 'Lead',
-  manager: 'Manager',
-  c_suite: 'C-Suite',
-  president: 'President',
-};
-const DEPT_LABEL = { technician: 'Technician', sales: 'Sales', administrative: 'Office' };
 
 const APPS = {
   technician: { name: 'Technician scorecard', blurb: 'KPIs, incentives and the team leaderboard.' },
@@ -31,33 +23,10 @@ function appsFor(department, level) {
   return ['operations', 'technician'];
 }
 
-/** "09:00:00" → "9 AM", "13:30:00" → "1:30 PM" */
-function clock(t) {
-  const [h, m] = String(t).split(':').map(Number);
-  const suffix = h < 12 ? 'AM' : 'PM';
-  const hour = h % 12 || 12;
-  return m ? `${hour}:${String(m).padStart(2, '0')} ${suffix}` : `${hour} ${suffix}`;
-}
-
-function SignOut() {
-  return (
-    <form action="/auth/signout" method="post">
-      <button className="signout" type="submit">Sign out</button>
-    </form>
-  );
-}
-
 export default async function Home() {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user, me } = await getMe(supabase);
   if (!user) redirect('/login');
-
-  const { data: me } = await supabase
-    .from('employees')
-    .select('id, first_name, last_name, photo_url, office, department, level, offices(name)')
-    .eq('auth_user_id', user.id)
-    .eq('active', true)
-    .maybeSingle();
 
   if (!me) {
     return (
@@ -88,16 +57,16 @@ export default async function Home() {
 
   const initials = `${me.first_name?.[0] || ''}${me.last_name?.[0] || ''}`.toUpperCase();
   const hasPhoto = typeof me.photo_url === 'string' && me.photo_url.startsWith('http');
-       const role = ['c_suite', 'president'].includes(me.level)
-       ? LEVEL_LABEL[me.level]
-       : `${DEPT_LABEL[me.department] || ''} ${LEVEL_LABEL[me.level] || ''}`.trim();
   const officeName = me.offices?.name;
 
   return (
     <>
       <header className="topbar">
         <img src="/logo.png" alt="Procare" />
-        <SignOut />
+        <div className="topbar-links">
+          {me.rank >= 2 && <Link className="toplink" href="/admin">Manage team</Link>}
+          <SignOut />
+        </div>
       </header>
 
       <main className="home">
@@ -107,7 +76,7 @@ export default async function Home() {
             : <div className="avatar" aria-hidden="true">{initials}</div>}
           <div>
             <h1>Happy {todayName}, {me.first_name}</h1>
-            <p>{role}{officeName ? `, ${officeName}` : ''}</p>
+            <p>{roleTitle(me.department, me.level)}{officeName ? `, ${officeName}` : ''}</p>
           </div>
         </section>
 
