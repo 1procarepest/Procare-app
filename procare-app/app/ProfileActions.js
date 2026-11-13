@@ -56,7 +56,6 @@ export default function ProfileActions({ employeeId, canRequestTimeOff }) {
       {canRequestTimeOff && (
         <button className="btn btn-quiet" type="button" onClick={() => show('timeoff')} aria-expanded={open === 'timeoff'}>
           Request time off 
-                  A time-off request is a request and isn't guaranteed until it's approved.
         </button>
       )}
 
