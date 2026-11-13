@@ -81,10 +81,14 @@ export async function POST(request) {
       to: [self?.email],
       subject: 'Test email from the Procare Team app',
       heading: 'Emails are working',
-      lines: [`This test went to ${self?.email}.`, `It was sent from: ${process.env.EMAIL_FROM}`],
+      lines: [
+        `This test went to ${self?.email}.`,
+        `It was sent from: ${process.env.EMAIL_FROM}`,
+        `Replies go to: ${process.env.EMAIL_REPLY_TO || 'the sender above'}`,
+      ],
       link: { href: `${origin}/admin/notifications`, label: 'Email settings' },
     });
-    return reply(200, { sent, problem, to: self?.email, from: process.env.EMAIL_FROM || null });
+    return reply(200, { sent, problem, to: self?.email, from: process.env.EMAIL_FROM || null, replyTo: process.env.EMAIL_REPLY_TO || null });
   }
 
   // ---------- Time off added ----------

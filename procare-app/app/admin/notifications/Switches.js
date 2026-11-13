@@ -17,7 +17,7 @@ export default function Switches({ settings }) {
         body: JSON.stringify({ event: 'test', id: 'test' }),
       });
       const body = await res.json().catch(() => ({}));
-      if (body.sent) setTest({ busy: false, text: `Sent to ${body.to} from ${body.from}. Check that inbox (and spam).`, bad: false });
+      if (body.sent) setTest({ busy: false, text: `Sent to ${body.to} from ${body.from}${body.replyTo ? `, replies to ${body.replyTo}` : ''}. Check that inbox (and spam).`, bad: false });
       else setTest({ busy: false, text: body.problem || body.message || `Not sent (error ${res.status}).`, bad: true });
     } catch {
       setTest({ busy: false, text: 'Couldn’t reach the app. Check your connection and try again.', bad: true });

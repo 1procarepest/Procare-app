@@ -15,6 +15,7 @@ Project → Settings → Environment Variables:
   Server only, like the secret key. Without it, the app works but sends no email.
 - `EMAIL_FROM`: who emails come from, for example `Procare Team <team@procarepest.com>`.
   The domain must be verified in Resend.
+- `EMAIL_REPLY_TO` (optional): where replies to those emails go, for example Ally's address.
 
 ## Automatic emails
 

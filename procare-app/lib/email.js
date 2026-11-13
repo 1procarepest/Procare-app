@@ -1,5 +1,7 @@
 // Server only: sends email through Resend (https://resend.com).
 // Needs RESEND_API_KEY and EMAIL_FROM in Vercel's environment variables.
+// Optional EMAIL_REPLY_TO: where replies go (for example Ally), so emails can come
+// from "Procare Team" while a person handles the answers.
 // Without them, nothing is sent and the app carries on normally.
 
 function escapeHtml(text) {
@@ -20,6 +22,7 @@ export async function sendEmail({ to, subject, heading, lines, link }) {
   const clean = (v) => (v || '').trim().replace(/^["']|["']$/g, '').trim();
   const key = clean(process.env.RESEND_API_KEY);
   const from = clean(process.env.EMAIL_FROM);
+  const replyTo = clean(process.env.EMAIL_REPLY_TO);
   const recipients = [...new Set((to || []).filter(Boolean))];
   const missing = [!key && 'RESEND_API_KEY', !from && 'EMAIL_FROM'].filter(Boolean);
   if (missing.length) {
@@ -48,7 +51,7 @@ export async function sendEmail({ to, subject, heading, lines, link }) {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to: recipients, subject, text, html }),
+      body: JSON.stringify({ from, to: recipients, subject, text, html, ...(replyTo ? { reply_to: replyTo } : {}) }),
     });
     if (!res.ok) {
       const body = await res.text();
