@@ -17,10 +17,20 @@ export default async function PersonPage({ params }) {
     .maybeSingle();
   if (!person) notFound();
 
-  const [{ data: schedule }, { data: canManage }, { data: canEditSchedule }] = await Promise.all([
+  // Today in Atlanta as YYYY-MM-DD, so requests still in progress count as upcoming.
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+
+  const [{ data: schedule }, { data: canManage }, { data: canEditSchedule }, { data: upcoming }] = await Promise.all([
     supabase.from('schedules').select('weekday, start_time, end_time').eq('employee_id', person.id),
     supabase.rpc('can_manage', { target: person.id }),
     supabase.rpc('can_edit_schedule', { target: person.id }),
+    supabase
+      .from('time_off_requests')
+      .select('id, start_date, end_date, note, status')
+      .eq('employee_id', person.id)
+      .in('status', ['approved', 'pending'])
+      .gte('end_date', today)
+      .order('start_date', { ascending: true }),
   ]);
 
   return (
@@ -29,6 +39,7 @@ export default async function PersonPage({ params }) {
       <PersonEditor
         person={person}
         schedule={schedule || []}
+        upcoming={upcoming || []}
         me={{ id: me.id, level: me.level, rank: me.rank, office: me.office, department: me.department }}
         canManage={!!canManage}
         canEditSchedule={!!canEditSchedule}

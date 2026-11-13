@@ -104,7 +104,7 @@ export default async function Home() {
         <section className="section" aria-labelledby="week-heading">
           <h2 id="week-heading">Your schedule</h2>
           <ul className="week">
-                        {WEEK_ORDER.map((d) => {
+            {WEEK_ORDER.map((d) => {
               const st = offStatus(dates[d]);
               const working = hours[d] && st !== 'approved';
               return (
@@ -118,11 +118,6 @@ export default async function Home() {
                 </li>
               );
             })}
-              <li key={d} className={`day${hours[d] ? '' : ' off'}${d === today ? ' today' : ''}`}>
-                <span className="day-name">{DAY_NAMES[d]}</span>
-                <span className="day-hours">{hours[d] || 'Off'}</span>
-              </li>
-            ))}
           </ul>
         </section>
 

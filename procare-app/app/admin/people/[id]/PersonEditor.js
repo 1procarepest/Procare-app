@@ -3,11 +3,18 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { DAY_NAMES, DEPT_LABEL, LEVEL_LABEL, OFFICES, WEEK_ORDER, levelOptions, roleTitle } from '@/lib/labels';
+import { DAY_NAMES, DEPT_LABEL, LEVEL_LABEL, OFFICES, WEEK_ORDER, levelOptions, roleTitle, shortDate } from '@/lib/labels';
 
 function trimTime(t) { return t ? String(t).slice(0, 5) : ''; }
 
-export default function PersonEditor({ person, schedule, me, canManage, canEditSchedule }) {
+const TIME_OFF_BADGE = { approved: 'Approved', pending: 'Requested' };
+
+function dayCount(r) {
+  const n = Math.round((new Date(`${r.end_date}T12:00:00`) - new Date(`${r.start_date}T12:00:00`)) / 864e5) + 1;
+  return `${n} day${n === 1 ? '' : 's'}`;
+}
+
+export default function PersonEditor({ person, schedule, upcoming = [], me, canManage, canEditSchedule }) {
   const router = useRouter();
   const isSelf = person.id === me.id;
 
@@ -98,6 +105,27 @@ export default function PersonEditor({ person, schedule, me, canManage, canEditS
         </p>
         {!canManage && !isSelf && <p className="note">You can view this person, but changes are made by their manager.</p>}
       </div>
+
+      <section className="panel" aria-labelledby="upcoming-heading">
+        <h2 id="upcoming-heading">Upcoming time off</h2>
+        {upcoming.length === 0 ? (
+          <p className="note">No approved or requested time off coming up.</p>
+        ) : (
+          <ul className="requests">
+            {upcoming.map((r) => (
+              <li key={r.id} className="request">
+                <div className="request-main">
+                  <span className="person-name">
+                    {shortDate(r.start_date)}{r.end_date !== r.start_date ? ` to ${shortDate(r.end_date)}` : ''} ({dayCount(r)})
+                  </span>
+                  {r.note && <span className="note">{r.note}</span>}
+                </div>
+                <span className={`badge status-${r.status}`}>{TIME_OFF_BADGE[r.status]}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <form className="panel" onSubmit={saveDetails}>
         <h2>Role and office</h2>
