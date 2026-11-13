@@ -35,6 +35,7 @@ function Issue({ i }) {
       <div className="request-main">
         <Link className="person-name" href={`/admin/people/${e.id}`}>{e.first_name} {e.last_name}</Link>
         <span className="person-role">{roleTitle(e.department, e.level)}, {OFFICE_NAME[e.office] || 'No office'}. Reported {shortDate(i.created_at)}</span>
+        {e.department === 'sales' && <span><span className="badge">Schedule update</span></span>}
         <span>“{i.message}”</span>
         {i.status === 'resolved' && (
           <span className="note">
@@ -57,7 +58,7 @@ export default function IssueList({ issues }) {
     <section className="section">
       <div className="admin-head">
         <h1>Schedule issues</h1>
-        <p className="note">Fix the schedule on the person’s page, then mark the issue resolved.</p>
+        <p className="note">Fix the schedule on the person’s page, then mark the issue resolved. Sales reps send their planned hours here as schedule updates.</p>
       </div>
       <h2>Open ({open.length})</h2>
       <ul className="requests">

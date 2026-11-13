@@ -72,7 +72,9 @@ function Request({ r, canDecide }) {
         {r.note && <span className="note">“{r.note}”</span>}
         {r.decision_note && <span className="note">Reply: {r.decision_note}</span>}
       </div>
-      <span className={`badge status-${r.status}`}>{STATUS[r.status]}</span>
+      <span className={`badge status-${r.status}`}>
+        {r.status === 'approved' && e.department === 'sales' && r.decided_by === r.employee_id ? 'Notice' : STATUS[r.status]}
+      </span>
       {canDecide && r.status === 'pending' && (
         <div className="decide">
           <input placeholder="Reply to the employee (optional)" value={note} onChange={(ev) => setNote(ev.target.value)} aria-label="Reply" />
