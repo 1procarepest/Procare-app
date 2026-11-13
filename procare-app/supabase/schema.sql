@@ -69,13 +69,21 @@ create table public.time_off_requests (
   employee_id   uuid not null references public.employees(id) on delete cascade,
   start_date    date not null,
   end_date      date not null,
+  start_time    time,                  -- part of a day: both times set, one day only
+  end_time      time,                  -- both empty = full days
+  use_pto       boolean not null default false,  -- wants paid time off (never for sales)
   note          text,
   status        public.request_status not null default 'pending',
   decision_note text,
   decided_by    uuid references public.employees(id),
   decided_at    timestamptz,
   created_at    timestamptz not null default now(),
-  check (end_date >= start_date)
+  check (end_date >= start_date),
+  constraint time_off_partial_day check (
+       (start_time is null and end_time is null)
+    or (start_time is not null and end_time is not null
+        and start_time < end_time and start_date = end_date)
+  )
 );
 
 -- ---------- Schedule issues ----------

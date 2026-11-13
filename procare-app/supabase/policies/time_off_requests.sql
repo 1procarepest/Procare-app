@@ -18,6 +18,8 @@ alter table public.time_off_requests enable row level security;
 --               the President instead of HR. Before: insert had
 --               "and my_department() <> 'sales'", and read/update used is_hr_approver().
 --   2026-11-13  Sales time off is a notice: confirmed on insert, no approval step.
+--   2026-11-13  Partial days (start_time, end_time) and a PTO flag (use_pto, never
+--               for sales). Columns in ../schema.sql.
 
 -- Everyone, sales included, can request time off for themselves.
 create policy time_off_insert on public.time_off_requests

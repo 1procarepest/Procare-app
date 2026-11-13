@@ -263,7 +263,8 @@ end $function$;
 -- time_off_requests, before insert or update. Sales time off (1099 notices) is
 -- approved on insert with decided_by = the person; everyone else's starts pending.
 -- Approvers (can_approve_time_off) decide; the requester can only cancel a pending one.
--- (2026-11-13: uses can_approve_time_off; sales notices confirmed automatically.)
+-- (2026-11-13: uses can_approve_time_off; sales notices confirmed automatically
+-- and never PTO.)
 create or replace function public.guard_time_off()
 returns trigger
 language plpgsql
@@ -279,10 +280,11 @@ begin
   if tg_op = 'INSERT' then
     new.decision_note := null;
     if exists (select 1 from public.employees t where t.id = new.employee_id and t.department = 'sales') then
-      -- Sales notice: confirmed right away.
+      -- Sales notice (1099): confirmed right away, never paid time off.
       new.status := 'approved';
       new.decided_by := actor.id;
       new.decided_at := now();
+      new.use_pto := false;
     else
       new.status := 'pending';
       new.decided_by := null;
