@@ -8,7 +8,8 @@ import { OFFICE_NAME, roleTitle, timeOffWhen } from '@/lib/labels';
 // Sends the automatic emails. The app calls this right after someone:
 //   { event: 'time_off', id }          adds time off (request → HR; sales notice → sales manager)
 //   { event: 'time_off_decided', id }  approves or denies a request (→ the employee)
-//   { event: 'issue', id }             reports a schedule issue or update (→ whoever handles their schedule)
+//   { event: 'issue', id }             reports a schedule issue (switch schedule_issue) or a sales
+//                                      schedule update (switch sales_schedule_change) → whoever handles their schedule
 // Each email has a switch on Manage team → Email settings (notification_settings.key).
 // People can only trigger emails about their own action, and only within a few minutes of it.
 
@@ -148,9 +149,11 @@ export async function POST(request) {
       .maybeSingle();
     if (!issue) return reply(404, { message: 'Issue not found.' });
     if (issue.employee_id !== me.id || !recent(issue.created_at)) return reply(403, { message: 'Not your recent report.' });
-    if (!(await switchedOn('schedule_issue'))) return reply(200, { sent: false });
     const person = await employee(issue.employee_id);
     if (!person) return reply(404, { message: 'Employee not found.' });
+    if (!(await switchedOn(person.department === 'sales' ? 'sales_schedule_change' : 'schedule_issue'))) {
+      return reply(200, { sent: false });
+    }
 
     // Whoever handles their schedule (same as can_edit_schedule / can_manage in the database)
     let handlers;

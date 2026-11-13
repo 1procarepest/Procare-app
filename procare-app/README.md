@@ -26,4 +26,7 @@ on/off switch under Manage team → Email settings (`notification_settings`).
 | `time_off_request` | Someone outside sales requests time off (subject says PTO if they asked for it) | The HR approver (Ally), or the President |
 | `time_off_decision` | A request is approved or denied | The employee |
 | `sales_time_off_notice` | A sales rep notifies of time off | Sales managers, or the President if there are none |
-| `schedule_issue` | A schedule issue, or a sales rep's schedule update | Whoever handles their schedule: lead/manager, sales manager, or the President |
+| `schedule_issue` | Someone outside sales reports a schedule issue | Their lead or manager, or the President |
+| `sales_schedule_change` | A sales rep sends a schedule update | Sales managers, or the President |
+
+`payout_submitted` is for the incentive payouts that aren't built yet; it sends nothing today.
