@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-export default function ProfileActions({ employeeId, canRequestTimeOff }) {
+export default function ProfileActions({ employeeId }) {
   const [open, setOpen] = useState(null); // 'issue' | 'timeoff' | null
   const [done, setDone] = useState('');
   const [error, setError] = useState('');
@@ -53,11 +53,9 @@ export default function ProfileActions({ employeeId, canRequestTimeOff }) {
       <button className="btn btn-quiet" type="button" onClick={() => show('issue')} aria-expanded={open === 'issue'}>
         Report a schedule issue
       </button>
-      {canRequestTimeOff && (
-        <button className="btn btn-quiet" type="button" onClick={() => show('timeoff')} aria-expanded={open === 'timeoff'}>
-          Request time off
-        </button>
-      )}
+      <button className="btn btn-quiet" type="button" onClick={() => show('timeoff')} aria-expanded={open === 'timeoff'}>
+        Request time off
+      </button>
 
       {open === 'issue' && (
         <form className="panel" onSubmit={sendIssue}>

@@ -13,6 +13,10 @@ export default async function TimeOffPage() {
     .order('start_date', { ascending: true })
     .limit(300);
 
-  const isApprover = me.hr_approver || me.level === 'president';
-  return <TimeOffList requests={requests || []} isApprover={isApprover} myId={me.id} isPresident={me.level === 'president'} />;
+  return (
+    <TimeOffList
+      requests={requests || []}
+      me={{ id: me.id, level: me.level, department: me.department, hr_approver: !!me.hr_approver }}
+    />
+  );
 }

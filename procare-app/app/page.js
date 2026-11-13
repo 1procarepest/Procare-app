@@ -18,11 +18,6 @@ const APPS = {
 const WEEKS_BACK = 4;
 const WEEKS_AHEAD = 8;
 
-/** Sales reps (team members) are 1099 and can't request time off; sales leads and up can. */
-function canRequestTimeOff(me) {
-  return !(me.department === 'sales' && me.level === 'team_member');
-}
-
 /** Which suites each person sees, from the role map. */
 function appsFor(department, level) {
   if (level === 'c_suite' || level === 'president') return ['technician', 'sales', 'operations'];
@@ -148,7 +143,7 @@ export default async function Home({ searchParams }) {
           </ul>
         </section>
 
-        <ProfileActions employeeId={me.id} canRequestTimeOff={canRequestTimeOff(me)} />
+        <ProfileActions employeeId={me.id} />
 
         <section className="section" aria-labelledby="apps-heading">
           <h2 id="apps-heading">Your apps</h2>
