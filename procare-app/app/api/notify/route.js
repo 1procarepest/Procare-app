@@ -73,6 +73,20 @@ export async function POST(request) {
     return data;
   }
 
+  // ---------- Test email (Email settings page, C-Suite and up) ----------
+  if (event === 'test') {
+    if (me.rank < 4) return reply(403, { message: 'Only C-Suite can send a test email.' });
+    const self = await employee(me.id);
+    const { ok: sent, problem } = await sendEmail({
+      to: [self?.email],
+      subject: 'Test email from the Procare Team app',
+      heading: 'Emails are working',
+      lines: [`This test went to ${self?.email}.`, `It was sent from: ${process.env.EMAIL_FROM}`],
+      link: { href: `${origin}/admin/notifications`, label: 'Email settings' },
+    });
+    return reply(200, { sent, problem, to: self?.email, from: process.env.EMAIL_FROM || null });
+  }
+
   // ---------- Time off added ----------
   if (event === 'time_off' || event === 'time_off_decided') {
     const { data: r } = await admin
@@ -91,19 +105,19 @@ export async function POST(request) {
       if (person.department === 'sales') {
         if (!(await switchedOn('sales_time_off_notice'))) return reply(200, { sent: false });
         const to = await others(await salesManagers(), person.id);
-        const sent = await sendEmail({
+        const { ok: sent, problem } = await sendEmail({
           to: to.map((p) => p.email),
           subject: `Time-off notice: ${name(person)}, ${when}`,
           heading: `${name(person)} is taking time off`,
           lines: [who(person), `When: ${when}`, ...(r.note ? [`Note: ${r.note}`] : []), 'Sales reps are 1099, so this is a notice. It’s already on their schedule; there’s nothing to approve.'],
           link: { href: `${origin}/admin/people/${person.id}`, label: 'See their schedule' },
         });
-        return reply(200, { sent });
+        return reply(200, { sent, problem });
       }
 
       if (!(await switchedOn('time_off_request'))) return reply(200, { sent: false });
       const to = await others(await hrApprovers(), person.id);
-      const sent = await sendEmail({
+      const { ok: sent, problem } = await sendEmail({
         to: to.map((p) => p.email),
         subject: `${r.use_pto ? 'PTO request' : 'Time-off request'}: ${name(person)}, ${when}`,
         heading: r.use_pto ? `${name(person)} is asking for paid time off` : `${name(person)} is asking for time off`,
@@ -115,7 +129,7 @@ export async function POST(request) {
         ],
         link: { href: `${origin}/admin/time-off`, label: 'Approve or deny' },
       });
-      return reply(200, { sent });
+      return reply(200, { sent, problem });
     }
 
     // ---------- Time off decided ----------
@@ -125,7 +139,7 @@ export async function POST(request) {
     if (r.employee_id === me.id) return reply(200, { sent: false }); // no email to yourself
     if (!(await switchedOn('time_off_decision'))) return reply(200, { sent: false });
     const approved = r.status === 'approved';
-    const sent = await sendEmail({
+    const { ok: sent, problem } = await sendEmail({
       to: [person.email],
       subject: `Your time off for ${when} was ${approved ? 'approved' : 'denied'}`,
       heading: approved ? 'Your time off is approved' : 'Your time-off request was denied',
@@ -137,7 +151,7 @@ export async function POST(request) {
       ],
       link: { href: `${origin}/`, label: 'Open your schedule' },
     });
-    return reply(200, { sent });
+    return reply(200, { sent, problem });
   }
 
   // ---------- Schedule issue or update ----------
@@ -167,14 +181,14 @@ export async function POST(request) {
     }
     const to = await others(handlers, person.id);
     const isSales = person.department === 'sales';
-    const sent = await sendEmail({
+    const { ok: sent, problem } = await sendEmail({
       to: to.map((p) => p.email),
       subject: `${isSales ? 'Schedule update' : 'Schedule issue'} from ${name(person)}`,
       heading: isSales ? `${name(person)} sent a schedule update` : `${name(person)} reported a schedule issue`,
       lines: [who(person), `“${issue.message}”`, 'Update their schedule on their page, then mark it resolved under Schedule issues.'],
       link: { href: `${origin}/admin/people/${person.id}`, label: 'Open their schedule' },
     });
-    return reply(200, { sent });
+    return reply(200, { sent, problem });
   }
 
   return reply(400, { message: 'Unknown event.' });

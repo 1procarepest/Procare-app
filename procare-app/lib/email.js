@@ -12,16 +12,22 @@ function escapeHtml(text) {
 
 /**
  * Sends one email. `lines` are plain sentences, shown one per line; `link` is
- * { href, label } for a button. Returns true when Resend accepted it.
+ * { href, label } for a button. Returns { ok, problem }: ok is true when Resend
+ * accepted it; otherwise problem says why in plain words.
  */
 export async function sendEmail({ to, subject, heading, lines, link }) {
-  const key = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM;
+  // Trim stray spaces or quotes that sneak in when pasting into Vercel
+  const clean = (v) => (v || '').trim().replace(/^["']|["']$/g, '').trim();
+  const key = clean(process.env.RESEND_API_KEY);
+  const from = clean(process.env.EMAIL_FROM);
   const recipients = [...new Set((to || []).filter(Boolean))];
-  if (!key || !from || recipients.length === 0) {
-    if (!key || !from) console.warn('Email not sent: RESEND_API_KEY or EMAIL_FROM is missing.');
-    return false;
+  const missing = [!key && 'RESEND_API_KEY', !from && 'EMAIL_FROM'].filter(Boolean);
+  if (missing.length) {
+    const problem = `Email not sent: ${missing.join(' and ')} ${missing.length > 1 ? 'are' : 'is'} missing in Vercel (Settings → Environment Variables, Production), or the site wasn’t redeployed after adding ${missing.length > 1 ? 'them' : 'it'}.`;
+    console.warn(problem);
+    return { ok: false, problem };
   }
+  if (recipients.length === 0) return { ok: false, problem: 'Email not sent: nobody to send it to.' };
 
   const text = [heading, '', ...lines, '', link ? `${link.label}: ${link.href}` : '']
     .join('\n')
@@ -44,10 +50,17 @@ export async function sendEmail({ to, subject, heading, lines, link }) {
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ from, to: recipients, subject, text, html }),
     });
-    if (!res.ok) console.error('Resend refused the email:', res.status, await res.text());
-    return res.ok;
+    if (!res.ok) {
+      const body = await res.text();
+      let detail = body;
+      try { detail = JSON.parse(body).message || body; } catch {}
+      const problem = `Resend refused the email (${res.status}): ${detail}`;
+      console.error(problem);
+      return { ok: false, problem };
+    }
+    return { ok: true, problem: null };
   } catch (err) {
     console.error('Email failed to send:', err);
-    return false;
+    return { ok: false, problem: `Email failed to send: ${err.message}` };
   }
 }
