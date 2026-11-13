@@ -26,8 +26,9 @@ new table (`rls_auto_enable`), which means a new table is locked until it has ru
 - **C-Suite**: everything except President accounts.
 - **Managers**: their department in every office (team members and leads).
 - **Leads**: team members in their department and office.
-- **Time off approval**: sales requests go to a sales manager or the President;
-  everyone else's go to the HR approver (Ally Boyd) or the President.
+- **Time off**: sales are 1099, so their time off is a notice that's confirmed
+  automatically. Everyone else's requests go to the HR approver (Ally Boyd) or the
+  President. (A sales manager or the President can still change a sales notice.)
 - **Schedules**: sales schedules can be changed by the person, a sales manager or
   the President; everyone else's by whoever manages them.
 - **Home addresses** (`employee_private`): C-Suite, the President, office managers,

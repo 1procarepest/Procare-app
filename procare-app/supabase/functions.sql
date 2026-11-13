@@ -260,15 +260,16 @@ begin
   return new;
 end $function$;
 
--- time_off_requests, before insert or update. New requests always start pending.
+-- time_off_requests, before insert or update. Sales time off (1099 notices) is
+-- approved on insert with decided_by = the person; everyone else's starts pending.
 -- Approvers (can_approve_time_off) decide; the requester can only cancel a pending one.
--- (Changed 2026-11-13 to use can_approve_time_off instead of HR/President only.)
-CREATE OR REPLACE FUNCTION public.guard_time_off()
- RETURNS trigger
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
+-- (2026-11-13: uses can_approve_time_off; sales notices confirmed automatically.)
+create or replace function public.guard_time_off()
+returns trigger
+language plpgsql
+security definer
+set search_path to 'public'
+as $$
 declare
   actor public.employees;
 begin
@@ -276,8 +277,17 @@ begin
   select * into actor from public.employees e where e.auth_user_id = auth.uid() and e.active;
 
   if tg_op = 'INSERT' then
-    new.status := 'pending';
-    new.decided_by := null; new.decided_at := null; new.decision_note := null;
+    new.decision_note := null;
+    if exists (select 1 from public.employees t where t.id = new.employee_id and t.department = 'sales') then
+      -- Sales notice: confirmed right away.
+      new.status := 'approved';
+      new.decided_by := actor.id;
+      new.decided_at := now();
+    else
+      new.status := 'pending';
+      new.decided_by := null;
+      new.decided_at := null;
+    end if;
     return new;
   end if;
 
@@ -297,7 +307,7 @@ begin
 
   raise exception 'Only the approver can approve or deny this time off';
 end
-$function$;
+$$;
 
 -- schedule_issue_reports, before update. Records who resolved an issue and when;
 -- clears both if it's reopened. (Added 2026-11-13.)

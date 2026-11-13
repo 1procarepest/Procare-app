@@ -10,11 +10,14 @@ alter table public.time_off_requests enable row level security;
 --   Sales department: any active sales manager, or the President.
 --   Everyone else:    the HR approver (Ally Boyd), or the President.
 --   Nobody approves their own request, except the President.
+--   Sales are 1099: their time off is a notice, approved automatically on insert
+--   by guard_time_off() (decided_by = themselves).
 --
 -- History
 --   2026-11-13  Sales can request time off. Sales requests go to a sales manager or
 --               the President instead of HR. Before: insert had
 --               "and my_department() <> 'sales'", and read/update used is_hr_approver().
+--   2026-11-13  Sales time off is a notice: confirmed on insert, no approval step.
 
 -- Everyone, sales included, can request time off for themselves.
 create policy time_off_insert on public.time_off_requests
@@ -33,7 +36,7 @@ create policy time_off_update on public.time_off_requests
   using ((employee_id = my_id()) or can_approve_time_off(employee_id))
   with check (true);
 
--- New requests always start pending; only approvers can approve or deny.
+-- New requests start pending (sales notices start approved); only approvers decide.
 create trigger time_off_guard
   before insert or update on public.time_off_requests
   for each row execute function guard_time_off();
