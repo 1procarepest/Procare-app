@@ -1,101 +1,43 @@
--- Time-off approval rules for public.time_off_requests.
+-- Row level security rules and triggers for public.time_off_requests.
 --
--- This file is a record of what is set in Supabase. The app doesn't run it;
--- changes are made by pasting into Supabase → SQL Editor. Keep this file in step
--- with the database whenever a rule changes.
---
--- Who approves time off
+-- Reference copy exported 2026-11-13. The app doesn't run this file. To change a
+-- rule, paste a drop/create block into Supabase → SQL Editor, then update it here.
+-- Helper functions (my_id, can_manage, …) are in ../functions.sql.
+
+alter table public.time_off_requests enable row level security;
+
+-- Who approves time off (can_approve_time_off in ../functions.sql)
 --   Sales department: any active sales manager, or the President.
 --   Everyone else:    the HR approver (Ally Boyd), or the President.
 --   Nobody approves their own request, except the President.
 --
 -- History
---   2026-11-13  Sales can request time off. Sales requests go to the sales
---               manager or the President instead of HR. Adds
---               can_approve_time_off(); insert, read and update rules and
---               guard_time_off() use it.
---
--- Unchanged and not repeated here: the log_time_off trigger (log_change()),
--- my_id(), my_department(), can_manage(), is_hr_approver().
-
-begin;
-
--- True when the signed-in person may approve or deny time off for `target`.
-create or replace function public.can_approve_time_off(target uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path to 'public'
-as $$
-  select exists (
-    select 1
-    from public.employees m
-    join public.employees t on t.id = target
-    where m.auth_user_id = auth.uid() and m.active
-      and (
-           m.level = 'president'
-        or (m.id <> t.id and t.department = 'sales'
-            and m.department = 'sales' and m.level = 'manager')
-        or (m.id <> t.id and t.department <> 'sales' and m.hr_approver)
-      )
-  )
-$$;
+--   2026-11-13  Sales can request time off. Sales requests go to a sales manager or
+--               the President instead of HR. Before: insert had
+--               "and my_department() <> 'sales'", and read/update used is_hr_approver().
 
 -- Everyone, sales included, can request time off for themselves.
-drop policy if exists time_off_insert on public.time_off_requests;
 create policy time_off_insert on public.time_off_requests
-  for insert
+  for insert to public
   with check (employee_id = my_id());
 
--- People see their own requests, their team's, and the ones they approve.
-drop policy if exists time_off_read on public.time_off_requests;
+-- You see your own requests, your team's, and the ones you approve.
 create policy time_off_read on public.time_off_requests
-  for select
+  for select to public
   using ((employee_id = my_id()) or can_manage(employee_id) or can_approve_time_off(employee_id));
 
--- People can cancel their own pending request; approvers decide.
--- guard_time_off() below enforces which changes each person can make.
-drop policy if exists time_off_update on public.time_off_requests;
+-- You can cancel your own pending request; approvers decide.
+-- guard_time_off() enforces which change each person can make.
 create policy time_off_update on public.time_off_requests
-  for update
+  for update to public
   using ((employee_id = my_id()) or can_approve_time_off(employee_id))
   with check (true);
 
-create or replace function public.guard_time_off()
-returns trigger
-language plpgsql
-security definer
-set search_path to 'public'
-as $$
-declare
-  actor public.employees;
-begin
-  if auth.uid() is null then return new; end if;
-  select * into actor from public.employees e where e.auth_user_id = auth.uid() and e.active;
+-- New requests always start pending; only approvers can approve or deny.
+create trigger time_off_guard
+  before insert or update on public.time_off_requests
+  for each row execute function guard_time_off();
 
-  if tg_op = 'INSERT' then
-    new.status := 'pending';
-    new.decided_by := null; new.decided_at := null; new.decision_note := null;
-    return new;
-  end if;
-
-  if public.can_approve_time_off(old.employee_id) then
-    if new.status is distinct from old.status and new.status in ('approved', 'denied') then
-      new.decided_by := actor.id;
-      new.decided_at := now();
-    end if;
-    return new;
-  end if;
-
-  if old.employee_id = actor.id and old.status = 'pending' and new.status = 'cancelled' then
-    new := old;
-    new.status := 'cancelled';
-    return new;
-  end if;
-
-  raise exception 'Only the approver can approve or deny this time off';
-end
-$$;
-
-commit;
+create trigger log_time_off
+  after insert or delete or update on public.time_off_requests
+  for each row execute function log_change();

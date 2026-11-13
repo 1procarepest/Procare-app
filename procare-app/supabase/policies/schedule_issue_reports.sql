@@ -1,32 +1,29 @@
--- Row-level security rules for public.schedule_issue_reports.
+-- Row level security rules and triggers for public.schedule_issue_reports.
 --
--- This file is a record of what is set in Supabase. The app doesn't run it;
--- changes are made by pasting into Supabase → SQL Editor. Keep this file in step
--- with the database whenever a rule changes.
---
--- Helpers used (defined in Supabase):
---   my_id()            the signed-in person's employees.id
---   can_manage(target) true when the signed-in person manages that employee
---
+-- Reference copy exported 2026-11-13. The app doesn't run this file. To change a
+-- rule, paste a drop/create block into Supabase → SQL Editor, then update it here.
+-- Helper functions (my_id, can_manage, …) are in ../functions.sql.
+
+alter table public.schedule_issue_reports enable row level security;
+
 -- History
 --   2026-11-13  issues_update: the President can also resolve their own reports.
 --               Before, only someone who manages the reporter could, so nobody
 --               could resolve a report the President made.
 
 -- Anyone can report an issue about their own schedule.
--- create policy issues_insert on public.schedule_issue_reports
---   for insert with check (employee_id = my_id());
+create policy issues_insert on public.schedule_issue_reports
+  for insert to authenticated
+  with check (employee_id = my_id());
 
--- People see their own reports and reports from people they manage.
--- create policy issues_read on public.schedule_issue_reports
---   for select using ((employee_id = my_id()) or can_manage(employee_id));
+-- You see your own reports and reports from people you manage.
+create policy issues_read on public.schedule_issue_reports
+  for select to authenticated
+  using ((employee_id = my_id()) or can_manage(employee_id));
 
--- Managers resolve reports from people they manage; the President can also
--- resolve their own. (Applied 2026-11-13.)
-begin;
-
-drop policy if exists issues_update on public.schedule_issue_reports;
-
+-- Managers resolve reports from people they manage; the President can also resolve
+-- their own. (Created without "to authenticated", so it shows as "to public";
+-- signed-out visitors still can't match it because my_id() is null for them.)
 create policy issues_update on public.schedule_issue_reports
   for update
   using (
@@ -41,4 +38,6 @@ create policy issues_update on public.schedule_issue_reports
   )
   with check (true);
 
-commit;
+create trigger log_schedule_issues
+  after insert or delete or update on public.schedule_issue_reports
+  for each row execute function log_change();
