@@ -3,14 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { OFFICE_NAME, roleTitle, shortDate } from '@/lib/labels';
+import { OFFICE_NAME, roleTitle, timeOffWhen } from '@/lib/labels';
 
 const STATUS = { pending: 'Waiting', approved: 'Approved', denied: 'Denied', cancelled: 'Cancelled' };
-
-function days(r) {
-  const n = Math.round((new Date(`${r.end_date}T12:00:00`) - new Date(`${r.start_date}T12:00:00`)) / 864e5) + 1;
-  return `${n} day${n === 1 ? '' : 's'}`;
-}
 
 /**
  * Who approves time off (the database enforces the same rule in can_approve_time_off):
@@ -67,7 +62,8 @@ function Request({ r, canDecide }) {
         <span className="person-name">{e.first_name} {e.last_name}</span>
         <span className="person-role">{roleTitle(e.department, e.level)}, {OFFICE_NAME[e.office] || 'No office'}</span>
         <span>
-          {shortDate(r.start_date)}{r.end_date !== r.start_date ? ` to ${shortDate(r.end_date)}` : ''} ({days(r)})
+          {timeOffWhen(r)}
+          {r.use_pto && <> <span className="badge badge-pto">PTO</span></>}
         </span>
         {r.note && <span className="note">“{r.note}”</span>}
         {r.decision_note && <span className="note">Reply: {r.decision_note}</span>}

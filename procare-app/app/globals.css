@@ -257,6 +257,7 @@ select:disabled, input:disabled { background: var(--paper); color: var(--muted);
 .status-approved { background: var(--forest); color: var(--white); }
 .status-denied { background: #F2D7D4; color: var(--danger); }
 .status-pending { background: var(--lime); }
+.badge-pto { background: var(--green); color: var(--ink); }
 
 /* ---------- Admin ---------- */
 .tabs {

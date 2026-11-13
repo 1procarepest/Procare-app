@@ -3,16 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { DAY_NAMES, DEPT_LABEL, LEVEL_LABEL, OFFICES, WEEK_ORDER, levelOptions, roleTitle, shortDate } from '@/lib/labels';
+import { DAY_NAMES, DEPT_LABEL, LEVEL_LABEL, OFFICES, WEEK_ORDER, levelOptions, roleTitle, timeOffWhen } from '@/lib/labels';
 
 function trimTime(t) { return t ? String(t).slice(0, 5) : ''; }
 
 const TIME_OFF_BADGE = { approved: 'Approved', pending: 'Requested' };
-
-function dayCount(r) {
-  const n = Math.round((new Date(`${r.end_date}T12:00:00`) - new Date(`${r.start_date}T12:00:00`)) / 864e5) + 1;
-  return `${n} day${n === 1 ? '' : 's'}`;
-}
 
 export default function PersonEditor({ person, schedule, upcoming = [], me, canManage, canEditSchedule }) {
   const router = useRouter();
@@ -116,7 +111,7 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
               <li key={r.id} className="request">
                 <div className="request-main">
                   <span className="person-name">
-                    {shortDate(r.start_date)}{r.end_date !== r.start_date ? ` to ${shortDate(r.end_date)}` : ''} ({dayCount(r)})
+                    {timeOffWhen(r)}{r.use_pto ? ', PTO' : ''}
                   </span>
                   {r.note && <span className="note">{r.note}</span>}
                 </div>

@@ -31,7 +31,7 @@ export default async function PersonPage({ params }) {
     supabase.rpc('can_edit_schedule', { target: person.id }),
     supabase
       .from('time_off_requests')
-      .select('id, start_date, end_date, note, status')
+      .select('id, start_date, end_date, start_time, end_time, use_pto, note, status')
       .eq('employee_id', person.id)
       .in('status', ['approved', 'pending'])
       .gte('end_date', today)

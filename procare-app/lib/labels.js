@@ -44,3 +44,26 @@ export function clock(t) {
   const hour = h % 12 || 12;
   return m ? `${hour}:${String(m).padStart(2, '0')} ${suffix}` : `${hour} ${suffix}`;
 }
+
+function minutes(t) {
+  const [h, m] = String(t).split(':').map(Number);
+  return h * 60 + (m || 0);
+}
+
+/** "2 hours", "1.5 hours", "45 minutes" between two "HH:MM" times. */
+export function hoursBetween(from, to) {
+  const mins = minutes(to) - minutes(from);
+  if (mins < 60) return `${mins} minutes`;
+  const h = Math.round((mins / 60) * 100) / 100;
+  return `${h} hour${h === 1 ? '' : 's'}`;
+}
+
+/** When a time-off request is: "Nov 20, 1 PM – 3 PM (2 hours)" or "Nov 20 to Nov 22 (3 days)". */
+export function timeOffWhen(r) {
+  if (r.start_time && r.end_time) {
+    return `${shortDate(r.start_date)}, ${clock(r.start_time)} – ${clock(r.end_time)} (${hoursBetween(r.start_time, r.end_time)})`;
+  }
+  const n = Math.round((new Date(`${r.end_date}T12:00:00`) - new Date(`${r.start_date}T12:00:00`)) / 864e5) + 1;
+  const range = `${shortDate(r.start_date)}${r.end_date !== r.start_date ? ` to ${shortDate(r.end_date)}` : ''}`;
+  return `${range} (${n} day${n === 1 ? '' : 's'})`;
+}

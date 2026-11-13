@@ -40,6 +40,10 @@ export default function ProfileActions({ employeeId, email, isSales = false }) {
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
   const [note, setNote] = useState('');
+  const [partial, setPartial] = useState(false);
+  const [fromTime, setFromTime] = useState('');
+  const [toTime, setToTime] = useState('');
+  const [usePto, setUsePto] = useState(false);
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [again, setAgain] = useState('');
@@ -66,15 +70,25 @@ export default function ProfileActions({ employeeId, email, isSales = false }) {
 
   async function sendTimeOff(event) {
     event.preventDefault();
-    if (end < start) { setError('The last day off can’t be before the first day.'); return; }
+    const lastDay = partial ? start : end;
+    if (lastDay < start) { setError('The last day off can’t be before the first day.'); return; }
+    if (partial && !(fromTime < toTime)) { setError('The “to” time needs to be after the “from” time.'); return; }
     setBusy(true);
     setError('');
     const { error: e } = await createClient()
       .from('time_off_requests')
-      .insert({ employee_id: employeeId, start_date: start, end_date: end, note: note.trim() || null });
+      .insert({
+        employee_id: employeeId,
+        start_date: start,
+        end_date: lastDay,
+        start_time: partial ? fromTime : null,
+        end_time: partial ? toTime : null,
+        use_pto: !isSales && usePto,
+        note: note.trim() || null,
+      });
     setBusy(false);
     if (e) { setError('That didn’t save. Check your connection and try again.'); return; }
-    setStart(''); setEnd(''); setNote('');
+    setStart(''); setEnd(''); setNote(''); setPartial(false); setFromTime(''); setToTime(''); setUsePto(false);
     setOpen(null);
     setDone(w.timeOffDone);
     if (isSales) router.refresh(); // show the time off on the schedule now
@@ -132,16 +146,45 @@ export default function ProfileActions({ employeeId, email, isSales = false }) {
             <h3>{w.timeOffButton}</h3>
             <p className="note">{w.timeOffNote}</p>
           </div>
-          <div className="row">
-            <div>
-              <label htmlFor="start">First day off</label>
-              <input id="start" type="date" required value={start} onChange={(e) => setStart(e.target.value)} />
+          <label className="check">
+            <input type="checkbox" checked={partial} onChange={(e) => setPartial(e.target.checked)} />
+            Part of a day
+          </label>
+          {partial ? (
+            <>
+              <div>
+                <label htmlFor="start">Day</label>
+                <input id="start" type="date" required value={start} onChange={(e) => setStart(e.target.value)} />
+              </div>
+              <div className="row">
+                <div>
+                  <label htmlFor="from-time">From</label>
+                  <input id="from-time" type="time" step={900} required value={fromTime} onChange={(e) => setFromTime(e.target.value)} />
+                </div>
+                <div>
+                  <label htmlFor="to-time">To</label>
+                  <input id="to-time" type="time" step={900} required min={fromTime || undefined} value={toTime} onChange={(e) => setToTime(e.target.value)} />
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="row">
+              <div>
+                <label htmlFor="start">First day off</label>
+                <input id="start" type="date" required value={start} onChange={(e) => setStart(e.target.value)} />
+              </div>
+              <div>
+                <label htmlFor="end">Last day off</label>
+                <input id="end" type="date" required min={start || undefined} value={end} onChange={(e) => setEnd(e.target.value)} />
+              </div>
             </div>
-            <div>
-              <label htmlFor="end">Last day off</label>
-              <input id="end" type="date" required min={start || undefined} value={end} onChange={(e) => setEnd(e.target.value)} />
-            </div>
-          </div>
+          )}
+          {!isSales && (
+            <label className="check">
+              <input type="checkbox" role="switch" checked={usePto} onChange={(e) => setUsePto(e.target.checked)} />
+              Use paid time off (PTO)
+            </label>
+          )}
           <div>
             <label htmlFor="note">Note (optional)</label>
             <textarea id="note" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />

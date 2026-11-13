@@ -75,15 +75,26 @@ export default async function Home({ searchParams }) {
   });
   const { data: timeOff } = await supabase
     .from('time_off_requests')
-    .select('start_date, end_date, status')
+    .select('start_date, end_date, start_time, end_time, status')
     .eq('employee_id', me.id)
     .in('status', ['pending', 'approved'])
     .lte('start_date', dates[0])
     .gte('end_date', dates[1]);
-  function offStatus(ymd) {
+  // The time off that matters most on a day: approved full day, then approved part of a
+  // day, then anything requested.
+  function offOn(ymd) {
     const hits = (timeOff || []).filter((r) => r.start_date <= ymd && r.end_date >= ymd);
-    if (hits.some((r) => r.status === 'approved')) return 'approved';
-    return hits.length ? 'pending' : null;
+    return hits.find((r) => r.status === 'approved' && !r.start_time)
+      || hits.find((r) => r.status === 'approved')
+      || hits[0]
+      || null;
+  }
+  function dayText(d, r) {
+    const base = hours[d] || 'Off';
+    if (!r) return base;
+    const span = r.start_time ? `${clock(r.start_time)} – ${clock(r.end_time)}` : '';
+    if (r.status === 'approved') return span ? `${base}, off ${span}` : 'Time off';
+    return span ? `${base} (requested off ${span})` : `${base} (time off requested)`;
   }
   const initials = `${me.first_name?.[0] || ''}${me.last_name?.[0] || ''}`.toUpperCase();
   const hasPhoto = typeof me.photo_url === 'string' && me.photo_url.startsWith('http');
@@ -127,16 +138,12 @@ export default async function Home({ searchParams }) {
           </div>
           <ul className="week">
             {WEEK_ORDER.map((d) => {
-              const st = offStatus(dates[d]);
-              const working = hours[d] && st !== 'approved';
+              const r = offOn(dates[d]);
+              const working = hours[d] && !(r && r.status === 'approved' && !r.start_time);
               return (
                 <li key={d} className={`day${working ? '' : ' off'}${week === 0 && d === today ? ' today' : ''}`}>
                   <span className="day-name">{DAY_NAMES[d]}, {shortDate(dates[d])}</span>
-                  <span className="day-hours">
-                    {st === 'approved' ? 'Time off'
-                      : st === 'pending' ? `${hours[d] || 'Off'} (time off requested)`
-                      : hours[d] || 'Off'}
-                  </span>
+                  <span className="day-hours">{dayText(d, r)}</span>
                 </li>
               );
             })}
