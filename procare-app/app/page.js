@@ -9,7 +9,7 @@ import ProfileActions from './ProfileActions';
 import { BugTile } from './Bug';
 import TodayRoute from './TodayRoute';
 import RepCard from './reps/RepCard';
-import { buildCards, measure, periodRange, todayYmd } from '@/lib/repcards';
+import { buildCards, measure, periodRange, todayYmd as atlantaToday } from '@/lib/repcards';
 import SignOut from './SignOut';
 
 export const dynamic = 'force-dynamic';
@@ -51,7 +51,7 @@ export default async function Home({ searchParams }) {
   // Sales reps: their own Rep Card for this week
   let myCard = null;
   if (me.department === 'sales') {
-    const wk = periodRange('week', todayYmd());
+    const wk = periodRange('week', atlantaToday());
     const { data: rows } = await supabase.rpc('rep_cards', { p_from: wk.from, p_to: wk.to });
     const { reps } = buildCards(rows, wk.to);
     myCard = reps.find((r) => r.id === me.id) || {
