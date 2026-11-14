@@ -15,10 +15,11 @@ export default async function RepCardsPage({ searchParams }) {
   const range = periodRange(view, date);
 
   const tab = searchParams?.tab === 'board' ? 'board' : 'cards';
+  const basis = searchParams?.basis === 'service' ? 'service' : 'sold';
   const [{ data: rows, error }, { data: synced }, boardRes] = await Promise.all([
     tab === 'cards' ? supabase.rpc('rep_cards', { p_from: range.from, p_to: range.to }) : { data: [] },
     supabase.rpc('rep_cards_synced_at'),
-    tab === 'board' ? supabase.rpc('sales_leaderboard', { p_from: range.from, p_to: range.to }) : { data: null },
+    tab === 'board' ? supabase.rpc('sales_leaderboard', { p_from: range.from, p_to: range.to, p_basis: basis }) : { data: null },
   ]);
   if (error || boardRes.error) return <p className="error">The rep cards couldn’t load: {(error || boardRes.error).message}</p>;
   const { reps, offices, team, officeReps } = buildCards(rows, range.to);
@@ -37,6 +38,7 @@ export default async function RepCardsPage({ searchParams }) {
       meId={me?.id}
       syncedAt={synced || null}
       tab={tab}
+      basis={basis}
       board={boardRes.data}
     />
   );

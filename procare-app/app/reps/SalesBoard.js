@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import Face from '../Face';
 import Bug from '../Bug';
@@ -37,12 +38,20 @@ const COLS = [
   ['knocks', 'Knocks', (r) => num(r.knocks), (r) => r.knocks],
 ];
 
-function Summary({ t }) {
+// Extra columns for the first-service-date view
+const STATUS_COLS = [
+  ['pending', 'Pending', (r) => num(r.pending), (r) => r.pending],
+  ['notServiced', 'Not serviced', (r) => num(r.not_serviced), (r) => r.not_serviced],
+  ['canceled', 'Canceled', (r) => num(r.canceled), (r) => r.canceled],
+];
+
+function Summary({ t, byService }) {
   const rows = [
     ['Total serviced', num(t.serviced)],
     ['Serviced percent', pct(t.serviced, t.sold)],
     ['Currently active', num(t.active)],
-    ['Total sales', num(t.sold)],
+    [byService ? 'Total first services' : 'Total sales', num(t.sold)],
+    ...(byService ? [['Pending', num(t.pending)], ['Not serviced', num(t.not_serviced)], ['Canceled', num(t.canceled)]] : []),
     ['Selling days', num(t.selling_days)],
     ['Daily average', avg(t.sold, t.selling_days)],
     ['Average serviced initial', money2(t.avg_serv_init)],
@@ -56,24 +65,39 @@ function Summary({ t }) {
   );
 }
 
-export default function SalesBoard({ data, office, label, onOffice }) {
+export default function SalesBoard({ data, office, label, onOffice, basis = 'sold', basisLinks = {} }) {
   const [sort, setSort] = useState({ key: 'sold', dir: -1 });
   const reps = (data?.reps || []).filter((r) => office === 'all' || r.office === office);
   const offices = Object.fromEntries((data?.offices || []).map((o) => [o.office, o]));
   const total = office === 'all' ? (data?.team || {}) : (offices[office] || {});
-  const col = COLS.find((c) => c[0] === sort.key) || COLS[0];
+  const byService = basis === 'service';
+  const cols = byService
+    ? [['sold', 'Sales', COLS[0][2], COLS[0][3]], COLS[1], ...STATUS_COLS, ...COLS.slice(2).filter((c) => c[0] !== 'active')]
+    : COLS;
+  const col = cols.find((c) => c[0] === sort.key) || cols[0];
   const sorted = [...reps].sort((a, b) => (col[2](a) - col[2](b)) * sort.dir || num(b.sold) - num(a.sold) || String(a.name).localeCompare(b.name));
   const tiles = [['all', 'Total', data?.team?.sold], ...BOARD_OFFICES.map((k) => [k, OFFICE_NAME[k], offices[k]?.sold])];
 
   return (
     <>
+      <div className="sb-basis">
+        <span className="rc-label">Count sales by</span>
+        <nav className="rc-seg" aria-label="Count sales by">
+          <Link href={basisLinks.sold || '#'} className={!byService ? 'on' : ''} aria-current={!byService ? 'page' : undefined} scroll={false}>Sold date</Link>
+          <Link href={basisLinks.service || '#'} className={byService ? 'on' : ''} aria-current={byService ? 'page' : undefined} scroll={false}>First-service date</Link>
+        </nav>
+        <span className="sb-basis-note">{byService
+          ? 'Like FieldRoutes’ Sales Report: sales whose first service is scheduled in this period, every status, current and former reps.'
+          : 'Like FieldRoutes’ Sales Leaderboard: sales made in this period that are pending or serviced, current reps.'}</span>
+      </div>
+
       <div className="sb-tiles">
         {tiles.map(([k, name, n], i) => (
           <button type="button" key={k} className={`sb-tile${office === k ? ' on' : ''}`} onClick={() => onOffice?.(k)} aria-pressed={office === k}>
             <Bug kind={['ant', 'spider', 'stinging', 'mosquito'][i]} size={60} className="sb-tile-bug" />
             <span className="sb-tile-name">{name}</span>
             <span className="sb-tile-n">{num(n)}</span>
-            <span className="sb-tile-sub">sold</span>
+            <span className="sb-tile-sub">{byService ? 'first services' : 'sold'}</span>
           </button>
         ))}
       </div>
@@ -88,7 +112,7 @@ export default function SalesBoard({ data, office, label, onOffice }) {
                   <tr>
                     <th className="sb-sticky">#</th>
                     <th className="sb-sticky sb-name">Salesperson</th>
-                    {COLS.map(([k, l]) => (
+                    {cols.map(([k, l]) => (
                       <th key={k} aria-sort={sort.key === k ? (sort.dir < 0 ? 'descending' : 'ascending') : 'none'}>
                         <button type="button" className="sort" onClick={() => setSort((s) => ({ key: k, dir: s.key === k ? -s.dir : -1 }))}>
                           {l}{sort.key === k ? (sort.dir < 0 ? ' ↓' : ' ↑') : ''}
@@ -107,7 +131,7 @@ export default function SalesBoard({ data, office, label, onOffice }) {
                           <span><span className="sb-who-name">{r.name}</span><span className="sb-who-sub">{OFFICE_NAME[r.office] || '—'}</span></span>
                         </span>
                       </th>
-                      {COLS.map(([k, , , show]) => <td key={k}>{show(r)}</td>)}
+                      {cols.map(([k, , , show]) => <td key={k}>{show(r)}</td>)}
                     </tr>
                   ))}
                 </tbody>
@@ -118,13 +142,14 @@ export default function SalesBoard({ data, office, label, onOffice }) {
 
         <aside className="rc-panel sb-side">
           <div className="sb-head"><h2>{office === 'all' ? 'Procare' : OFFICE_NAME[office]}</h2><span className="rc-label">{label}</span></div>
-          <Summary t={total} />
+          <Summary t={total} byService={byService} />
         </aside>
       </div>
 
       <details className="glossary spaced">
         <summary><h2>How this matches FieldRoutes</h2></summary>
         <dl>
+          <div className="gl-row"><dt>Two ways to count</dt><dd>Sold date matches FieldRoutes’ Sales Leaderboard and is what competitions use. First-service date matches FieldRoutes’ Sales Report (“Scheduled Between”), which is closer to what pays, since a sale pays once its first service is done. The two only agree on sales sold and serviced in the same period. In the first-service view, not-serviced and canceled sales only show when the app has their first appointment; most cancelled appointments aren’t copied from FieldRoutes yet.</dd></div>
           <div className="gl-row"><dt>Same filters</dt><dd>Sold subscriptions, credited to the first salesperson on the day the account was sold, whose first service is Pending or Serviced (no-shows, cancels and “No Appointment” sales are left out), by active FieldRoutes users of every type: sales reps, technicians and office staff.</dd></div>
           <div className="gl-row"><dt>Excluded services</dt><dd>{(data?.excluded || []).join(', ') || 'None'}.</dd></div>
           <div className="gl-row"><dt>Offices</dt><dd>Each sale counts for the salesperson’s FieldRoutes office, like the FieldRoutes leaderboard. (The Operations Suite counts by the customer’s office instead.)</dd></div>

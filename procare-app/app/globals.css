@@ -853,3 +853,5 @@ span.ops-pill:not(.ops-delta) { color: var(--muted); font-weight: 500; }
 .sb-summary dt { color: var(--muted); }
 .sb-summary div:first-child dt, .sb-summary div:nth-child(4) dt { color: var(--forest); }
 .sb-summary dd { margin: 0; font-variant-numeric: tabular-nums; }
+.sb-basis { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 14px; }
+.sb-basis-note { font-size: 13px; color: var(--muted); flex: 1 1 260px; }
