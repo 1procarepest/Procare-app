@@ -3,29 +3,15 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { DAY_NAMES, WEEK_ORDER, clock, fromMinutes, roleTitle, shortDate, toMinutes } from '@/lib/labels';
+import { APPS, appsFor } from '@/lib/apps';
 import ProfileActions from './ProfileActions';
 import SignOut from './SignOut';
 
 export const dynamic = 'force-dynamic';
 
-const APPS = {
-  technician: { name: 'Technician scorecard', blurb: 'KPIs, incentives and the team leaderboard.' },
-  sales: { name: 'Sales rep cards', blurb: 'Doors, sales and rep standings.' },
-  operations: { name: 'Operations suite', blurb: 'Sales, cancels, job pool, reservice and AR for every office.' },
-};
-
 // How far the schedule arrows can go, in weeks from this week
 const WEEKS_BACK = 4;
 const WEEKS_AHEAD = 8;
-
-/** Which suites each person sees, from the role map. */
-function appsFor(department, level) {
-  if (level === 'c_suite' || level === 'president') return ['technician', 'sales', 'operations'];
-  if (level === 'team_member') return [department === 'administrative' ? 'operations' : department];
-  if (department === 'sales') return ['sales', 'operations'];
-  if (department === 'technician') return ['technician', 'sales', 'operations'];
-  return ['operations', 'technician'];
-}
 
 export default async function Home({ searchParams }) {
   const supabase = createClient();
@@ -167,12 +153,24 @@ export default async function Home({ searchParams }) {
           <h2 id="apps-heading">Your apps</h2>
           <ul className="apps">
             {appsFor(me.department, me.level).map((key) => (
-              <li key={key} className="app">
-                <div>
-                  <h3>{APPS[key].name}</h3>
-                  <p>{APPS[key].blurb}</p>
-                </div>
-                <span className="soon">Moving here soon</span>
+              <li key={key}>
+                {APPS[key].href ? (
+                  <Link className="app app-link" href={APPS[key].href}>
+                    <div>
+                      <h3>{APPS[key].name}</h3>
+                      <p>{APPS[key].blurb}</p>
+                    </div>
+                    <span className="open" aria-hidden="true">Open ›</span>
+                  </Link>
+                ) : (
+                  <div className="app">
+                    <div>
+                      <h3>{APPS[key].name}</h3>
+                      <p>{APPS[key].blurb}</p>
+                    </div>
+                    <span className="soon">Moving here soon</span>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

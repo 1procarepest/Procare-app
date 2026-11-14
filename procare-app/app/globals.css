@@ -391,3 +391,36 @@ select:disabled, input:disabled { background: var(--paper); color: var(--muted);
   cursor: pointer;
 }
 .switch input { width: 20px; height: 20px; accent-color: var(--forest); }
+
+/* ---------- Tech Scorecard ---------- */
+.app-link { color: var(--ink); text-decoration: none; }
+.app-link:hover { border-color: var(--forest); }
+.open { flex: none; font-size: 14px; font-weight: 500; color: var(--forest); }
+.tabs-inline { padding: 0; margin: 0 0 20px; }
+.card { display: grid; gap: 16px; }
+.card-head h2 { margin: 0; }
+.metrics { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.metric { background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.metric-label { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.metric-value { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.metric-sub { font-size: 13px; color: var(--muted); }
+.trend { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.trend.good { color: var(--forest); }
+.trend.bad { color: var(--danger); }
+.bonus-lines { width: 100%; border-collapse: collapse; font-size: 15px; }
+.bonus-lines td { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.bonus-lines tr.total td { font-weight: 700; border-bottom: 0; padding-top: 10px; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.board-wrap { overflow-x: auto; margin-top: 10px; }
+.board { width: 100%; border-collapse: collapse; font-size: 15px; min-width: 520px; }
+.board th { text-align: left; font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 500; padding: 8px 10px; border-bottom: 1.5px solid var(--ink); }
+.board th.num { text-align: right; }
+.board td { padding: 10px; border-bottom: 1px solid var(--line); }
+.board tr.current td { background: var(--sage); }
+.board a { color: var(--ink); font-weight: 500; }
+.rules { max-width: 720px; }
+.rule-fields { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.rule-field { display: grid; gap: 6px; align-content: end; }
+.with-unit { display: flex; align-items: center; gap: 8px; }
+.with-unit input { min-width: 0; }
+.unit { color: var(--muted); font-size: 14px; flex: none; }
