@@ -33,7 +33,7 @@ export default async function ScorecardPage({ searchParams }) {
 
   return (
     <>
-      <div className="admin-head">
+      <div className="admin-head bug-band">
         <h1 className="sc-title">Technician scorecard</h1>
         <p className="note">
           {period.label}: {range(per.cur_start, per.cur_end)}{per.in_progress ? ' so far' : ''}. Compared with {period.prior} ({range(per.prior_start, per.prior_end)}).

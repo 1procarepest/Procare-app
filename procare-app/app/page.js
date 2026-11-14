@@ -6,7 +6,10 @@ import { DAY_NAMES, WEEK_ORDER, clock, fromMinutes, roleTitle, shortDate, toMinu
 import { APPS, appsFor } from '@/lib/apps';
 import { photoSrc } from '@/lib/photo';
 import ProfileActions from './ProfileActions';
+import { BugTile } from './Bug';
 import TodayRoute from './TodayRoute';
+import RepCard from './reps/RepCard';
+import { buildCards, measure, periodRange, todayYmd } from '@/lib/repcards';
 import SignOut from './SignOut';
 
 export const dynamic = 'force-dynamic';
@@ -44,6 +47,18 @@ export default async function Home({ searchParams }) {
   const { data: route } = me.department === 'technician'
     ? await supabase.rpc('my_route', { p_day: routeDay })
     : { data: null };
+
+  // Sales reps: their own Rep Card for this week
+  let myCard = null;
+  if (me.department === 'sales') {
+    const wk = periodRange('week', todayYmd());
+    const { data: rows } = await supabase.rpc('rep_cards', { p_from: wk.from, p_to: wk.to });
+    const { reps } = buildCards(rows, wk.to);
+    myCard = reps.find((r) => r.id === me.id) || {
+      id: me.id, first_name: me.first_name, last_name: me.last_name, name: `${me.first_name} ${me.last_name}`,
+      office: me.office, photo: me.photo_url, m: measure({}), weeks: [],
+    };
+  }
 
   const { data: schedule } = await supabase
     .from('schedules')
@@ -129,7 +144,7 @@ export default async function Home({ searchParams }) {
       </header>
 
       <main className="home">
-        <section className="hello">
+        <section className="hello bug-band">
           {photo
             ? <img className="avatar" src={photo} alt="" />
             : <div className="avatar" aria-hidden="true">{initials}</div>}
@@ -138,6 +153,16 @@ export default async function Home({ searchParams }) {
             <p>{roleTitle(me.department, me.level)}{officeName ? `, ${officeName}` : ''}</p>
           </div>
         </section>
+
+        {myCard && (
+          <section className="section my-card" aria-labelledby="card-heading">
+            <div className="my-card-head">
+              <h2 id="card-heading">Your card this week</h2>
+              <Link href="/reps">All rep cards ›</Link>
+            </div>
+            <RepCard rep={myCard} me showWeeks={false} />
+          </section>
+        )}
 
         <section className="section" aria-labelledby="week-heading">
           <div className="week-head">
@@ -183,7 +208,8 @@ export default async function Home({ searchParams }) {
               <li key={key}>
                 {APPS[key].href ? (
                   <Link className="app app-link" href={APPS[key].href}>
-                    <div>
+                    <BugTile kind={APPS[key].bug} tone={APPS[key].tone} />
+                    <div className="app-text">
                       <h3>{APPS[key].name}</h3>
                       <p>{APPS[key].blurb}</p>
                     </div>
@@ -191,7 +217,8 @@ export default async function Home({ searchParams }) {
                   </Link>
                 ) : (
                   <div className="app">
-                    <div>
+                    <BugTile kind={APPS[key].bug} tone={APPS[key].tone} />
+                    <div className="app-text">
                       <h3>{APPS[key].name}</h3>
                       <p>{APPS[key].blurb}</p>
                     </div>
