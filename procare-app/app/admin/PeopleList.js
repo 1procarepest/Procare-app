@@ -43,7 +43,7 @@ export default function PeopleList({ people, myOffice }) {
         </select>
         <label className="check">
           <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
-          Show switched-off people
+          Show deactivated team members
         </label>
       </div>
 
@@ -54,7 +54,7 @@ export default function PeopleList({ people, myOffice }) {
               <span className="person-name">{p.first_name} {p.last_name}</span>
               <span className="person-role">{roleTitle(p.department, p.level)}, {OFFICE_NAME[p.office] || 'No office'}</span>
               <span className="person-flags">
-                {!p.active && <span className="badge">Switched off</span>}
+                {!p.active && <span className="badge">Deactivated</span>}
                 {p.active && !p.auth_user_id && <span className="badge badge-warn">No login</span>}
               </span>
             </Link>

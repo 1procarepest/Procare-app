@@ -47,7 +47,7 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
     setSavingStatus(false);
     setConfirmOff(false);
     if (error) { setStatusMsg({ text: error.message, bad: true }); return; }
-    setStatusMsg({ text: on ? `${person.first_name} is switched back on.` : `${person.first_name} is switched off.`, bad: false });
+    setStatusMsg({ text: on ? `${person.first_name} is reactivated.` : `${person.first_name} is deactivated.`, bad: false });
     router.refresh();
   }
 
@@ -169,28 +169,28 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
 
       {canManage && (
         <section className="panel">
-          <h2>{person.active ? 'Left Procare?' : 'Switched off'}</h2>
+          <h2>{person.active ? 'Deactivate team member' : 'Deactivated'}</h2>
           <p className="note">
             {person.active
-              ? `Switching ${person.first_name} off takes them out of lists, schedules and scorecards and stops their sign-in. Their history stays, and you can switch them back on any time.`
-              : `${person.first_name} can’t sign in and doesn’t show up in lists, schedules or scorecards. Their history is kept.`}
+              ? `Deactivating ${person.first_name} takes them out of lists, schedules and scorecards and stops their sign-in. Their history stays, and you can reactivate them any time.`
+              : `${person.first_name} is deactivated: they can’t sign in and don’t show up in lists, schedules or scorecards. Their history is kept.`}
           </p>
           {statusMsg.text && <p className={statusMsg.bad ? 'error' : 'ok'} role="status">{statusMsg.text}</p>}
           <div className="panel-buttons">
             {person.active && !confirmOff && (
-              <button className="btn btn-quiet" type="button" onClick={() => setConfirmOff(true)}>Switch off {person.first_name}</button>
+              <button className="btn btn-quiet" type="button" onClick={() => setConfirmOff(true)}>Deactivate {person.first_name}</button>
             )}
             {person.active && confirmOff && (
               <>
                 <button className="btn btn-danger" type="button" disabled={savingStatus} onClick={() => setActiveStatus(false)}>
-                  {savingStatus ? 'Switching off…' : `Yes, switch off ${person.first_name} ${person.last_name}`}
+                  {savingStatus ? 'Deactivating…' : `Yes, deactivate ${person.first_name} ${person.last_name}`}
                 </button>
                 <button className="btn btn-quiet" type="button" onClick={() => setConfirmOff(false)}>Cancel</button>
               </>
             )}
             {!person.active && (
               <button className="btn" type="button" disabled={savingStatus} onClick={() => setActiveStatus(true)}>
-                {savingStatus ? 'Switching on…' : `Switch ${person.first_name} back on`}
+                {savingStatus ? 'Reactivating…' : `Reactivate ${person.first_name}`}
               </button>
             )}
           </div>
@@ -243,7 +243,7 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
               {savingLogin ? 'Saving…' : person.auth_user_id ? 'Reset passcode' : 'Create login'}
             </button>
           </div>
-          {!person.active && <p className="note">Switch this person on before giving them a login.</p>}
+          {!person.active && <p className="note">Reactivate this person before giving them a login.</p>}
         </form>
       )}
     </div>
