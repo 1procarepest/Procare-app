@@ -18,7 +18,7 @@ export default async function RulesPage() {
   return (
     <>
       <div className="admin-head">
-        <h1>Scorecard rules</h1>
+        <h1>Performance Card rules</h1>
         <p className="note">
           Amounts are per month. Weeks and part-months are prorated, except the per-review and per-sale amounts.
           {data?.editor ? ` Last changed by ${data.editor.first_name} ${data.editor.last_name}, ${new Date(data.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })}.` : ''}

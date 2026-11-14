@@ -57,7 +57,7 @@ export default function RulesEditor({ initial, myId }) {
     setSaving(false);
     if (error) { setMsg({ text: error.message, bad: true }); return; }
     if (!data?.length) { setMsg({ text: 'Not saved: only C-Suite and the President can change the rules.', bad: true }); return; }
-    setMsg({ text: 'Rules saved. The scorecard uses them right away.', bad: false });
+    setMsg({ text: 'Rules saved. The performance card uses them right away.', bad: false });
     router.refresh();
   }
 
@@ -67,7 +67,7 @@ export default function RulesEditor({ initial, myId }) {
         <label className="toggle">
           <input type="checkbox" checked={!!rules.bonuses_on} onChange={(e) => set('bonuses_on', e.target.checked)} />
           <span className="toggle-track" aria-hidden="true" />
-          Show bonus amounts on the scorecard
+          Show bonus amounts on the performance card
         </label>
         <p className="note">While this is off, techs see their numbers but no dollar amounts.</p>
       </section>

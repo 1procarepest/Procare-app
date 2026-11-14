@@ -19,7 +19,7 @@ export default async function ScorecardPage({ searchParams }) {
     supabase.rpc('scorecard_period', { p_period: period.key }),
     supabase.from('scorecard_rules').select('rules').eq('id', 1).maybeSingle(),
   ]);
-  if (error) return <p className="error">The scorecard couldn’t load: {error.message}</p>;
+  if (error) return <p className="error">The performance card couldn’t load: {error.message}</p>;
   const per = (perRows || [])[0] || {};
 
   // One entry per tech: { id, name, office, photo, cur, prior }
@@ -34,7 +34,7 @@ export default async function ScorecardPage({ searchParams }) {
   return (
     <>
       <div className="admin-head bug-band">
-        <h1 className="sc-title">Technician scorecard</h1>
+        <h1 className="sc-title">Technician Performance Card</h1>
         <p className="note">
           {period.label}: {range(per.cur_start, per.cur_end)}{per.in_progress ? ' so far' : ''}. Compared with {period.prior} ({range(per.prior_start, per.prior_end)}).
         </p>

@@ -17,7 +17,7 @@ export default async function ScorecardLayout({ children }) {
       <header className="topbar">
         <Link href="/" aria-label="Back to my profile"><img src="/logo.png" alt="Procare" /></Link>
         <div className="topbar-links">
-          <Link className="toplink" href="/scorecard">Scorecard</Link>
+          <Link className="toplink" href="/scorecard">Performance Card</Link>
           {me.rank >= 4 && <Link className="toplink" href="/scorecard/rules">Rules</Link>}
           <Link className="toplink" href="/">My profile</Link>
           <SignOut />
