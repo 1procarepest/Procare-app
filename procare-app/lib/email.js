@@ -13,6 +13,18 @@ function escapeHtml(text) {
 }
 
 /**
+ * Makes EMAIL_FROM into the "Name <email@domain>" form Resend wants, whatever it looks like after
+ * pasting: curly quotes, missing or spaced angle brackets, extra spaces. Returns '' with no address.
+ */
+export function normalizeFrom(raw) {
+  const v = String(raw || '').replace(/[“”‘’]/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+  const m = v.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+  if (!m) return '';
+  const name = v.slice(0, m.index).replace(/[<>"'=]/g, ' ').replace(/^\s*EMAIL_FROM\s*/i, '').replace(/\s+/g, ' ').trim();
+  return name ? `${name} <${m[0]}>` : m[0];
+}
+
+/**
  * Sends one email. `lines` are plain sentences, shown one per line; `link` is
  * { href, label } for a button. Returns { ok, problem }: ok is true when Resend
  * accepted it; otherwise problem says why in plain words.
@@ -21,10 +33,16 @@ export async function sendEmail({ to, subject, heading, lines, link }) {
   // Trim stray spaces or quotes that sneak in when pasting into Vercel
   const clean = (v) => (v || '').trim().replace(/^["']|["']$/g, '').trim();
   const key = clean(process.env.RESEND_API_KEY);
-  const from = clean(process.env.EMAIL_FROM);
+  const fromRaw = clean(process.env.EMAIL_FROM);
+  const from = normalizeFrom(fromRaw);
   const replyTo = clean(process.env.EMAIL_REPLY_TO);
   const recipients = [...new Set((to || []).filter(Boolean))];
-  const missing = [!key && 'RESEND_API_KEY', !from && 'EMAIL_FROM'].filter(Boolean);
+  if (fromRaw && !from) {
+    const problem = `Email not sent: EMAIL_FROM in Vercel is “${fromRaw}”, which has no email address in it. Set it to Procare Team <team@procarepest.com> and redeploy.`;
+    console.warn(problem);
+    return { ok: false, problem };
+  }
+  const missing = [!key && 'RESEND_API_KEY', !fromRaw && 'EMAIL_FROM'].filter(Boolean);
   if (missing.length) {
     const problem = `Email not sent: ${missing.join(' and ')} ${missing.length > 1 ? 'are' : 'is'} missing in Vercel (Settings → Environment Variables, Production), or the site wasn’t redeployed after adding ${missing.length > 1 ? 'them' : 'it'}.`;
     console.warn(problem);
@@ -57,7 +75,7 @@ export async function sendEmail({ to, subject, heading, lines, link }) {
       const body = await res.text();
       let detail = body;
       try { detail = JSON.parse(body).message || body; } catch {}
-      const problem = `Resend refused the email (${res.status}): ${detail}`;
+      const problem = `Resend refused the email (${res.status}): ${detail} (From was “${from}”; EMAIL_FROM in Vercel is “${fromRaw}”.)`;
       console.error(problem);
       return { ok: false, problem };
     }
