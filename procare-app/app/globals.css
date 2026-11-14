@@ -807,3 +807,13 @@ span.ops-pill:not(.ops-delta) { color: var(--muted); font-weight: 500; }
   .ops-cards, .ops-minis { grid-template-columns: minmax(0, 1fr); }
   .ops-aging-key { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Date / period / office controls stay at the top while you scroll (Rep Cards, Operations, Tech Scorecard) */
+.rc-controls, .sticky-bar { position: sticky; top: 0; z-index: 30; background: var(--paper); }
+.rc-controls { padding-top: 12px; box-shadow: 0 6px 10px -10px rgba(6, 47, 53, 0.35); }
+.sticky-bar { padding-top: 8px; }
+@media (max-width: 640px) {
+  .rc-controls { gap: 8px; padding-top: 8px; padding-bottom: 10px; }
+  .ops-picks { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; }
+  .ops-pick { flex: none; }
+}

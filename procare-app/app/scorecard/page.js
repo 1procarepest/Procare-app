@@ -39,7 +39,7 @@ export default async function ScorecardPage({ searchParams }) {
           {period.label}: {range(per.cur_start, per.cur_end)}{per.in_progress ? ' so far' : ''}. Compared with {period.prior} ({range(per.prior_start, per.prior_end)}).
         </p>
       </div>
-      <nav className="tabs tabs-inline" aria-label="Period">
+      <nav className="tabs tabs-inline sticky-bar" aria-label="Period">
         {PERIODS.map((p) => (
           <Link key={p.key} href={`/scorecard?period=${p.key}`} className={`tab${p.key === period.key ? ' active' : ''}`} aria-current={p.key === period.key ? 'page' : undefined}>
             {p.label}
