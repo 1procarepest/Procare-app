@@ -721,6 +721,11 @@ function ssScores_() {
 }
 
 /** One stored row from a safety-scores/vehicles result (or an empty one when the truck has no data). */
+function ssImpactScore_(behaviors, speeding) {
+  const impact = behaviors.concat(speeding).reduce((a, b) => a + (Number(b.scoreImpact) || 0), 0);
+  return Math.max(0, Math.min(100, Math.round(100 + impact)));
+}
+
 function ssScoreRow_(vehicleId, win, x, now) {
   const behaviors = (x && x.behaviors) || [];
   const speeding = (x && x.speeding) || [];
@@ -731,7 +736,9 @@ function ssScoreRow_(vehicleId, win, x, now) {
   return {
     vehicle_id: vehicleId, window_key: win.key,
     start_at: new Date(win.s).toISOString(), end_at: new Date(win.e).toISOString(),
-    score: x && meters > 0 && x.vehicleScore !== undefined && x.vehicleScore !== null ? Math.round(Number(x.vehicleScore)) : null,
+    // Samsara's vehicleScore comes back 0 even when the listed impacts add up to far less than 100,
+    // so the score is 100 plus the impacts Samsara reports (which follow your Samsara weight settings), kept 0–100.
+    score: x && meters > 0 ? ssImpactScore_(behaviors, speeding) : null,
     miles: Math.round(meters / 1609.344), drive_hours: Math.round(driveMs / 360000) / 10,
     harsh_brake: count('braking'), harsh_accel: count('acceleration'), harsh_turn: count('harshTurn'), crash: count('crash'),
     speed_pct: driveMs ? Math.round(speedMs / driveMs * 1000) / 10 : 0,
@@ -939,7 +946,7 @@ function inspectSamsaraScores() {
     (r.data || []).forEach(x => {
       const t = trucks.find(tt => String(tt.vehicle_id) === String(x.vehicleId)) || {};
       const row = ssScoreRow_(String(x.vehicleId), win, x, '');
-      Logger.log((t.vehicle_name || x.vehicleId) + ' · this month · CURRENT score ' + row.score + ' · ' + row.miles + ' mi · ' +
+      Logger.log((t.vehicle_name || x.vehicleId) + ' · this month · score ' + row.score + ' (Samsara says ' + x.vehicleScore + ') · ' + row.miles + ' mi · ' +
         (x.behaviors || []).map(b => b.behaviorType + ' ' + b.count + ' (' + b.scoreImpact + ')').join(', '));
     });
     if (!(r.data || []).length) Logger.log('Current API answered but returned no trucks for this month.');
