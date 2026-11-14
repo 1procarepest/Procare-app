@@ -43,6 +43,7 @@ const SYNC = {
     samsaraEvents: 30,                    // dash-cam safety events, last 3 days
     samsaraScores: 60                     // safety scores for the scorecard periods
   },
+  ROUTE_SNAPSHOT_HOUR: 7,                 // save each tech's route once a day, after this hour
   FULL_HOURS: [7, 13],                    // full refresh of active customers, services, cards on file
   OVERLAP_MIN: 10,                        // re-check this many minutes before the last run, to miss nothing
   MAX_RUN_MS: 4.5 * 60 * 1000,            // stay under Apps Script's 6-minute limit
@@ -124,6 +125,12 @@ function dueSteps_() {
     PROPS.setProperty('LAST_FULL_SLOT', slot);
     every(['full:customers', 'full:subs', 'full:cards']);
     if (ssToken_()) steps.push({ o: '-', job: 'ss:vehicles' });
+  }
+  // Each morning's routes, for scorecard completion. Queued after the appointment changes so it sees them.
+  const day = Utilities.formatDate(new Date(), SYNC.TZ, 'yyyy-MM-dd');
+  if (hour >= SYNC.ROUTE_SNAPSHOT_HOUR && PROPS.getProperty('LAST_ROUTE_SNAPSHOT') !== day) {
+    PROPS.setProperty('LAST_ROUTE_SNAPSHOT', day);
+    steps.push({ o: '-', job: 'routes:snapshot' });
   }
   return steps;
 }
@@ -225,6 +232,7 @@ function runStep_(s) {
   }
   if (s.job.indexOf('ss:') === 0) return runSamsaraStep_(s);
   if (s.job === 'team') { syncTeam_(true); return; }
+  if (s.job === 'routes:snapshot') { supaFetch_('post', 'rpc/snapshot_routes', {}); return; }
   const o = office_(s.o);
   switch (s.job) {
     case 'lists': return pullLists_(o);
