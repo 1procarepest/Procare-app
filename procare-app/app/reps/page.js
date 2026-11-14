@@ -19,7 +19,7 @@ export default async function RepCardsPage({ searchParams }) {
     supabase.rpc('rep_cards_synced_at'),
   ]);
   if (error) return <p className="error">The rep cards couldn’t load: {error.message}</p>;
-  const { reps, offices, team } = buildCards(rows, range.to);
+  const { reps, offices, team, officeReps } = buildCards(rows, range.to);
 
   return (
     <RepCardsView
@@ -31,6 +31,7 @@ export default async function RepCardsPage({ searchParams }) {
       reps={reps}
       offices={offices}
       team={team}
+      officeReps={officeReps}
       meId={me?.id}
       syncedAt={synced || null}
     />

@@ -131,10 +131,11 @@ function weekStarts(to) {
  * Turns rep_cards() rows into what the page draws:
  *   reps:    [{ id, name, first_name, last_name, office, photo, m, weeks }] ranked, with rank set
  *   offices: { east: m, west: m, south: m }, team: m (all offices)
+ *   officeReps: { east: [{ id, name, photo, m }] } each rep's numbers inside that office
  * Weeks start at the rep's first week with any activity in the last 52.
  */
 export function buildCards(rows, to) {
-  const reps = {}, weekRows = {}, offices = {};
+  const reps = {}, weekRows = {}, offices = {}, officeReps = {};
   let team = measure({});
   (rows || []).forEach((r) => {
     if (r.kind === 'rep') {
@@ -147,6 +148,11 @@ export function buildCards(rows, to) {
       (weekRows[r.employee_id] ||= {})[String(r.week).slice(0, 10)] = r;
     } else if (r.kind === 'office') {
       offices[r.office] = measure(r);
+    } else if (r.kind === 'rep_office') {
+      (officeReps[r.office] ||= []).push({
+        id: r.employee_id, first_name: r.first_name, last_name: r.last_name, photo: r.photo_url,
+        name: `${r.first_name || ''} ${r.last_name || ''}`.replace(/\s+/g, ' ').trim(), m: measure(r),
+      });
     } else if (r.kind === 'team') {
       team = measure(r);
     }
@@ -159,5 +165,6 @@ export function buildCards(rows, to) {
     rep.weeks = first < 0 ? [] : starts.slice(first).map((w) => ({ week: w, m: measure(mine[w]) }));
   });
   list.sort(byStanding).forEach((r, i) => { r.rank = i + 1; });
-  return { reps: list, offices, team };
+  Object.values(officeReps).forEach((l) => l.sort(byStanding));
+  return { reps: list, offices, team, officeReps };
 }

@@ -171,7 +171,7 @@ export default function RepCard({ rep, me, showWeeks = true }) {
             <button type="button" className="rc-flip" tabIndex={flipped ? -1 : 0} onClick={(e) => { e.stopPropagation(); flip(); }}>Tap to flip for sales stats</button>
           </div>
         </div>
-        <div className="rc-face rc-back" aria-hidden={!flipped}>
+        <div className="rc-face rc-back rc-turned" aria-hidden={!flipped}>
           {mark}
           {head}
           <SalesSide m={m} />

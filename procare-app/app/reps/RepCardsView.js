@@ -57,28 +57,69 @@ function Totals({ m }) {
   );
 }
 
-function OfficeCards({ offices }) {
-  const list = OFFICES.filter((o) => offices[o.key]).map((o) => ({ ...o, m: offices[o.key] }));
+/** One office's card. Tap to flip to every rep's numbers in that office, with the office total. */
+function OfficeCard({ o, rank, reps }) {
+  const [flipped, setFlipped] = useState(false);
+  const flip = () => setFlipped((f) => !f);
+  const badge = <span className="face face-initials rc-office-badge" aria-hidden="true">{initialsOf(...o.name.split(' '))}</span>;
+  const head = (sub) => (
+    <div className="rc-head">
+      {badge}
+      <div className="rc-who"><h3>{o.name}</h3><span className="rc-office">{sub}</span></div>
+      <span className="rc-rank">#{rank}</span>
+    </div>
+  );
+  const active = `${o.m.reps} rep${o.m.reps === 1 ? '' : 's'} active · ${o.m.field_days} field day${o.m.field_days === 1 ? '' : 's'}`;
+  const row = (key, who, m) => (
+    <tr key={key}>
+      <th scope="row">{who}</th>
+      <td>{m.services}</td><td>{m.new_customers}</td><td>{money0(m.far)}</td><td>{pct0(m.closeRate)}</td><td>{m.doors}</td><td>{one(m.hours)}</td>
+    </tr>
+  );
+  return (
+    <article className={`rc rc-office-card${flipped ? ' flipped' : ''}`} onClick={flip} aria-label={`${o.name} office card`}>
+      <div className="rc-inner">
+        <div className="rc-face rc-back" aria-hidden={flipped}>
+          <Bug kind={OFFICE_BUG[o.key]} size={170} className="rc-mark" />
+          {head(active)}
+          <SalesSide m={o.m} withDoors />
+          <div className="rc-foot">
+            <span />
+            <button type="button" className="rc-flip" tabIndex={flipped ? -1 : 0} onClick={(e) => { e.stopPropagation(); flip(); }}>Tap to see each rep</button>
+          </div>
+        </div>
+        <div className="rc-face rc-front rc-turned" aria-hidden={!flipped}>
+          <Bug kind={OFFICE_BUG[o.key]} size={170} className="rc-mark" />
+          {head('Rep totals in this office')}
+          <div className="rc-weeks-scroll rc-office-reps" onClick={(e) => e.stopPropagation()}>
+            <table>
+              <thead><tr><th>Rep</th><th>Sold</th><th>New</th><th>FAR</th><th>Close</th><th>Doors</th><th>Hours</th></tr></thead>
+              <tbody>{reps.map((r) => row(r.id, (
+                <span className="rc-rep-cell">
+                  <Face person={{ photo_url: r.photo, first_name: r.first_name, last_name: r.last_name }} size={18} />{r.name}
+                </span>
+              ), r.m))}</tbody>
+              <tfoot>{row('total', 'Total', o.m)}</tfoot>
+            </table>
+          </div>
+          <p className="rc-tile-sub">Only the doors and sales each rep had in {o.name}. FAR = future annual revenue.</p>
+          <div className="rc-foot">
+            <span />
+            <button type="button" className="rc-flip" tabIndex={flipped ? 0 : -1} onClick={(e) => { e.stopPropagation(); flip(); }}>Tap to flip back</button>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function OfficeCards({ offices, officeReps }) {
+  const ranked = OFFICES.filter((o) => offices[o.key]).map((o) => ({ ...o, m: offices[o.key] }))
+    .sort((a, b) => b.m.services - a.m.services || b.m.new_customers - a.m.new_customers);
   const empty = OFFICES.filter((o) => !offices[o.key]);
-  const ranked = list.sort((a, b) => b.m.services - a.m.services || b.m.new_customers - a.m.new_customers);
   return (
     <div className="rc-roster">
-      {ranked.map((o, i) => (
-        <article key={o.key} className="rc rc-office-card">
-          <div className="rc-face rc-back rc-static">
-            <Bug kind={OFFICE_BUG[o.key]} size={170} className="rc-mark" />
-            <div className="rc-head">
-              <span className="face face-initials rc-office-badge" aria-hidden="true">{initialsOf(...o.name.split(' '))}</span>
-              <div className="rc-who">
-                <h3>{o.name}</h3>
-                <span className="rc-office">{o.m.reps} rep{o.m.reps === 1 ? '' : 's'} active · {o.m.field_days} field day{o.m.field_days === 1 ? '' : 's'}</span>
-              </div>
-              <span className="rc-rank">#{i + 1}</span>
-            </div>
-            <SalesSide m={o.m} withDoors />
-          </div>
-        </article>
-      ))}
+      {ranked.map((o, i) => <OfficeCard key={o.key} o={o} rank={i + 1} reps={officeReps[o.key] || []} />)}
       {empty.map((o) => (
         <article key={o.key} className="rc rc-office-card rc-quiet">
           <div className="rc-face rc-back rc-static">
@@ -140,7 +181,7 @@ function Glossary() {
   );
 }
 
-export default function RepCardsView({ view, date, today, label, isCurrent, reps, offices, team, meId, syncedAt }) {
+export default function RepCardsView({ view, date, today, label, isCurrent, reps, offices, team, officeReps = {}, meId, syncedAt }) {
   const [office, setOffice] = useState('all');
   const shown = reps.filter((r) => office === 'all' || r.office === office).sort(byStanding);
   const m = office === 'all' ? team : offices[office];
@@ -185,8 +226,8 @@ export default function RepCardsView({ view, date, today, label, isCurrent, reps
       </Panel>
 
       <Panel title="Office Standings" summary={officeRank ? `#1 ${officeRank.name}` : ''} open={false}>
-        <p className="note">Ranked by services sold, then new customers. Each door and sale counts for the office it’s in.</p>
-        <OfficeCards offices={offices} />
+        <p className="note">Ranked by services sold, then new customers. Each door and sale counts for the office it’s in. Tap an office to see each rep’s totals there.</p>
+        <OfficeCards offices={offices} officeReps={officeReps} />
       </Panel>
 
       <section className="rc-block">
