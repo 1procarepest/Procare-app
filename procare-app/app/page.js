@@ -167,13 +167,14 @@ export default async function Home({ searchParams }) {
           </ul>
         </section>
 
+        <ProfileActions employeeId={me.id} email={user.email} isSales={me.department === 'sales'} />
+
         {route && <TodayRoute jobs={route} offset={dayOffset} day={routeDay} links={{
           prev: dayOffset > -ROUTE_DAYS ? dayHref(dayOffset - 1) : null,
           next: dayOffset < ROUTE_DAYS ? dayHref(dayOffset + 1) : null,
           today: dayHref(0),
         }} />}
 
-        <ProfileActions employeeId={me.id} email={user.email} isSales={me.department === 'sales'} />
 
         <section className="section" aria-labelledby="apps-heading">
           <h2 id="apps-heading">Your apps</h2>
