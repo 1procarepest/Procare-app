@@ -8,8 +8,9 @@ import { OFFICES, OFFICE_NAME } from '@/lib/labels';
 import { initialsOf } from '@/lib/photo';
 import { LEADER_TITLE, OUTCOMES, VIEWS, byStanding, leaders, money0, one, pct0, shiftPeriod } from '@/lib/repcards';
 import RepCard, { SalesSide } from './RepCard';
+import SalesBoard from './SalesBoard';
 
-const href = (view, date) => `/reps?view=${view}&date=${date}`;
+const href = (view, date, tab) => `/reps?view=${view}&date=${date}${tab === 'board' ? '&tab=board' : ''}`;
 const OFFICE_BUG = { east: 'ant', south: 'stinging', west: 'mosquito' };
 const LEADER_ART = {
   services: ['roach', 'ink'], new: ['ant', 'forest'], convos: ['cricket', 'lime'], hours: ['termite', 'sage'], close: ['spider', 'forest'],
@@ -181,13 +182,13 @@ function Glossary() {
   );
 }
 
-export default function RepCardsView({ view, date, today, label, isCurrent, reps, offices, team, officeReps = {}, meId, syncedAt }) {
+export default function RepCardsView({ view, date, today, label, isCurrent, reps, offices, team, officeReps = {}, meId, syncedAt, tab = 'cards', board }) {
   const [office, setOffice] = useState('all');
   const shown = reps.filter((r) => office === 'all' || r.office === office).sort(byStanding);
   const m = office === 'all' ? team : offices[office];
   const officeRank = OFFICES.filter((o) => offices[o.key])
     .sort((a, b) => offices[b.key].services - offices[a.key].services || offices[b.key].new_customers - offices[a.key].new_customers)[0];
-  const updated = syncedAt
+  const updated = syncedAt && !Number.isNaN(new Date(syncedAt).getTime())
     ? new Date(syncedAt).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
     : null;
   const next = shiftPeriod(view, date, 1);
@@ -203,17 +204,21 @@ export default function RepCardsView({ view, date, today, label, isCurrent, reps
       </div>
 
       <div className="rc-controls">
+        <nav className="rc-seg rc-tabs" aria-label="View">
+          <Link href={href(view, date, 'cards')} className={tab !== 'board' ? 'on' : ''} aria-current={tab !== 'board' ? 'page' : undefined} scroll={false}>Rep Cards</Link>
+          <Link href={href(view, date, 'board')} className={tab === 'board' ? 'on' : ''} aria-current={tab === 'board' ? 'page' : undefined} scroll={false}>Sales Leaderboard</Link>
+        </nav>
         <nav className="rc-seg" aria-label="Period">
           {VIEWS.map((v) => (
-            <Link key={v.key} href={href(v.key, date)} className={v.key === view ? 'on' : ''} aria-current={v.key === view ? 'page' : undefined} scroll={false}>{v.label}</Link>
+            <Link key={v.key} href={href(v.key, date, tab)} className={v.key === view ? 'on' : ''} aria-current={v.key === view ? 'page' : undefined} scroll={false}>{v.label}</Link>
           ))}
         </nav>
         <div className="rc-step">
-          <Link className="rc-arrow" href={href(view, shiftPeriod(view, date, -1))} aria-label="Earlier" scroll={false}>‹</Link>
+          <Link className="rc-arrow" href={href(view, shiftPeriod(view, date, -1), tab)} aria-label="Earlier" scroll={false}>‹</Link>
           <span className="rc-range">{label}</span>
           {isCurrent
             ? <span className="rc-arrow off" aria-hidden="true">›</span>
-            : <Link className="rc-arrow" href={href(view, next > today ? today : next)} aria-label="Later" scroll={false}>›</Link>}
+            : <Link className="rc-arrow" href={href(view, next > today ? today : next, tab)} aria-label="Later" scroll={false}>›</Link>}
         </div>
         <select className="rc-office-pick" value={office} onChange={(e) => setOffice(e.target.value)} aria-label="Office">
           <option value="all">All offices</option>
@@ -221,6 +226,7 @@ export default function RepCardsView({ view, date, today, label, isCurrent, reps
         </select>
       </div>
 
+      {tab === 'board' ? <SalesBoard data={board} office={office} label={label} onOffice={setOffice} /> : (<>
       <Panel title={office === 'all' ? 'Team Totals' : `${OFFICE_NAME[office]} Totals`} summary={`${m?.services || 0} services sold · ${money0(m?.far)}`}>
         {m ? <Totals m={m} /> : <p className="note">No doors or sales in this period.</p>}
       </Panel>
@@ -248,6 +254,7 @@ export default function RepCardsView({ view, date, today, label, isCurrent, reps
       </section>
 
       <Glossary />
+      </>)}
     </>
   );
 }
