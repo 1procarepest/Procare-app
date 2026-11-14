@@ -947,7 +947,9 @@ function inspectSamsaraScores() {
       const t = trucks.find(tt => String(tt.vehicle_id) === String(x.vehicleId)) || {};
       const row = ssScoreRow_(String(x.vehicleId), win, x, '');
       Logger.log((t.vehicle_name || x.vehicleId) + ' · this month · score ' + row.score + ' (Samsara says ' + x.vehicleScore + ') · ' + row.miles + ' mi · ' +
-        (x.behaviors || []).map(b => b.behaviorType + ' ' + b.count + ' (' + b.scoreImpact + ')').join(', '));
+        (x.behaviors || []).map(b => b.behaviorType + ' ' + b.count + ' (' + Math.round(b.scoreImpact) + ')').join(', ') +
+        ' · speeding: ' + ((x.speeding || []).map(sp => sp.speedingType + ' ' + Math.round((Number(sp.durationMilliseconds) || 0) / 60000) + ' min (' +
+          Math.round(sp.scoreImpact) + ')').join(', ') || 'none'));
     });
     if (!(r.data || []).length) Logger.log('Current API answered but returned no trucks for this month.');
   } catch (e) {
