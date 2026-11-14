@@ -41,7 +41,8 @@ const SYNC = {
     reviews: 30,
     lists: 120,                           // employees, service types, cancellation reasons
     samsaraEvents: 30,                    // dash-cam safety events, last 3 days
-    samsaraScores: 60                     // safety scores for the scorecard periods
+    samsaraScores: 60,                    // safety scores for the scorecard periods
+    routes: 60                            // today's routes (which tech is on which route)
   },
   PHOTO_BASE: 'https://d282x1mqo546ey.cloudfront.net/',   // where FieldRoutes keeps employee photos
   ROUTE_SNAPSHOT_HOUR: 7,                 // save each tech's route once a day, after this hour
@@ -113,6 +114,7 @@ function dueSteps_() {
     if (PROPS.getProperty('TEAM_SYNC') === 'on') steps.push({ o: '-', job: 'team' });
   }
   if (due('changes', SYNC.EVERY_MIN.changes)) every(['subs:since', 'appts:since', 'doors:since']);
+  if (due('routes', SYNC.EVERY_MIN.routes)) every(['routes:today']);
   if (due('customers', SYNC.EVERY_MIN.customers)) every(['cust:since']);
   if (due('reviews', SYNC.EVERY_MIN.reviews)) every(['reviews:recent']);
   if (ssToken_()) {
@@ -131,7 +133,7 @@ function dueSteps_() {
   const day = Utilities.formatDate(new Date(), SYNC.TZ, 'yyyy-MM-dd');
   if (hour >= SYNC.ROUTE_SNAPSHOT_HOUR && PROPS.getProperty('LAST_ROUTE_SNAPSHOT') !== day) {
     PROPS.setProperty('LAST_ROUTE_SNAPSHOT', day);
-    every(['appts:today']);                       // fresh copy of today's jobs (notes flag, assignments)
+    every(['routes:today', 'appts:today']);       // today's routes and a fresh copy of today's jobs
     steps.push({ o: '-', job: 'routes:snapshot' });
   }
   return steps;
@@ -234,7 +236,7 @@ function runStep_(s) {
   }
   if (s.job.indexOf('ss:') === 0) return runSamsaraStep_(s);
   if (s.job === 'team') { syncTeam_(true); return; }
-  if (s.job === 'routes:snapshot') { supaFetch_('post', 'rpc/snapshot_routes', {}); return; }
+  if (s.job === 'routes:snapshot') { supaFetch_('post', 'rpc/snapshot_routes', { p_replace: !!s.replace }); return; }
   const o = office_(s.o);
   switch (s.job) {
     case 'lists': return pullLists_(o);
@@ -247,6 +249,7 @@ function runStep_(s) {
 
     case 'appts:since': return since_(o, 'appts', from => pullAppts_(o, { dateUpdated: { operator: '>=', value: from } }));
     case 'appts:range': return pullAppts_(o, { date: { operator: 'BETWEEN', value: [s.from, s.to] } });
+    case 'routes:today': return pullRoutes_(o, Utilities.formatDate(new Date(), SYNC.TZ, 'yyyy-MM-dd'));
     case 'appts:today': {
       const d = Utilities.formatDate(new Date(), SYNC.TZ, 'yyyy-MM-dd');
       return pullAppts_(o, { date: { operator: 'BETWEEN', value: [d, d] } });
@@ -469,11 +472,37 @@ function pullAppts_(o, params) {
     route_id: id_(a.routeID), spot_id: id_(a.spotID),
     cancellation_reason_id: id_(a.cancellationReasonID), date_cancelled: ts_(a.dateCancelled),
     is_initial: bool_(a.isInitial), production_value: num_(a[SYNC.PRODUCTION_FIELD]),
+    assigned_tech: id_(a.assignedTech),
     has_notes: ['notes', 'officeNotes', 'appointmentNotes'].some(k => String(a[k] === undefined || a[k] === null ? '' : a[k]).trim() !== ''),
     original_appointment_id: id_(a.originalAppointmentID), reservice_reason_id: id_(a.reserviceReasonID),
     date_added: ts_(a.dateAdded), date_completed: ts_(a.dateCompleted), date_updated: ts_(a.dateUpdated),
     synced_at: now
   })).filter(r => r.appointment_id), ['appointment_id']);
+}
+
+/**
+ * One day's routes. The tech on a job comes from its route: an appointment's employeeID is
+ * whoever booked it (usually office staff), not the tech.
+ */
+function pullRoutes_(o, day) {
+  const now = new Date().toISOString();
+  const routes = frFetch_(o, 'route', { date: { operator: 'BETWEEN', value: [day, day] } });
+  supaUpsert_('fr_routes', routes.map(r => ({
+    route_id: id_(r.routeID), office: officeOf_(r, o), date: day_(r.date) || day, title: str_(r.title),
+    assigned_tech: id_(first_(r, ['assignedTech', 'assignedTechID', 'techID', 'employeeID'])),
+    template_id: id_(r.templateID), synced_at: now
+  })).filter(r => r.route_id), ['route_id']);
+}
+
+/** Fixes today's routes right away (after a sync change), instead of waiting for tomorrow morning. */
+function refreshTodayRoutes() {
+  const steps = [];
+  SYNC.OFFICES.forEach(o => { steps.push({ o: o.key, job: 'routes:today' }); steps.push({ o: o.key, job: 'appts:today' }); });
+  steps.push({ o: '-', job: 'routes:snapshot', replace: true });
+  saveQueue_(steps.concat(loadQueue_()));
+  Logger.log('Refreshing today\'s routes and jobs, then saving today\'s route again…');
+  tick();
+  Logger.log(loadQueue_().some(x => x.job === 'routes:snapshot') ? 'Still running; it finishes on the next 5-minute run.' : 'Done.');
 }
 
 function pullDoors_(o, params) {
@@ -548,7 +577,7 @@ function cancelReason_(s, names) {
 
 // Records that belong to one office. A key can also see other offices' records,
 // so searches for these are limited to the key's own office.
-const OFFICE_SCOPED = ['customer', 'subscription', 'appointment', 'paymentProfile'];
+const OFFICE_SCOPED = ['customer', 'subscription', 'appointment', 'paymentProfile', 'route'];
 const frLastCall_ = {};
 
 function office_(key) {
@@ -1105,7 +1134,8 @@ function inspectFields() {
     ['door', { dateUpdated: { operator: '>=', value: weekAgo + ' 00:00:00' } }],
     ['review', { date: { operator: 'BETWEEN', value: [weekAgo + ' 00:00:00', today + ' 23:59:59'] } }],
     ['employee', { active: 1 }],
-    ['serviceType', {}]
+    ['serviceType', {}],
+    ['route', { date: { operator: 'BETWEEN', value: [today, today] } }]
   ].forEach(([entity, params]) => {
     try {
       const recs = frFetch_(o, entity, params).slice(0, 50);
