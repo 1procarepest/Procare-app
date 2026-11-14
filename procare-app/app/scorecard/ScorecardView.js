@@ -85,6 +85,7 @@ export default function ScorecardView({ techs, R, per, period, meId }) {
     rank: (t) => (t.rank ? -t.rank : -9999),
     name: (t) => t.name,
     incentive: (t) => t.c.pay.total,
+    sold: (t) => t.c.sold,
     sales: (t) => t.c.salesDone,
     serv: (t) => t.c.serv,
     prod: (t) => t.c.prod,
@@ -135,7 +136,8 @@ export default function ScorecardView({ techs, R, per, period, meId }) {
                   <tr>
                     <Th k="name" num={false}>Technician</Th>
                     {bonusesOn && <Th k="incentive">Incentive</Th>}
-                    <Th k="sales">Sales</Th>
+                    <Th k="sold">Sold</Th>
+                    <Th k="sales">Serviced</Th>
                     <Th k="serv">Completed</Th>
                     <Th k="prod">Production</Th>
                     <Th k="comp">Completion</Th>
@@ -168,7 +170,8 @@ export default function ScorecardView({ techs, R, per, period, meId }) {
                             : <span className="money-good">{money0(t.c.pay.total)} <Arrow cur={t.c.pay.total} prior={t.p?.pay.total} /></span>}
                         </td>
                       )}
-                      <td className="num">{t.c.salesDone} <Arrow cur={t.c.salesDone} prior={t.p?.salesDone} /><span className="cell-sub">{t.c.sold} sold</span></td>
+                      <td className="num">{t.c.sold} <Arrow cur={t.c.sold} prior={t.p?.sold} />{t.c.soldValue > 0 && <span className="cell-sub">{money0(t.c.soldValue)}</span>}</td>
+                      <td className="num"><strong>{t.c.salesDone}</strong> <Arrow cur={t.c.salesDone} prior={t.p?.salesDone} />{t.c.salesDoneValue > 0 && <span className="cell-sub">{money0(t.c.salesDoneValue)}</span>}</td>
                       <td className="num">{t.c.serv} <Arrow cur={t.c.serv} prior={t.p?.serv} /></td>
                       <td className="num">{money0(t.c.prod)} <Arrow cur={t.c.prod} prior={t.p?.prod} /></td>
                       <td className="num">{fmtPct(t.c.comp)} <Arrow cur={t.c.comp} prior={t.p?.comp} /></td>
@@ -223,7 +226,8 @@ function Breakdown({ t, R, period, per, bonusesOn }) {
         <Line label="Completed jobs" value={c.serv}><Arrow cur={c.serv} prior={p.serv} /></Line>
         <Line label="Completion" value={c.routed ? `${fmtPct(c.comp)} (${c.routeDone} of ${c.routed})` : 'No routes saved yet'}><Arrow cur={c.comp} prior={p.comp} /></Line>
         <Line label="Production" value={money0(c.prod)}><Arrow cur={c.prod} prior={p.prod} /></Line>
-        <Line label="Sales sold / serviced" value={`${c.sold} / ${c.salesDone} (${money0(c.salesDoneValue)})`} />
+        <Line label="Sales sold" value={`${c.sold} (${money0(c.soldValue)})`}><Arrow cur={c.sold} prior={p.sold} /></Line>
+        <Line label="Sales serviced (paid)" value={`${c.salesDone} (${money0(c.salesDoneValue)})`}><Arrow cur={c.salesDone} prior={p.salesDone} /></Line>
         <Line label="Reservices" value={`${c.resvN} (${fmtPct(c.resv)})`}><Arrow cur={c.resv} prior={p.resv} lowerIsBetter /></Line>
         {c.partials > 0 && <Line label="Weather partials (not counted)" value={c.partials} />}
         <Line label="Cancels: tech / billing" value={`${c.cxTech} / ${c.cxBilling}`} />
@@ -345,7 +349,7 @@ function Offices({ rows, R, bonusesOn, onPick }) {
             <tr>
               <th>Office</th>
               {bonusesOn && <th className="num">Incentives</th>}
-              <th className="num">Qualified techs</th><th className="num">Sales</th><th className="num">Completed</th>
+              <th className="num">Qualified techs</th><th className="num">Sold</th><th className="num">Serviced</th><th className="num">Completed</th>
               <th className="num">Completion</th><th className="num">Reservice</th><th className="num">Cancels tech</th>
               <th className="num">Cancels billing</th><th className="num">Reviews</th><th className="num">Safety</th>
             </tr>
@@ -358,7 +362,8 @@ function Offices({ rows, R, bonusesOn, onPick }) {
                   <td><button type="button" className="who-name link" onClick={() => onPick(g.key)}>{g.name}</button></td>
                   {bonusesOn && <td className="num"><span className="money-good">{money0(c.incentive)}</span> <Arrow cur={c.incentive} prior={p.incentive} /></td>}
                   <td className="num">{c.qualified} / {c.total}{bonusesOn && c.held > 0 && <span className="pill pill-bad"> {c.held} on hold</span>}</td>
-                  <td className="num">{c.salesDone} <Arrow cur={c.salesDone} prior={p.salesDone} /><span className="cell-sub">{c.sold} sold</span></td>
+                  <td className="num">{c.sold} <Arrow cur={c.sold} prior={p.sold} /></td>
+                  <td className="num"><strong>{c.salesDone}</strong> <Arrow cur={c.salesDone} prior={p.salesDone} /></td>
                   <td className="num">{c.serv.toLocaleString()} <Arrow cur={c.serv} prior={p.serv} /></td>
                   <td className="num">{fmtPct(c.comp)} <Arrow cur={c.comp} prior={p.comp} /></td>
                   <td className="num">{fmtPct(c.resv)} <Arrow cur={c.resv} prior={p.resv} lowerIsBetter /></td>
@@ -383,8 +388,8 @@ function Glossary({ R, bonusesOn }) {
     ['Completed', 'Appointments marked Completed in FieldRoutes and credited to you as the tech who serviced them.'],
     ['Completion', 'Jobs on your route when the morning route is saved (just after 7 AM) that you completed that same day. Jobs that get rescheduled, cancelled or finished by someone else count as missed. Today’s jobs count once they’re done, so your number doesn’t dip during the day. Routes have been saved since November 14, 2026.'],
     ['Production', 'Total FieldRoutes production value of your completed appointments.'],
-    ['Sales sold', 'Subscriptions entered in FieldRoutes in your name during the period.'],
-    ['Sales serviced', 'Sales in your name whose first service was completed during the period. These are the ones that pay.'],
+    ['Sold', 'New customers entered in FieldRoutes with you as the salesperson, counted on the day the account was created. Used for competitions.'],
+    ['Serviced', 'Your sales whose first (initial) service was completed during the period, counted on the day it was completed, whoever did the service. These are the ones that pay.'],
     ['Reservice rate', 'Reservices and incomplete services traced back to you, divided by your completed jobs. A reservice counts against the last tech who completed a regular service for that customer before it. Partial reservices (weather and rain-outs) never count.'],
     ['Cancels (tech)', `Customers who cancelled for a service reason, charged to the last tech who serviced them. Reasons: ${reasons('cancel_tech_reasons')}.`],
     ['Cancels (billing)', `Customers who cancelled over billing, charged the same way but never counted against you. Reasons: ${reasons('cancel_billing_reasons')}. Moves and every other reason never count.`],
