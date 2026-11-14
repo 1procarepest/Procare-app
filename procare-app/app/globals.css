@@ -520,3 +520,8 @@ button.tab { background: none; border: 0; border-bottom: 3px solid transparent; 
 .login-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 4px 0 0; }
 .login-label { font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
 .login-email { font-size: 18px; font-weight: 600; overflow-wrap: anywhere; user-select: all; }
+
+/* Profile schedule buttons: soft green, darker green on hover or while open */
+.actions > .btn-quiet { background: var(--sage); border-color: var(--forest); color: var(--ink); transition: background 0.15s, color 0.15s; }
+.actions > .btn-quiet:hover, .actions > .btn-quiet[aria-expanded="true"] { background: var(--forest); border-color: var(--forest); color: var(--white); }
+.actions > .btn-quiet:focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }
