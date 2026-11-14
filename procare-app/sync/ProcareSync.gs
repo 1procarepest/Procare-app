@@ -42,10 +42,11 @@ const SYNC = {
     lists: 120,                           // employees, service types, cancellation reasons
     samsaraEvents: 30,                    // dash-cam safety events, last 3 days
     samsaraScores: 60,                    // safety scores for the scorecard periods
-    routes: 60                            // today's routes (which tech is on which route)
+    routes: 60                            // routes 7 days back to 7 days ahead (which tech is on which route)
   },
   PHOTO_BASE: 'https://d282x1mqo546ey.cloudfront.net/',   // where FieldRoutes keeps employee photos
-  ROUTE_SNAPSHOT_HOUR: 7,                 // save each tech's route once a day, after this hour
+  ROUTE_SNAPSHOT_HOUR: 7,
+  ROUTE_DAYS: 7,                          // routes and jobs kept fresh this many days back and ahead                 // save each tech's route once a day, after this hour
   FULL_HOURS: [7, 13],                    // full refresh of active customers, services, cards on file
   OVERLAP_MIN: 10,                        // re-check this many minutes before the last run, to miss nothing
   MAX_RUN_MS: 4.5 * 60 * 1000,            // stay under Apps Script's 6-minute limit
@@ -133,7 +134,7 @@ function dueSteps_() {
   const day = Utilities.formatDate(new Date(), SYNC.TZ, 'yyyy-MM-dd');
   if (hour >= SYNC.ROUTE_SNAPSHOT_HOUR && PROPS.getProperty('LAST_ROUTE_SNAPSHOT') !== day) {
     PROPS.setProperty('LAST_ROUTE_SNAPSHOT', day);
-    every(['routes:today', 'appts:today']);       // today's routes and a fresh copy of today's jobs
+    every(['routes:today', 'appts:today']);       // routes and jobs, 7 days back to 7 ahead
     steps.push({ o: '-', job: 'routes:snapshot' });
   }
   return steps;
@@ -249,10 +250,14 @@ function runStep_(s) {
 
     case 'appts:since': return since_(o, 'appts', from => pullAppts_(o, { dateUpdated: { operator: '>=', value: from } }));
     case 'appts:range': return pullAppts_(o, { date: { operator: 'BETWEEN', value: [s.from, s.to] } });
-    case 'routes:today': return pullRoutes_(o, Utilities.formatDate(new Date(), SYNC.TZ, 'yyyy-MM-dd'));
+    // Techs look at their route up to 7 days back and ahead, so routes and jobs cover that stretch.
+    case 'routes:today': {
+      const d = ymd_(new Date());
+      return pullRoutes_(o, addDays_(d, -SYNC.ROUTE_DAYS), addDays_(d, SYNC.ROUTE_DAYS));
+    }
     case 'appts:today': {
-      const d = Utilities.formatDate(new Date(), SYNC.TZ, 'yyyy-MM-dd');
-      return pullAppts_(o, { date: { operator: 'BETWEEN', value: [d, d] } });
+      const d = ymd_(new Date());
+      return pullAppts_(o, { date: { operator: 'BETWEEN', value: [addDays_(d, -SYNC.ROUTE_DAYS), addDays_(d, SYNC.ROUTE_DAYS)] } });
     }
 
     case 'doors:since': return since_(o, 'doors', from => pullDoors_(o, { dateUpdated: { operator: '>=', value: from } }));
@@ -485,11 +490,11 @@ function pullAppts_(o, params) {
  * One day's routes. The tech on a job comes from its route: an appointment's employeeID is
  * whoever booked it (usually office staff), not the tech.
  */
-function pullRoutes_(o, day) {
+function pullRoutes_(o, from, to) {
   const now = new Date().toISOString();
-  const routes = frFetch_(o, 'route', { date: { operator: 'BETWEEN', value: [day, day] } });
+  const routes = frFetch_(o, 'route', { date: { operator: 'BETWEEN', value: [from, to || from] } });
   supaUpsert_('fr_routes', routes.map(r => ({
-    route_id: id_(r.routeID), office: officeOf_(r, o), date: day_(r.date) || day, title: str_(r.title),
+    route_id: id_(r.routeID), office: officeOf_(r, o), date: day_(r.date), title: str_(r.title),
     assigned_tech: id_(first_(r, ['assignedTech', 'assignedTechID', 'techID', 'employeeID'])),
     template_id: id_(r.templateID), synced_at: now
   })).filter(r => r.route_id), ['route_id']);
@@ -501,7 +506,7 @@ function refreshTodayRoutes() {
   SYNC.OFFICES.forEach(o => { steps.push({ o: o.key, job: 'routes:today' }); steps.push({ o: o.key, job: 'appts:today' }); });
   steps.push({ o: '-', job: 'routes:snapshot', replace: true });
   saveQueue_(steps.concat(loadQueue_()));
-  Logger.log('Refreshing today\'s routes and jobs, then saving today\'s route again…');
+  Logger.log('Refreshing routes and jobs (7 days back to 7 ahead), then saving today\'s route again…');
   tick();
   Logger.log(loadQueue_().some(x => x.job === 'routes:snapshot') ? 'Still running; it finishes on the next 5-minute run.' : 'Done.');
 }

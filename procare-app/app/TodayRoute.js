@@ -1,15 +1,38 @@
+import Link from 'next/link';
 import { windowLabel } from '@/lib/timeWindow';
+
+function title(offset, day) {
+  if (offset === 0) return 'Today’s route';
+  if (offset === 1) return 'Tomorrow’s route';
+  if (offset === -1) return 'Yesterday’s route';
+  const d = new Date(`${day}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  return `Route for ${d}`;
+}
 
 const UPSELL_NAME = { GPS: 'General pest', TBS: 'Termite bait system', MOS: 'Mosquito' };
 
-/** A tech's jobs for today: customer last name, auto-pay, notes and what to offer. */
-export default function TodayRoute({ jobs }) {
+/** A tech's jobs for one day (7 days back to 7 ahead): customer last name, auto-pay, notes and what to offer. */
+export default function TodayRoute({ jobs, offset = 0, day, links }) {
   const noAutopay = jobs.filter((j) => !j.autopay).length;
+  const when = offset === 0 ? 'today' : offset === 1 ? 'tomorrow' : offset === -1 ? 'yesterday' : 'that day';
   return (
     <section className="section" aria-labelledby="route-heading">
-      <h2 id="route-heading">Today’s route</h2>
+      <div className="week-head">
+        <h2 id="route-heading">{title(offset, day)}</h2>
+        <nav className="week-nav" aria-label="Choose a day">
+          {links?.prev
+            ? <Link className="week-arrow" href={links.prev} aria-label="Previous day" scroll={false}>‹</Link>
+            : <span className="week-arrow" aria-hidden="true">‹</span>}
+          {offset === 0
+            ? <span className="week-label">Today</span>
+            : <Link className="week-label" href={links?.today || '/'} scroll={false}>Back to today</Link>}
+          {links?.next
+            ? <Link className="week-arrow" href={links.next} aria-label="Next day" scroll={false}>›</Link>
+            : <span className="week-arrow" aria-hidden="true">›</span>}
+        </nav>
+      </div>
       {!jobs.length ? (
-        <p className="note">No jobs on your route today.</p>
+        <p className="note">No jobs on your route {when}.</p>
       ) : (
         <>
           <p className="note">

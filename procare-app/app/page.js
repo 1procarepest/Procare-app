@@ -14,6 +14,8 @@ export const dynamic = 'force-dynamic';
 // How far the schedule arrows can go, in weeks from this week
 const WEEKS_BACK = 4;
 const WEEKS_AHEAD = 8;
+// How far the route arrows can go, in days from today
+const ROUTE_DAYS = 7;
 
 export default async function Home({ searchParams }) {
   const supabase = createClient();
@@ -34,7 +36,14 @@ export default async function Home({ searchParams }) {
     );
   }
 
-  const { data: route } = me.department === 'technician' ? await supabase.rpc('my_route') : { data: null };
+  // Route day: ?day=0 is today, 1 tomorrow, -1 yesterday (7 days either way)
+  const askedDay = parseInt(searchParams?.day, 10);
+  const dayOffset = Number.isNaN(askedDay) ? 0 : Math.min(ROUTE_DAYS, Math.max(-ROUTE_DAYS, askedDay));
+  const routeDate = new Date(Date.now() + dayOffset * 86400000);
+  const routeDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(routeDate);
+  const { data: route } = me.department === 'technician'
+    ? await supabase.rpc('my_route', { p_day: routeDay })
+    : { data: null };
 
   const { data: schedule } = await supabase
     .from('schedules')
@@ -52,7 +61,14 @@ export default async function Home({ searchParams }) {
   // Which week to show: ?week=0 is this week, 1 is next week, -1 is last week
   const asked = parseInt(searchParams?.week, 10);
   const week = Number.isNaN(asked) ? 0 : Math.min(WEEKS_AHEAD, Math.max(-WEEKS_BACK, asked));
-  const weekHref = (n) => (n === 0 ? '/' : `/?week=${n}`);
+  const weekHref = (n) => {
+    const q = [n ? `week=${n}` : '', dayOffset ? `day=${dayOffset}` : ''].filter(Boolean).join('&');
+    return q ? `/?${q}` : '/';
+  };
+  const dayHref = (n) => {
+    const q = [week ? `week=${week}` : '', n ? `day=${n}` : ''].filter(Boolean).join('&');
+    return q ? `/?${q}` : '/';
+  };
 
   // That week's dates (Monday first, Atlanta time) and any time off in them
   const todayYmd = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
@@ -151,7 +167,11 @@ export default async function Home({ searchParams }) {
           </ul>
         </section>
 
-        {route && <TodayRoute jobs={route} />}
+        {route && <TodayRoute jobs={route} offset={dayOffset} day={routeDay} links={{
+          prev: dayOffset > -ROUTE_DAYS ? dayHref(dayOffset - 1) : null,
+          next: dayOffset < ROUTE_DAYS ? dayHref(dayOffset + 1) : null,
+          today: dayHref(0),
+        }} />}
 
         <ProfileActions employeeId={me.id} email={user.email} isSales={me.department === 'sales'} />
 
