@@ -62,6 +62,19 @@ tables have no read rules yet, so signed-in people can't read them; each app add
    score is their driver score (`tech_safety_scores`), which follows them across trucks. Techs with no
    driver yet keep their truck's score. `supabase/checks/samsara-drivers.sql` shows who is on which.
 
+## Team list (new hires and people who leave)
+
+After running `supabase/changes/2026-11-13-12-team-from-fieldroutes.sql`:
+
+1. Run `previewTeamSync`. It lists who would be added, deactivated or reactivated, and changes nothing.
+2. If the list looks right, run `turnOnTeamSync`. It makes those changes, then repeats after every
+   employee list pull (every 2 hours). `turnOffTeamSync` stops it.
+
+Rules: new hires (active in FieldRoutes, not in the app) are added as team members with no login.
+People inactive in FieldRoutes in every office are deactivated; the President and C-Suite never are.
+Someone deactivated in the app stays deactivated even if FieldRoutes still has them active.
+If a run would deactivate more than 15% of the team at once, it stops and changes nothing.
+
 ## Running alongside the old scripts
 
 The Operations Suite, Tech Scorecard and Rep Cards scripts keep running until each app moves

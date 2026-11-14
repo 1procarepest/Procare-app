@@ -172,8 +172,8 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
           <h2>{person.active ? 'Deactivate team member' : 'Deactivated'}</h2>
           <p className="note">
             {person.active
-              ? `Deactivating ${person.first_name} takes them out of lists, schedules and scorecards and stops their sign-in. Their history stays, and you can reactivate them any time.`
-              : `${person.first_name} is deactivated: they can’t sign in and don’t show up in lists, schedules or scorecards. Their history is kept.`}
+              ? `Deactivating ${person.first_name} takes them out of lists, schedules and scorecards and stops their sign-in. Their history stays, you can reactivate them any time, and FieldRoutes won’t turn them back on.`
+              : `${person.first_name} is deactivated${person.deactivated_by === 'sync' ? ' because they’re inactive in FieldRoutes. They come back on their own if FieldRoutes turns them back on' : ''}: they can’t sign in and don’t show up in lists, schedules or scorecards. Their history is kept.`}
           </p>
           {statusMsg.text && <p className={statusMsg.bad ? 'error' : 'ok'} role="status">{statusMsg.text}</p>}
           <div className="panel-buttons">

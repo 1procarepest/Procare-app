@@ -106,7 +106,10 @@ function dueSteps_() {
   };
   const every = (jobs) => SYNC.OFFICES.forEach(o => jobs.forEach(job => steps.push({ o: o.key, job: job })));
 
-  if (due('lists', SYNC.EVERY_MIN.lists)) every(['lists']);
+  if (due('lists', SYNC.EVERY_MIN.lists)) {
+    every(['lists']);
+    if (PROPS.getProperty('TEAM_SYNC') === 'on') steps.push({ o: '-', job: 'team' });
+  }
   if (due('changes', SYNC.EVERY_MIN.changes)) every(['subs:since', 'appts:since', 'doors:since']);
   if (due('customers', SYNC.EVERY_MIN.customers)) every(['cust:since']);
   if (due('reviews', SYNC.EVERY_MIN.reviews)) every(['reviews:recent']);
@@ -221,6 +224,7 @@ function runStep_(s) {
     return;
   }
   if (s.job.indexOf('ss:') === 0) return runSamsaraStep_(s);
+  if (s.job === 'team') { syncTeam_(true); return; }
   const o = office_(s.o);
   switch (s.job) {
     case 'lists': return pullLists_(o);
@@ -264,6 +268,121 @@ function since_(o, entity, pull) {
   const startedAt = nowPacific_();
   pull(minusMinutesPacific_(from, SYNC.OVERLAP_MIN));
   PROPS.setProperty(key, startedAt);
+}
+
+/* ---------- Team list ---------- */
+
+/**
+ * Keeps the app's team list in step with FieldRoutes (runs after the employee lists when TEAM_SYNC is on):
+ *  - New hires: active in FieldRoutes, not in the app (by FieldRoutes ID or email) → added as a team member
+ *    with no login. Department comes from their FieldRoutes type.
+ *  - Inactive in FieldRoutes in every office → deactivated (deactivated_by = 'sync').
+ *    The President and C-Suite are never deactivated automatically.
+ *  - Deactivated by the sync and active in FieldRoutes again → reactivated.
+ *  - Deactivated by a person in the app → left alone, always.
+ * The same person's records in other offices (linked IDs or the same email) count as one person.
+ * Returns what it did (or would do, with apply = false) as lines of text.
+ */
+function syncTeam_(apply) {
+  const fr = supaGetAll_('fr_employees?select=office,employee_id,first_name,last_name,type,active,email,linked_employee_ids');
+  const app = supaGetAll_('employees?select=id,email,first_name,last_name,active,level,fr_ids,deactivated_by');
+  if (!fr.length) throw new Error('Team list: no FieldRoutes employees stored yet');
+
+  // Group FieldRoutes records into people: linked IDs and the same email join records.
+  const parent = {};
+  const find = x => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+  const join = (a, b) => { if (parent[a] === undefined) parent[a] = a; if (parent[b] === undefined) parent[b] = b; parent[find(a)] = find(b); };
+  const mail = e => String(e || '').trim().toLowerCase();
+  const byEmail = {};
+  fr.forEach(r => {
+    const id = 'id' + r.employee_id;
+    join(id, id);
+    (r.linked_employee_ids || []).forEach(l => join(id, 'id' + l));
+    const m = mail(r.email);
+    if (m) { if (byEmail[m]) join(id, byEmail[m]); else byEmail[m] = id; }
+  });
+  const groups = {};
+  fr.forEach(r => { const g = find('id' + r.employee_id); (groups[g] = groups[g] || []).push(r); });
+
+  const appById = {}, appByEmail = {};
+  app.forEach(a => {
+    Object.keys(a.fr_ids || {}).forEach(k => { appById[String(a.fr_ids[k])] = a; });
+    if (a.email) appByEmail[mail(a.email)] = a;
+  });
+
+  const clean = x => String(x || '').replace(/\s+/g, ' ').trim();
+  const officeRank = k => SYNC.OFFICES.findIndex(o => o.key === k);
+  const adds = [], offs = [], ons = [], noEmail = [];
+  Object.keys(groups).forEach(g => {
+    const recs = groups[g].slice().sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0) || officeRank(a.office) - officeRank(b.office));
+    const isActive = recs.some(r => r.active);
+    const person = recs.map(r => appById[String(r.employee_id)]).find(Boolean) || recs.map(r => appByEmail[mail(r.email)]).find(Boolean);
+    const main = recs[0];
+    if (!person) {
+      if (!isActive) return;
+      const email = recs.map(r => mail(r.email)).find(Boolean);
+      const name = clean(main.first_name) + ' ' + clean(main.last_name);
+      if (!email) { noEmail.push(name.trim()); return; }
+      const ids = {};
+      recs.forEach(r => { if (ids[r.office] === undefined) ids[r.office] = Number(r.employee_id); });
+      adds.push({ email: email, first_name: clean(main.first_name) || '(no first name)', last_name: clean(main.last_name),
+        office: main.office, fr_employee_type: Number(main.type) || 0, fr_ids: ids, active: true });
+      return;
+    }
+    if (person.active && !isActive && ['president', 'c_suite'].indexOf(person.level) < 0) offs.push(person);
+    if (!person.active && person.deactivated_by === 'sync' && isActive) ons.push(person);
+  });
+
+  // Safety: a broken FieldRoutes pull shouldn't switch off half the team.
+  const activeApp = app.filter(a => a.active).length;
+  if (offs.length > Math.max(5, activeApp * 0.15)) {
+    throw new Error('Team list: ' + offs.length + ' people would be deactivated at once, so nothing was changed. ' +
+      'Check FieldRoutes, then run previewTeamSync.');
+  }
+
+  const who = a => clean(a.first_name + ' ' + a.last_name);
+  const lines = [];
+  adds.forEach(a => lines.push('ADD ' + a.first_name + ' ' + a.last_name + ' (' + a.email + ', ' + a.office + ', ' +
+    ({ 1: 'technician', 2: 'sales' }[a.fr_employee_type] || 'administrative') + ')'));
+  offs.forEach(a => lines.push('DEACTIVATE ' + who(a) + ' (inactive in FieldRoutes)'));
+  ons.forEach(a => lines.push('REACTIVATE ' + who(a) + ' (active in FieldRoutes again)'));
+  noEmail.forEach(n => lines.push('SKIP ' + n + ': active in FieldRoutes but has no email there'));
+
+  if (apply) {
+    if (adds.length) supaFetch_('post', 'employees', adds, { Prefer: 'return=minimal' });
+    offs.forEach(a => supaPatch_('employees?id=eq.' + a.id, { active: false, deactivated_by: 'sync' }));
+    ons.forEach(a => supaPatch_('employees?id=eq.' + a.id, { active: true }));
+  }
+  return lines;
+}
+
+/** Every row of a Supabase query, 1,000 at a time. */
+function supaGetAll_(path) {
+  const out = [];
+  for (let offset = 0; ; offset += 1000) {
+    const rows = supaGet_(path + '&order=' + (path.indexOf('fr_employees') === 0 ? 'employee_id' : 'id') + '&limit=1000&offset=' + offset);
+    out.push.apply(out, rows);
+    if (rows.length < 1000) return out;
+  }
+}
+
+/** Shows what keeping the team list in step with FieldRoutes would change. Changes nothing. */
+function previewTeamSync() {
+  const lines = syncTeam_(false);
+  Logger.log(lines.length ? lines.join('\n') : 'Nothing to change: the app matches FieldRoutes.');
+  Logger.log('Automatic team updates are ' + (PROPS.getProperty('TEAM_SYNC') === 'on' ? 'ON' : 'OFF (run turnOnTeamSync to start)') + '.');
+}
+
+/** Applies the changes previewTeamSync shows, then keeps doing it after every employee list pull (every 2 hours). */
+function turnOnTeamSync() {
+  const lines = syncTeam_(true);
+  PROPS.setProperty('TEAM_SYNC', 'on');
+  Logger.log((lines.length ? 'Done:\n' + lines.join('\n') : 'Nothing to change right now.') + '\nAutomatic team updates are ON.');
+}
+
+function turnOffTeamSync() {
+  PROPS.deleteProperty('TEAM_SYNC');
+  Logger.log('Automatic team updates are OFF. Nothing else changed.');
 }
 
 /* ---------- Pulls ---------- */

@@ -16,7 +16,7 @@ alter table public.employees enable row level security;
 revoke select on public.employees from anon, authenticated;
 grant select (
   id, auth_user_id, first_name, last_name, photo_url, office, department, level,
-  hr_approver, active, fr_employee_type, fr_ids, samsara_driver_id, created_at, updated_at
+  hr_approver, active, deactivated_by, fr_employee_type, fr_ids, samsara_driver_id, created_at, updated_at
 ) on public.employees to authenticated;
 
 -- Every signed-in person can see active employees, plus themselves and anyone they manage.

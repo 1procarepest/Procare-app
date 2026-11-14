@@ -20,7 +20,9 @@ create table public.offices (
 );
 
 -- ---------- Employees ----------
--- Imported from FieldRoutes every 4 hours by a separate Apps Script.
+-- Kept in step with FieldRoutes by Procare Sync (sync/ProcareSync.gs, syncTeam_) once TEAM_SYNC is on:
+-- new hires are added, people inactive in FieldRoutes are deactivated (deactivated_by 'sync').
+-- deactivated_by 'person' = switched off in the app; the sync never turns those back on.
 -- department is set from fr_employee_type by guard_employee(): 2 sales, 1 technician, else administrative.
 
 create table public.employees (
@@ -36,6 +38,7 @@ create table public.employees (
   level             public.level not null default 'team_member',
   hr_approver       boolean not null default false,
   active            boolean not null default true,
+  deactivated_by    text check (deactivated_by in ('sync', 'person')),
   fr_employee_type  smallint not null default 0,
   fr_ids            jsonb not null default '{}'::jsonb,
   samsara_driver_id text,
