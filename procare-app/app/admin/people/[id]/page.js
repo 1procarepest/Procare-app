@@ -14,7 +14,7 @@ export default async function PersonPage({ params }) {
   const [{ data: found }, contacts] = await Promise.all([
     supabase
       .from('employees')
-      .select('id, first_name, last_name, office, department, level, active, deactivated_by, hr_approver, auth_user_id')
+      .select('id, first_name, last_name, office, department, level, active, deactivated_by, hr_approver, auth_user_id, photo_url')
       .eq('id', params.id)
       .maybeSingle(),
     contactsById(supabase, params.id),

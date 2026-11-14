@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { OFFICES, OFFICE_NAME } from '@/lib/labels';
 import { calcPay, money, money0, num, pct } from '@/lib/scorecard';
+import { photoSrc } from '@/lib/photo';
 
 const fmtPct = (v) => (v === null || v === undefined ? '—' : `${v.toFixed(1)}%`);
 const initials = (name) => name.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
@@ -35,6 +36,15 @@ function measure(m, R, scale) {
     miles: num(m.drive_miles),
     distracted: num(m.distracted),
     driveSource: m.drive_source,
+    hours: num(m.drive_hours),
+    harshBrake: num(m.harsh_brake),
+    harshAccel: num(m.harsh_accel),
+    harshTurn: num(m.harsh_turn),
+    speedPct: m.speed_pct === null || m.speed_pct === undefined ? null : num(m.speed_pct),
+    following: num(m.following),
+    rolling: num(m.rolling_stops),
+    seatbelt: num(m.seatbelt),
+    crash: num(m.crash),
   };
 }
 
@@ -47,8 +57,9 @@ function Arrow({ cur, prior, lowerIsBetter }) {
 }
 
 function Avatar({ t, size = 40 }) {
-  return t.photo
-    ? <img className="face" src={t.photo} alt="" width={size} height={size} />
+  const src = photoSrc(t.photo);
+  return src
+    ? <img className="face" src={src} alt="" width={size} height={size} loading="lazy" />
     : <span className="face face-initials" style={{ width: size, height: size }} aria-hidden="true">{initials(t.name)}</span>;
 }
 
@@ -218,8 +229,6 @@ function Breakdown({ t, R, period, per, bonusesOn }) {
         <Line label="Cancels: tech / billing" value={`${c.cxTech} / ${c.cxBilling}`} />
         <Line label="Reviews" value={`${c.stars} top of ${c.reviews}${c.rating !== null ? `, ${c.rating}★` : ''}`} />
         <Line label="Safety" value={c.safety === null ? 'No driving' : `${c.safety} · ${c.miles.toLocaleString()} mi`}><Arrow cur={c.safety} prior={p.safety} /></Line>
-        {c.safety !== null && <Line label="Distracted driving" value={c.distracted} />}
-        {c.safety !== null && <p className="note">Safety comes from {c.driveSource === 'driver' ? 'their Samsara driver profile' : 'their truck (not set up as a Samsara driver yet)'}.</p>}
       </div>
 
       {bonusesOn ? (
@@ -238,7 +247,66 @@ function Breakdown({ t, R, period, per, bonusesOn }) {
       ) : (
         <p className="note bd-pay">Bonus amounts haven’t been set yet. These numbers still count, and the incentive will show here once they are.</p>
       )}
+
+      <Driving c={c} p={t.p} />
     </div>
+  );
+}
+
+/** Per 1,000 miles, so short and long stretches compare fairly. */
+const per1k = (n, miles) => (miles ? (n / miles) * 1000 : null);
+const fmt1 = (v) => (v === null ? '—' : v.toFixed(1));
+
+function Tile({ label, value, sub, cur, prior, lowerIsBetter, fmt = (v) => v }) {
+  const has = cur !== null && cur !== undefined && prior !== null && prior !== undefined;
+  const diff = has ? cur - prior : 0;
+  const same = has && Math.abs(diff) < 0.05;
+  const good = lowerIsBetter ? diff < 0 : diff > 0;
+  return (
+    <div className="tile">
+      <span className="tile-label">{label}</span>
+      <span className="tile-value">{value}</span>
+      <span className="tile-sub">
+        {sub}
+        {has && (same
+          ? <span className="trend-same"> ● same</span>
+          : <span className={`arrow ${good ? 'good' : 'bad'}`}> {diff > 0 ? '▲' : '▼'} {fmt(Math.abs(diff))}</span>)}
+      </span>
+    </div>
+  );
+}
+
+function Driving({ c, p }) {
+  const q = p || {};
+  if (c.safety === null) {
+    return (
+      <details className="drive" open>
+        <summary>Driving</summary>
+        <p className="note">No driving in Samsara for this period.</p>
+      </details>
+    );
+  }
+  const pm = q.safety === null || q.safety === undefined ? null : q.miles;
+  const rate = (k) => [per1k(c[k], c.miles), pm ? per1k(q[k], pm) : null];
+  const [hb, hbp] = rate('harshBrake'), [ha, hap] = rate('harshAccel'), [ht, htp] = rate('harshTurn');
+  return (
+    <details className="drive" open>
+      <summary>Driving · safety score {c.safety}</summary>
+      <div className="tiles">
+        <Tile label="Safety score" value={c.safety} sub="0–100" cur={c.safety} prior={q.safety ?? null} />
+        <Tile label="Miles" value={c.miles.toLocaleString()} sub={`${c.hours} hrs driving`} cur={c.miles} prior={pm} fmt={(v) => Math.round(v).toLocaleString()} />
+        <Tile label="Distracted" value={c.distracted} sub="phone use" cur={c.distracted} prior={pm === null ? null : q.distracted} lowerIsBetter />
+        <Tile label="Harsh braking" value={c.harshBrake} sub={`${fmt1(hb)} / 1k mi`} cur={hb} prior={hbp} lowerIsBetter fmt={fmt1} />
+        <Tile label="Harsh accel" value={c.harshAccel} sub={`${fmt1(ha)} / 1k mi`} cur={ha} prior={hap} lowerIsBetter fmt={fmt1} />
+        <Tile label="Harsh turns" value={c.harshTurn} sub={`${fmt1(ht)} / 1k mi`} cur={ht} prior={htp} lowerIsBetter fmt={fmt1} />
+        <Tile label="Speeding" value={c.speedPct === null ? '—' : `${c.speedPct}%`} sub="of drive time" cur={c.speedPct} prior={pm === null ? null : q.speedPct} lowerIsBetter fmt={(v) => `${v.toFixed(1)} pts`} />
+        <Tile label="Following dist." value={c.following} sub="too close" cur={c.following} prior={pm === null ? null : q.following} lowerIsBetter />
+        <Tile label="Rolling stops" value={c.rolling} sub="stop signs" cur={c.rolling} prior={pm === null ? null : q.rolling} lowerIsBetter />
+        <Tile label="Seat belt" value={c.seatbelt} sub="unbuckled" cur={c.seatbelt} prior={pm === null ? null : q.seatbelt} lowerIsBetter />
+        <Tile label="Crashes" value={c.crash} sub="detected" cur={c.crash} prior={pm === null ? null : q.crash} lowerIsBetter />
+      </div>
+      <p className="note">From {c.driveSource === 'driver' ? 'their Samsara driver profile' : 'their truck (not set up as a Samsara driver yet)'}. Arrows compare with the earlier stretch.</p>
+    </details>
   );
 }
 

@@ -12,7 +12,7 @@ const range = (a, b) => (String(a).slice(0, 10) === String(b).slice(0, 10) ? sho
 export default async function ScorecardPage({ searchParams }) {
   const supabase = createClient();
   const { me } = await getMe(supabase);
-  const period = PERIODS.find((p) => p.key === searchParams?.period) || PERIODS[2];
+  const period = PERIODS.find((p) => p.key === searchParams?.period) || PERIODS.find((p) => p.key === 'thisMonth');
 
   const [{ data: rows, error }, { data: perRows }, { data: ruleRow }] = await Promise.all([
     supabase.rpc('tech_scorecard', { p_period: period.key }),
@@ -34,7 +34,7 @@ export default async function ScorecardPage({ searchParams }) {
   return (
     <>
       <div className="admin-head">
-        <h1>Technician scorecard</h1>
+        <h1 className="sc-title">Technician scorecard</h1>
         <p className="note">
           {period.label}: {range(per.cur_start, per.cur_end)}{per.in_progress ? ' so far' : ''}. Compared with {period.prior} ({range(per.prior_start, per.prior_end)}).
         </p>

@@ -488,3 +488,22 @@ button.tab { background: none; border: 0; border-bottom: 3px solid transparent; 
 .who-name, .who-sub { white-space: nowrap; }
 .board th .sort { white-space: normal; }
 .board td { vertical-align: middle; }
+
+/* Round 3: faces everywhere, heading, driving tiles, emails */
+.sc-title { text-transform: uppercase; letter-spacing: 0.04em; font-weight: 800; font-size: clamp(30px, 5vw, 44px); line-height: 1.05; }
+.with-face { display: inline-flex; align-items: center; gap: 10px; }
+.with-face.big { display: flex; gap: 14px; }
+.with-face.big h1 { margin: 0; }
+.person-with-face { grid-template-columns: 40px 1fr auto; }
+.person-main { display: grid; gap: 2px; min-width: 0; }
+.person-email { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.missing { list-style: none; margin: 12px 0 0; padding: 0; border-top: 1.5px solid var(--ink); }
+.missing li { display: grid; gap: 2px; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+.drive { border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+.drive summary { cursor: pointer; font-weight: 600; font-size: 17px; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0 10px; }
+.tile { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
+.tile-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.tile-value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tile-sub { font-size: 12px; color: var(--muted); }
+.trend-same { color: var(--muted); }

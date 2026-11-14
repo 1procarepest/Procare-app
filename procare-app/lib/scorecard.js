@@ -1,6 +1,7 @@
 /** Tech Scorecard periods and incentive math. The numbers come from tech_scorecard() in Supabase. */
 
 export const PERIODS = [
+  { key: 'today', label: 'Today', prior: 'the same day last week' },
   { key: 'thisWeek', label: 'This week', prior: 'same point last week' },
   { key: 'lastWeek', label: 'Last week', prior: 'the week before' },
   { key: 'thisMonth', label: 'This month', prior: 'same point last month' },

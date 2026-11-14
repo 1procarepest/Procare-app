@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { DAY_NAMES, WEEK_ORDER, clock, fromMinutes, roleTitle, shortDate, toMinutes } from '@/lib/labels';
 import { APPS, appsFor } from '@/lib/apps';
+import { photoSrc } from '@/lib/photo';
 import ProfileActions from './ProfileActions';
 import SignOut from './SignOut';
 
@@ -95,7 +96,7 @@ export default async function Home({ searchParams }) {
     return { text, working: pieces.length > 0 };
   }
   const initials = `${me.first_name?.[0] || ''}${me.last_name?.[0] || ''}`.toUpperCase();
-  const hasPhoto = typeof me.photo_url === 'string' && me.photo_url.startsWith('http');
+  const photo = photoSrc(me.photo_url);
   const officeName = me.offices?.name;
 
   return (
@@ -110,8 +111,8 @@ export default async function Home({ searchParams }) {
 
       <main className="home">
         <section className="hello">
-          {hasPhoto
-            ? <img className="avatar" src={me.photo_url} alt="" />
+          {photo
+            ? <img className="avatar" src={photo} alt="" />
             : <div className="avatar" aria-hidden="true">{initials}</div>}
           <div>
             <h1>Happy {todayName}, {me.first_name}</h1>

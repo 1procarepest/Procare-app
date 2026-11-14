@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { OFFICE_NAME, roleTitle, shortDate } from '@/lib/labels';
+import Face from '../../Face';
 
 function Issue({ i }) {
   const router = useRouter();
@@ -33,7 +34,7 @@ function Issue({ i }) {
   return (
     <li className="request">
       <div className="request-main">
-        <Link className="person-name" href={`/admin/people/${e.id}`}>{e.first_name} {e.last_name}</Link>
+        <Link className="person-name with-face" href={`/admin/people/${e.id}`}><Face person={e} size={32} />{e.first_name} {e.last_name}</Link>
         <span className="person-role">{roleTitle(e.department, e.level)}, {OFFICE_NAME[e.office] || 'No office'}. Reported {shortDate(i.created_at)}</span>
         {e.department === 'sales' && <span><span className="badge">Schedule update</span></span>}
         <span>“{i.message}”</span>

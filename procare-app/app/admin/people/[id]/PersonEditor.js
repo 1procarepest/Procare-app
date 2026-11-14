@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { DAY_NAMES, DEPT_LABEL, LEVEL_LABEL, OFFICES, WEEK_ORDER, levelOptions, roleTitle, timeOffWhen } from '@/lib/labels';
+import Face from '../../../Face';
 
 function trimTime(t) { return t ? String(t).slice(0, 5) : ''; }
 
@@ -107,7 +108,7 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
   return (
     <div className="editor">
       <div className="admin-head">
-        <h1>{person.first_name} {person.last_name}</h1>
+        <div className="with-face big"><Face person={person} size={64} /><h1>{person.first_name} {person.last_name}</h1></div>
         <p className="note">
           {roleTitle(person.department, person.level)}. {person.email}{person.phone ? `, ${person.phone}` : ''}
         </p>

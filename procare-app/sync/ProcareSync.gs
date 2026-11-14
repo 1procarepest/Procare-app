@@ -43,6 +43,7 @@ const SYNC = {
     samsaraEvents: 30,                    // dash-cam safety events, last 3 days
     samsaraScores: 60                     // safety scores for the scorecard periods
   },
+  PHOTO_BASE: 'https://d282x1mqo546ey.cloudfront.net/',   // where FieldRoutes keeps employee photos
   ROUTE_SNAPSHOT_HOUR: 7,                 // save each tech's route once a day, after this hour
   FULL_HOURS: [7, 13],                    // full refresh of active customers, services, cards on file
   OVERLAP_MIN: 10,                        // re-check this many minutes before the last run, to miss nothing
@@ -292,7 +293,7 @@ function since_(o, entity, pull) {
  * Returns what it did (or would do, with apply = false) as lines of text.
  */
 function syncTeam_(apply) {
-  const fr = supaGetAll_('fr_employees?select=office,employee_id,first_name,last_name,type,active,email,linked_employee_ids');
+  const fr = supaGetAll_('fr_employees?select=office,employee_id,first_name,last_name,type,active,email,linked_employee_ids,pic');
   const app = supaGetAll_('employees?select=id,email,first_name,last_name,active,level,fr_ids,deactivated_by');
   if (!fr.length) throw new Error('Team list: no FieldRoutes employees stored yet');
 
@@ -333,8 +334,10 @@ function syncTeam_(apply) {
       if (!email) { noEmail.push(name.trim()); return; }
       const ids = {};
       recs.forEach(r => { if (ids[r.office] === undefined) ids[r.office] = Number(r.employee_id); });
+      const pic = recs.map(r => r.pic).find(x => x && String(x).trim());
       adds.push({ email: email, first_name: clean(main.first_name) || '(no first name)', last_name: clean(main.last_name),
-        office: main.office, fr_employee_type: Number(main.type) || 0, fr_ids: ids, active: true });
+        office: main.office, fr_employee_type: Number(main.type) || 0, fr_ids: ids, active: true,
+        photo_url: pic ? SYNC.PHOTO_BASE + String(pic).trim() : null });
       return;
     }
     if (person.active && !isActive && ['president', 'c_suite'].indexOf(person.level) < 0) offs.push(person);
@@ -843,6 +846,7 @@ function ssWindows_() {
   };
   const full = (s1, e1, s2, e2) => [{ s: at(s1), e: at(addDays_(e1, 1)) }, { s: at(s2), e: at(addDays_(e2, 1)) }];
   const w = {
+    today: [{ s: at(today), e: nowMs, open: true }, { s: at(addDays_(today, -7)), e: at(addDays_(today, -6)) }],   // vs same day last week
     thisWeek: toDate(weekStart, addDays_(weekStart, -7)),
     lastWeek: full(addDays_(weekStart, -7), addDays_(weekStart, -1), addDays_(weekStart, -14), addDays_(weekStart, -8)),
     thisMonth: toDate(monthStart, lastMonthStart, addDays_(monthStart, -1)),

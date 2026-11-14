@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { DEPT_LABEL, OFFICES, OFFICE_NAME, roleTitle } from '@/lib/labels';
+import Face from '../Face';
 
-export default function PeopleList({ people, myOffice }) {
+export default function PeopleList({ people, myOffice, missing = [] }) {
   const [query, setQuery] = useState('');
   const [office, setOffice] = useState('all');
   const [dept, setDept] = useState('all');
@@ -50,9 +51,13 @@ export default function PeopleList({ people, myOffice }) {
       <ul className="people">
         {shown.map((p) => (
           <li key={p.id}>
-            <Link href={`/admin/people/${p.id}`} className={`person${p.active ? '' : ' inactive'}`}>
-              <span className="person-name">{p.first_name} {p.last_name}</span>
-              <span className="person-role">{roleTitle(p.department, p.level)}, {OFFICE_NAME[p.office] || 'No office'}</span>
+            <Link href={`/admin/people/${p.id}`} className={`person person-with-face${p.active ? '' : ' inactive'}`}>
+              <Face person={p} size={40} />
+              <span className="person-main">
+                <span className="person-name">{p.first_name} {p.last_name}</span>
+                <span className="person-role">{roleTitle(p.department, p.level)}, {OFFICE_NAME[p.office] || 'No office'}</span>
+                {p.email && <span className="person-email">{p.email}</span>}
+              </span>
               <span className="person-flags">
                 {!p.active && <span className="badge">Deactivated</span>}
                 {p.active && !p.auth_user_id && <span className="badge badge-warn">No login</span>}
@@ -62,6 +67,24 @@ export default function PeopleList({ people, myOffice }) {
         ))}
         {shown.length === 0 && <li className="note">Nobody matches those filters.</li>}
       </ul>
+
+      {missing.length > 0 && (
+        <section className="spaced" aria-labelledby="missing-heading">
+          <h2 id="missing-heading">In FieldRoutes without an email</h2>
+          <p className="note">
+            These people are active in FieldRoutes but have no email there, so they can’t be added to the app.
+            Add a work email to their FieldRoutes profile and they’ll be added to the app within 2 hours.
+          </p>
+          <ul className="missing">
+            {missing.map((m) => (
+              <li key={m.fr_ids}>
+                <span className="person-name">{m.name}</span>
+                <span className="person-role">{m.offices.split(', ').map((k) => OFFICE_NAME[k] || k).join(', ')} · FieldRoutes ID {m.fr_ids}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </section>
   );
 }

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { OFFICE_NAME, roleTitle, timeOffWhen } from '@/lib/labels';
+import Face from '../../Face';
 
 const STATUS = { pending: 'Waiting', approved: 'Approved', denied: 'Denied', cancelled: 'Cancelled' };
 
@@ -66,7 +67,7 @@ function Request({ r, canDecide }) {
   return (
     <li className="request">
       <div className="request-main">
-        <span className="person-name">{e.first_name} {e.last_name}</span>
+        <span className="person-name with-face"><Face person={e} size={32} />{e.first_name} {e.last_name}</span>
         <span className="person-role">{roleTitle(e.department, e.level)}, {OFFICE_NAME[e.office] || 'No office'}</span>
         <span>
           {timeOffWhen(r)}
