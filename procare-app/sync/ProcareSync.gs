@@ -688,53 +688,56 @@ function ssWindows_() {
   return out;
 }
 
-/** Safety score per tech truck per period. Finished periods are fetched once; open ones every run. */
+/**
+ * Samsara's safety score (0–100) per tech truck for each scorecard period, from Samsara's current
+ * safety-scores API: one call covers up to 100 trucks. Finished periods are fetched once;
+ * periods in progress every run. A truck that didn't drive gets no score (null), not 0.
+ */
 function ssScores_() {
-  const vehicles = supaGet_('tech_vehicles?select=vehicle_id&vehicle_id=not.is.null').map(r => r.vehicle_id);
+  const vehicles = supaGet_('tech_vehicles?select=vehicle_id&vehicle_id=not.is.null').map(r => String(r.vehicle_id));
   if (!vehicles.length) return;
   const have = {};
   supaGet_('samsara_scores?select=vehicle_id,window_key,start_at,end_at').forEach(r => {
     have[r.vehicle_id + '|' + r.window_key] = new Date(r.start_at).getTime() + '|' + new Date(r.end_at).getTime();
   });
-  const todo = [];
-  ssWindows_().forEach(win => vehicles.forEach(v => {
-    if (!win.open && have[v + '|' + win.key] === win.s + '|' + win.e) return;   // already stored
-    todo.push({ v: v, win: win });
-  }));
   const now = new Date().toISOString();
-  for (let i = 0; i < todo.length; i += 20) {
-    let batch = todo.slice(i, i + 20);
-    const rows = [];
-    for (let attempt = 0; attempt < 4 && batch.length; attempt++) {
-      if (attempt) Utilities.sleep(1500 * attempt);
-      SS_CALLS += batch.length;
-      const res = UrlFetchApp.fetchAll(batch.map(t => ({
-        url: SS_BASE + '/v1/fleet/vehicles/' + encodeURIComponent(t.v) + '/safety/score?startMs=' + t.win.s + '&endMs=' + t.win.e,
-        headers: { Authorization: 'Bearer ' + ssToken_() }, muteHttpExceptions: true
-      })));
-      const retry = [];
-      res.forEach((r, j) => {
-        const code = r.getResponseCode();
-        if (code === 429 || code >= 500) { retry.push(batch[j]); return; }
-        if (code >= 300) return;                                                // truck without data
-        const x = JSON.parse(r.getContentText());
-        const driveMs = Number(x.totalTimeDrivenMs) || 0;
-        rows.push({
-          vehicle_id: batch[j].v, window_key: batch[j].win.key,
-          start_at: new Date(batch[j].win.s).toISOString(), end_at: new Date(batch[j].win.e).toISOString(),
-          score: Math.round(Number(x.safetyScore) || 0), miles: Math.round((Number(x.totalDistanceDrivenMeters) || 0) / 1609.344),
-          drive_hours: Math.round(driveMs / 360000) / 10, harsh_brake: Number(x.harshBrakingCount) || 0,
-          harsh_accel: Number(x.harshAccelCount) || 0, harsh_turn: Number(x.harshTurningCount) || 0,
-          crash: Number(x.crashCount) || 0,
-          speed_pct: driveMs ? Math.round((Number(x.timeOverSpeedLimitMs) || 0) / driveMs * 1000) / 10 : 0,
-          updated_at: now
+  ssWindows_().forEach(win => {
+    const todo = vehicles.filter(v => win.open || have[v + '|' + win.key] !== win.s + '|' + win.e);
+    for (let i = 0; i < todo.length; i += 100) {
+      const ids = todo.slice(i, i + 100);
+      const got = {};
+      let after = '';
+      do {
+        const r = ssGet_('/safety-scores/vehicles', {
+          startTime: new Date(win.s).toISOString(), endTime: new Date(win.e).toISOString(),
+          vehicleIds: ids.join(','), after: after
         });
-      });
-      batch = retry;
+        (r.data || []).forEach(x => { got[String(x.vehicleId)] = x; });
+        after = r.pagination && r.pagination.hasNextPage ? r.pagination.endCursor : '';
+      } while (after);
+      supaUpsert_('samsara_scores', ids.map(v => ssScoreRow_(v, win, got[v], now)), ['vehicle_id', 'window_key']);
     }
-    supaUpsert_('samsara_scores', rows, ['vehicle_id', 'window_key']);
-    Utilities.sleep(250);
-  }
+  });
+}
+
+/** One stored row from a safety-scores/vehicles result (or an empty one when the truck has no data). */
+function ssScoreRow_(vehicleId, win, x, now) {
+  const behaviors = (x && x.behaviors) || [];
+  const speeding = (x && x.speeding) || [];
+  const count = type => behaviors.filter(b => b.behaviorType === type).reduce((a, b) => a + (Number(b.count) || 0), 0);
+  const meters = x ? Number(x.driveDistanceMeters) || 0 : 0;
+  const driveMs = x ? Number(x.driveTimeMilliseconds) || 0 : 0;
+  const speedMs = speeding.filter(sp => sp.speedingType !== 'unknown').reduce((a, sp) => a + (Number(sp.durationMilliseconds) || 0), 0);
+  return {
+    vehicle_id: vehicleId, window_key: win.key,
+    start_at: new Date(win.s).toISOString(), end_at: new Date(win.e).toISOString(),
+    score: x && meters > 0 && x.vehicleScore !== undefined && x.vehicleScore !== null ? Math.round(Number(x.vehicleScore)) : null,
+    miles: Math.round(meters / 1609.344), drive_hours: Math.round(driveMs / 360000) / 10,
+    harsh_brake: count('braking'), harsh_accel: count('acceleration'), harsh_turn: count('harshTurn'), crash: count('crash'),
+    speed_pct: driveMs ? Math.round(speedMs / driveMs * 1000) / 10 : 0,
+    behaviors: behaviors.length ? behaviors : null, speeding: speeding.length ? speeding : null,
+    updated_at: now
+  };
 }
 
 /* ======================================================================
@@ -923,40 +926,32 @@ function inspectFields() {
 }
 
 /**
- * Logs what Samsara returns for 3 matched trucks: the truck's safety score and, when a driver
- * with the same name exists, that driver's score, for this month and this year. Numbers only;
- * changes nothing. Compare with the scores Samsara shows on its Safety page.
+ * Compares Samsara's current safety score with the legacy one for 3 matched trucks, this month.
+ * Numbers only; changes nothing. If the current API is refused, the Samsara token needs the
+ * "Read Safety Events & Scores" permission (Samsara → Settings → API Tokens).
  */
 function inspectSamsaraScores() {
   const trucks = supaGet_('tech_vehicles?select=vehicle_id,vehicle_name&vehicle_id=not.is.null&order=vehicle_name&limit=3');
-  const wins = ssWindows_().filter(w => w.key === 'thisMonth:cur' || w.key === 'thisYear:cur');
-  const norm = x => String(x || '').toLowerCase().replace(/[^a-z]/g, '');
-  let drivers = [];
+  const win = ssWindows_().find(w => w.key === 'thisMonth:cur');
   try {
-    let after = '';
-    do {
-      const r = ssGet_('/fleet/drivers', { limit: 512, after: after });
-      drivers = drivers.concat((r.data || []).map(d => ({ id: String(d.id), name: String(d.name || '') })));
-      after = r.pagination && r.pagination.hasNextPage ? r.pagination.endCursor : '';
-    } while (after);
-    Logger.log('Samsara drivers: ' + drivers.length);
-  } catch (e) { Logger.log('Drivers list: ' + e.message); }
-  const keep = x => JSON.stringify(x, (k, v) => (/name|phone|email|license|address|username/i.test(k) ? undefined : v)).slice(0, 1200);
-  trucks.forEach(t => {
-    const person = String(t.vehicle_name || '').replace(/[-–\s]*\d+\s*$/, '').trim();   // "Adin Sanford -118" → "Adin Sanford"
-    const driver = drivers.find(d => norm(d.name) === norm(person));
-    wins.forEach(w => {
-      try {
-        const v = ssGet_('/v1/fleet/vehicles/' + encodeURIComponent(t.vehicle_id) + '/safety/score', { startMs: w.s, endMs: w.e });
-        Logger.log(person + ' · ' + w.key + ' · TRUCK: ' + keep(v));
-      } catch (e) { Logger.log(person + ' · ' + w.key + ' · TRUCK error: ' + e.message); }
-      if (!driver) { Logger.log(person + ' · no Samsara driver with this name'); return; }
-      try {
-        const d = ssGet_('/v1/fleet/drivers/' + encodeURIComponent(driver.id) + '/safety/score', { startMs: w.s, endMs: w.e });
-        Logger.log(person + ' · ' + w.key + ' · DRIVER: ' + keep(d));
-      } catch (e) { Logger.log(person + ' · ' + w.key + ' · DRIVER error: ' + e.message); }
+    const r = ssGet_('/safety-scores/vehicles', { startTime: new Date(win.s).toISOString(), endTime: new Date(win.e).toISOString(),
+      vehicleIds: trucks.map(t => t.vehicle_id).join(',') });
+    (r.data || []).forEach(x => {
+      const t = trucks.find(tt => String(tt.vehicle_id) === String(x.vehicleId)) || {};
+      const row = ssScoreRow_(String(x.vehicleId), win, x, '');
+      Logger.log((t.vehicle_name || x.vehicleId) + ' · this month · CURRENT score ' + row.score + ' · ' + row.miles + ' mi · ' +
+        (x.behaviors || []).map(b => b.behaviorType + ' ' + b.count + ' (' + b.scoreImpact + ')').join(', '));
     });
+    if (!(r.data || []).length) Logger.log('Current API answered but returned no trucks for this month.');
+  } catch (e) {
+    Logger.log('❌ Current safety-scores API: ' + e.message);
+    Logger.log('If this says 401/403, give the Samsara token the "Read Safety Events & Scores" permission.');
+  }
+  trucks.forEach(t => {
+    try {
+      const v = ssGet_('/v1/fleet/vehicles/' + encodeURIComponent(t.vehicle_id) + '/safety/score', { startMs: win.s, endMs: win.e });
+      Logger.log(t.vehicle_name + ' · this month · legacy score ' + v.safetyScore);
+    } catch (e) { Logger.log(t.vehicle_name + ' · legacy error: ' + e.message); }
   });
   Logger.log('Samsara calls used: ' + SS_CALLS);
 }
-
