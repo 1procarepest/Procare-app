@@ -16,7 +16,9 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
   // ----- Details -----
   const [level, setLevel] = useState(person.level);
   const [office, setOffice] = useState(person.office || '');
-  const [active, setActive] = useState(person.active);
+  const [confirmOff, setConfirmOff] = useState(false);
+  const [statusMsg, setStatusMsg] = useState({ text: '', bad: false });
+  const [savingStatus, setSavingStatus] = useState(false);
   const [hr, setHr] = useState(person.hr_approver);
   const [detailsMsg, setDetailsMsg] = useState({ text: '', bad: false });
   const [savingDetails, setSavingDetails] = useState(false);
@@ -29,12 +31,23 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
     e.preventDefault();
     setSavingDetails(true);
     setDetailsMsg({ text: '', bad: false });
-    const changes = { level, office: office || null, active };
+    const changes = { level, office: office || null };
     if (me.rank >= 4) changes.hr_approver = hr;
     const { error } = await createClient().from('employees').update(changes).eq('id', person.id);
     setSavingDetails(false);
     if (error) { setDetailsMsg({ text: error.message, bad: true }); return; }
     setDetailsMsg({ text: 'Changes saved.', bad: false });
+    router.refresh();
+  }
+
+  async function setActiveStatus(on) {
+    setSavingStatus(true);
+    setStatusMsg({ text: '', bad: false });
+    const { error } = await createClient().from('employees').update({ active: on }).eq('id', person.id);
+    setSavingStatus(false);
+    setConfirmOff(false);
+    if (error) { setStatusMsg({ text: error.message, bad: true }); return; }
+    setStatusMsg({ text: on ? `${person.first_name} is switched back on.` : `${person.first_name} is switched off.`, bad: false });
     router.refresh();
   }
 
@@ -140,10 +153,6 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
             </select>
           </div>
         </div>
-        <label className="check">
-          <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} disabled={!canManage} />
-          Active (switched-off people can’t sign in)
-        </label>
         {me.rank >= 4 && (
           <label className="check">
             <input type="checkbox" checked={hr} onChange={(e) => setHr(e.target.checked)} disabled={!canManage} />
@@ -157,6 +166,36 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
           </div>
         )}
       </form>
+
+      {canManage && (
+        <section className="panel">
+          <h2>{person.active ? 'Left Procare?' : 'Switched off'}</h2>
+          <p className="note">
+            {person.active
+              ? `Switching ${person.first_name} off takes them out of lists, schedules and scorecards and stops their sign-in. Their history stays, and you can switch them back on any time.`
+              : `${person.first_name} can’t sign in and doesn’t show up in lists, schedules or scorecards. Their history is kept.`}
+          </p>
+          {statusMsg.text && <p className={statusMsg.bad ? 'error' : 'ok'} role="status">{statusMsg.text}</p>}
+          <div className="panel-buttons">
+            {person.active && !confirmOff && (
+              <button className="btn btn-quiet" type="button" onClick={() => setConfirmOff(true)}>Switch off {person.first_name}</button>
+            )}
+            {person.active && confirmOff && (
+              <>
+                <button className="btn btn-danger" type="button" disabled={savingStatus} onClick={() => setActiveStatus(false)}>
+                  {savingStatus ? 'Switching off…' : `Yes, switch off ${person.first_name} ${person.last_name}`}
+                </button>
+                <button className="btn btn-quiet" type="button" onClick={() => setConfirmOff(false)}>Cancel</button>
+              </>
+            )}
+            {!person.active && (
+              <button className="btn" type="button" disabled={savingStatus} onClick={() => setActiveStatus(true)}>
+                {savingStatus ? 'Switching on…' : `Switch ${person.first_name} back on`}
+              </button>
+            )}
+          </div>
+        </section>
+      )}
 
       <form className="panel" onSubmit={saveSchedule}>
         <h2>Weekly schedule</h2>

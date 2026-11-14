@@ -53,6 +53,8 @@ a { color: var(--forest); }
 }
 .btn:hover { background: #014a39; }
 .btn:disabled { opacity: 0.6; cursor: default; }
+.btn-danger { background: var(--danger); }
+.btn-danger:hover { background: #82271f; }
 .btn-quiet {
   background: transparent;
   color: var(--ink);
