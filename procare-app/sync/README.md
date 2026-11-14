@@ -15,9 +15,9 @@ from Supabase instead of calling FieldRoutes itself, so each record is downloade
 | Reviews | Every 30 minutes | Last 3 days |
 | Employees, service types, cancel reasons | Every 2 hours | Full lists |
 | Active customers, active services, cards on file | 7 AM and 1 PM | Full refresh |
-| Samsara trucks (and matching techs to trucks) | 7 AM and 1 PM | Full list |
+| Samsara trucks and drivers (and matching techs to them) | 7 AM and 1 PM | Full lists |
 | Samsara safety events | Every 30 minutes | Last 3 days (picks up coaching changes) |
-| Samsara safety scores | Every hour | Periods still in progress; finished periods once |
+| Samsara safety scores (per driver and per truck) | Every hour | Periods still in progress; finished periods once |
 
 Every run is logged in `fr_sync_runs` with the number of FieldRoutes calls it used. Calls per day:
 
@@ -56,6 +56,11 @@ tables have no read rules yet, so signed-in people can't read them; each app add
 7. **Samsara:** after running `supabase/changes/2026-11-13-9-samsara-tables.sql`, run `runSamsaraBackfill`
    once. It loads trucks, safety events since Jan 1, 2025, and the scorecard periods' safety scores.
    Techs are matched to trucks whose name starts with theirs (for example "Adin Sanford -118").
+8. **Samsara drivers** (after `supabase/changes/2026-11-13-11-samsara-drivers.sql`): each tech is also
+   linked to their Samsara driver: by a FieldRoutes ID in the driver's external IDs, otherwise by exact
+   full name, or by the driver ID on their person record (that one always wins). Once linked, the tech's
+   score is their driver score (`tech_safety_scores`), which follows them across trucks. Techs with no
+   driver yet keep their truck's score. `supabase/checks/samsara-drivers.sql` shows who is on which.
 
 ## Running alongside the old scripts
 

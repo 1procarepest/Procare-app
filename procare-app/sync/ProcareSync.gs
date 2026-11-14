@@ -574,7 +574,7 @@ function runSamsaraBackfill() {
 
 function runSamsaraStep_(s) {
   if (!ssToken_()) throw new Error('SAMSARA_TOKEN is not set');
-  if (s.job === 'ss:vehicles') return ssVehicles_();
+  if (s.job === 'ss:vehicles') { ssVehicles_(); return ssDrivers_(); }
   if (s.job === 'ss:events:recent') {
     const now = Date.now();
     return ssEvents_(now - 3 * 86400000, now);
@@ -629,6 +629,47 @@ function ssVehicles_() {
   supaUpsert_('tech_vehicles', rows, ['employee_id']);
 }
 
+/**
+ * Samsara drivers, then link each active tech to their driver: first by an ID in the driver's
+ * external IDs that equals one of the tech's FieldRoutes IDs, otherwise by exact full name.
+ * A driver set by hand on the person's record (employees.samsara_driver_id) always wins.
+ */
+function ssDrivers_() {
+  const now = new Date().toISOString();
+  let drivers = [];
+  ['active', 'deactivated'].forEach(status => {
+    let after = '';
+    do {
+      const r = ssGet_('/fleet/drivers', { driverActivationStatus: status, limit: 512, after: after });
+      drivers = drivers.concat((r.data || []).map(d => ({
+        driver_id: String(d.id), name: str_(d.name), username: str_(d.username),
+        external_ids: d.externalIds && Object.keys(d.externalIds).length ? d.externalIds : null,
+        active: status === 'active', synced_at: now
+      })));
+      after = r.pagination && r.pagination.hasNextPage ? r.pagination.endCursor : '';
+    } while (after);
+  });
+  supaUpsert_('samsara_drivers', drivers, ['driver_id']);
+
+  const active = drivers.filter(d => d.active);
+  const norm = x => String(x || '').toLowerCase().replace(/[^a-z]/g, '');
+  const techs = supaGet_('employees?select=id,first_name,last_name,fr_ids,samsara_driver_id&department=eq.technician&active=is.true');
+  const rows = [];
+  techs.forEach(t => {
+    if (t.samsara_driver_id) {
+      const set = drivers.find(d => d.driver_id === String(t.samsara_driver_id).trim());
+      rows.push({ employee_id: t.id, driver_id: String(t.samsara_driver_id).trim(), driver_name: set ? set.name : null, driver_set_by: 'manual' });
+      return;
+    }
+    const frIds = Object.keys(t.fr_ids || {}).map(k => String(t.fr_ids[k]));
+    const name = norm((t.first_name || '') + (t.last_name || ''));
+    const byId = active.find(d => d.external_ids && Object.keys(d.external_ids).some(k => frIds.indexOf(String(d.external_ids[k]).trim()) >= 0));
+    const d = byId || (name ? active.find(x => norm(x.name) === name) : null);
+    rows.push({ employee_id: t.id, driver_id: d ? d.driver_id : null, driver_name: d ? d.name : null, driver_set_by: 'auto' });
+  });
+  supaUpsert_('tech_vehicles', rows, ['employee_id']);
+}
+
 /** Safety events between two times (ms), 31 days per request window. */
 function ssEvents_(fromMs, toMs) {
   const now = new Date().toISOString();
@@ -642,7 +683,8 @@ function ssEvents_(fromMs, toMs) {
         if (SS_SKIP_STATES.indexOf(e.coachingState) >= 0) return;
         const labels = (e.behaviorLabels || []).map(l => l.label).filter(Boolean);
         if (!labels.length || !e.id) return;
-        rows.push({ event_id: String(e.id), vehicle_id: e.vehicle ? String(e.vehicle.id) : null, event_time: e.time || null,
+        rows.push({ event_id: String(e.id), vehicle_id: e.vehicle ? String(e.vehicle.id) : null,
+          driver_id: e.driver && e.driver.id ? String(e.driver.id) : null, event_time: e.time || null,
           labels: labels, coaching_state: str_(e.coachingState), synced_at: now });
       });
       supaUpsert_('samsara_events', rows, ['event_id']);
@@ -689,39 +731,50 @@ function ssWindows_() {
 }
 
 /**
- * Samsara's safety score (0–100) per tech truck for each scorecard period, from Samsara's current
- * safety-scores API: one call covers up to 100 trucks. Finished periods are fetched once;
- * periods in progress every run. A truck that didn't drive gets no score (null), not 0.
+ * Samsara's safety score (0–100) for each scorecard period, for every tech's driver and every tech's
+ * truck, from Samsara's current safety-scores API: one call covers up to 100 drivers or trucks.
+ * Finished periods are fetched once; periods in progress every run. No driving = no score (null), not 0.
  */
 function ssScores_() {
-  const vehicles = supaGet_('tech_vehicles?select=vehicle_id&vehicle_id=not.is.null').map(r => String(r.vehicle_id));
-  if (!vehicles.length) return;
+  ssScoresFor_({ api: '/safety-scores/drivers', idParam: 'driverIds', idField: 'driverId', table: 'samsara_driver_scores', key: 'driver_id',
+    ids: supaGet_('tech_vehicles?select=driver_id&driver_id=not.is.null').map(r => String(r.driver_id)) });
+  ssScoresFor_({ api: '/safety-scores/vehicles', idParam: 'vehicleIds', idField: 'vehicleId', table: 'samsara_scores', key: 'vehicle_id',
+    ids: supaGet_('tech_vehicles?select=vehicle_id&vehicle_id=not.is.null').map(r => String(r.vehicle_id)) });
+}
+
+function ssScoresFor_(k) {
+  const ids = Array.from(new Set(k.ids));
+  if (!ids.length) return;
   const have = {};
-  supaGet_('samsara_scores?select=vehicle_id,window_key,start_at,end_at').forEach(r => {
-    have[r.vehicle_id + '|' + r.window_key] = new Date(r.start_at).getTime() + '|' + new Date(r.end_at).getTime();
+  supaGet_(k.table + '?select=' + k.key + ',window_key,start_at,end_at').forEach(r => {
+    have[r[k.key] + '|' + r.window_key] = new Date(r.start_at).getTime() + '|' + new Date(r.end_at).getTime();
   });
   const now = new Date().toISOString();
   ssWindows_().forEach(win => {
-    const todo = vehicles.filter(v => win.open || have[v + '|' + win.key] !== win.s + '|' + win.e);
+    const todo = ids.filter(id => win.open || have[id + '|' + win.key] !== win.s + '|' + win.e);
     for (let i = 0; i < todo.length; i += 100) {
-      const ids = todo.slice(i, i + 100);
+      const batch = todo.slice(i, i + 100);
       const got = {};
       let after = '';
       do {
-        const r = ssGet_('/safety-scores/vehicles', {
-          startTime: new Date(win.s).toISOString(), endTime: new Date(win.e).toISOString(),
-          vehicleIds: ids.join(','), after: after
-        });
-        (r.data || []).forEach(x => { got[String(x.vehicleId)] = x; });
+        const params = { startTime: new Date(win.s).toISOString(), endTime: new Date(win.e).toISOString(), after: after };
+        params[k.idParam] = batch.join(',');
+        const r = ssGet_(k.api, params);
+        (r.data || []).forEach(x => { got[String(x[k.idField])] = x; });
         after = r.pagination && r.pagination.hasNextPage ? r.pagination.endCursor : '';
       } while (after);
-      supaUpsert_('samsara_scores', ids.map(v => ssScoreRow_(v, win, got[v], now)), ['vehicle_id', 'window_key']);
+      supaUpsert_(k.table, batch.map(id => ssScoreRow_(id, win, got[id], now, k.key)), [k.key, 'window_key']);
     }
   });
 }
 
-/** One stored row from a safety-scores/vehicles result (or an empty one when the truck has no data). */
-function ssScoreRow_(vehicleId, win, x, now) {
+/** One stored row from a safety-scores result (or an empty one when the driver or truck has no data). */
+function ssRawScore_(x) {
+  const v = x.driverScore !== undefined ? x.driverScore : x.vehicleScore;
+  return v === undefined || v === null ? null : v;
+}
+
+function ssScoreRow_(id, win, x, now, keyCol) {
   const behaviors = (x && x.behaviors) || [];
   const speeding = (x && x.speeding) || [];
   const count = type => behaviors.filter(b => b.behaviorType === type).reduce((a, b) => a + (Number(b.count) || 0), 0);
@@ -729,10 +782,10 @@ function ssScoreRow_(vehicleId, win, x, now) {
   const driveMs = x ? Number(x.driveTimeMilliseconds) || 0 : 0;
   const speedMs = speeding.filter(sp => sp.speedingType !== 'unknown').reduce((a, sp) => a + (Number(sp.durationMilliseconds) || 0), 0);
   return {
-    vehicle_id: vehicleId, window_key: win.key,
+    [keyCol || 'vehicle_id']: id, window_key: win.key,
     start_at: new Date(win.s).toISOString(), end_at: new Date(win.e).toISOString(),
-    // Samsara's own vehicle score (follows the weights in Samsara → Settings → Safety Score). Null when the truck didn't drive.
-    score: x && meters > 0 && x.vehicleScore !== undefined && x.vehicleScore !== null ? Math.round(Number(x.vehicleScore)) : null,
+    // Samsara's own score (follows the weights in Samsara → Settings → Safety Score). Null when there was no driving.
+    score: x && meters > 0 && ssRawScore_(x) !== null ? Math.round(Number(ssRawScore_(x))) : null,
     miles: Math.round(meters / 1609.344), drive_hours: Math.round(driveMs / 360000) / 10,
     harsh_brake: count('braking'), harsh_accel: count('acceleration'), harsh_turn: count('harshTurn'), crash: count('crash'),
     speed_pct: driveMs ? Math.round(speedMs / driveMs * 1000) / 10 : 0,
