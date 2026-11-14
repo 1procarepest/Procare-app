@@ -473,6 +473,7 @@ function pullAppts_(o, params) {
     cancellation_reason_id: id_(a.cancellationReasonID), date_cancelled: ts_(a.dateCancelled),
     is_initial: bool_(a.isInitial), production_value: num_(a[SYNC.PRODUCTION_FIELD]),
     assigned_tech: id_(a.assignedTech),
+    time_window: str_(a.timeWindow), sequence: num_(a.sequence),
     has_notes: ['notes', 'officeNotes', 'appointmentNotes'].some(k => String(a[k] === undefined || a[k] === null ? '' : a[k]).trim() !== ''),
     original_appointment_id: id_(a.originalAppointmentID), reservice_reason_id: id_(a.reserviceReasonID),
     date_added: ts_(a.dateAdded), date_completed: ts_(a.dateCompleted), date_updated: ts_(a.dateUpdated),

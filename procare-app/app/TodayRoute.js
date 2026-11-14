@@ -1,4 +1,4 @@
-import { clock } from '@/lib/labels';
+import { windowLabel } from '@/lib/timeWindow';
 
 const UPSELL_NAME = { GPS: 'General pest', TBS: 'Termite bait system', MOS: 'Mosquito' };
 
@@ -18,12 +18,12 @@ export default function TodayRoute({ jobs }) {
           <div className="board-wrap">
             <table className="board route">
               <thead>
-                <tr><th>Time</th><th>Customer</th><th>Service</th><th>Auto-pay</th><th>Notes</th><th>Upsell</th></tr>
+                <tr><th>Window</th><th>Customer</th><th>Service</th><th>Auto-pay</th><th>Notes</th><th>Upsell</th></tr>
               </thead>
               <tbody>
                 {jobs.map((j) => (
                   <tr key={j.appointment_id} className={j.done ? 'done-row' : ''}>
-                    <td className="num-left">{j.start_time ? clock(j.start_time) : '—'}{j.done && <span className="cell-sub">Done</span>}</td>
+                    <td className="num-left">{windowLabel(j.time_window, j.start_time, j.end_time)}{j.done && <span className="cell-sub">Done</span>}</td>
                     <td><strong>{j.customer}</strong></td>
                     <td>{j.service}</td>
                     <td>{j.autopay ? <span className="pill pill-good">Yes</span> : <span className="pill pill-bad">No</span>}</td>
@@ -38,7 +38,7 @@ export default function TodayRoute({ jobs }) {
               </tbody>
             </table>
           </div>
-          <p className="note">GPS general pest · TBS termite bait system (not offered to customers with termite liquid) · MOS mosquito (not offered to customers with mosquito green). Notes are in FieldRoutes.</p>
+          <p className="note">GPS general pest · TBS termite bait system (not offered to customers with termite liquid) · MOS mosquito (not offered to customers with mosquito green). AT = anytime. Jobs are in route order. Notes are in FieldRoutes.</p>
         </>
       )}
     </section>

@@ -69,7 +69,8 @@ grant execute on function public.snapshot_routes(boolean) to service_role;
 -- the appointment's employeeID, which is whoever booked it.
 -- A tech's route for a day (default: the signed-in person, today). Their own, or someone they manage.
 -- Upsells: GPS if no general pest; TBS unless they have TBS or TL; MOS unless they have MOS or MOSG.
-create or replace function public.my_route(p_employee uuid default null, p_day date default null)
+drop function if exists public.my_route(uuid, date);
+create function public.my_route(p_employee uuid default null, p_day date default null)
 returns table (appointment_id bigint, start_time time, end_time time, done boolean, customer text, service text,
                autopay boolean, has_notes boolean, upsell text[])
 language plpgsql stable security definer set search_path = public as $$
