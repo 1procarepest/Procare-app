@@ -87,3 +87,4 @@ the FieldRoutes call savings show up.
 - `fr_sync_runs` in Supabase: every run's steps, call count and errors.
 - A failed step is retried on the next two runs, and a failed "changes" pull never skips records.
 - `resetQueue` clears stuck steps (stored data is untouched). `syncNow` runs everything that's due right now.
+- `fillMissingInitials` fetches, once, every sale's first appointment the app is missing (cancelled or rescheduled ones, which FieldRoutes' searches leave out). After that the sync checks for new ones every 2 hours with the lists (step `initials`). Needs change 27 in Supabase.

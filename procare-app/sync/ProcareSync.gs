@@ -111,7 +111,7 @@ function dueSteps_() {
   const every = (jobs) => SYNC.OFFICES.forEach(o => jobs.forEach(job => steps.push({ o: o.key, job: job })));
 
   if (due('lists', SYNC.EVERY_MIN.lists)) {
-    every(['lists']);
+    every(['lists', 'initials']);
     if (PROPS.getProperty('TEAM_SYNC') === 'on') steps.push({ o: '-', job: 'team' });
   }
   if (due('changes', SYNC.EVERY_MIN.changes)) every(['subs:since', 'appts:since', 'doors:since']);
@@ -199,6 +199,14 @@ function runBackfill() {
   tick();
 }
 
+/** One-time: fetch every first appointment the app is missing (cancelled and rescheduled ones). */
+function fillMissingInitials() {
+  saveQueue_(loadQueue_().concat(SYNC.OFFICES.map(o => ({ o: o.key, job: 'initials' }))));
+  Logger.log('Queued: missing first appointments for every office. Running now…');
+  tick();
+  showStatus();
+}
+
 /** Runs whatever is due right now, outside the schedule. */
 function syncNow() {
   ['lists', 'changes', 'customers', 'reviews'].forEach(g => PROPS.deleteProperty('LAST_' + g));
@@ -250,6 +258,7 @@ function runStep_(s) {
 
     case 'appts:since': return since_(o, 'appts', from => pullAppts_(o, { dateUpdated: { operator: '>=', value: from } }));
     case 'appts:range': return pullAppts_(o, { date: { operator: 'BETWEEN', value: [s.from, s.to] } });
+    case 'initials':    return pullMissingInitials_(o);
     // Techs look at their route up to 7 days back and ahead, so routes and jobs cover that stretch.
     case 'routes:today': {
       const d = ymd_(new Date());
@@ -467,8 +476,27 @@ function pullSubs_(o, params) {
 }
 
 function pullAppts_(o, params) {
+  saveAppts_(o, frFetch_(o, 'appointment', params));
+}
+
+/**
+ * First appointments of sales that the app doesn't have yet. FieldRoutes' searches leave out
+ * cancelled appointments, so a sale whose first appointment was cancelled or rescheduled had no
+ * first-service date. These are fetched by ID: one call per 1,000, and usually none.
+ */
+function pullMissingInitials_(o) {
+  const ids = (supaFetch_('post', 'rpc/fr_missing_initials', { p_office: o.key }) || [])
+    .map(x => Number(typeof x === 'object' && x !== null ? Object.keys(x).map(k => x[k])[0] : x)).filter(Boolean);
+  for (let i = 0; i < ids.length; i += 1000) {
+    const chunk = ids.slice(i, i + 1000);
+    saveAppts_(o, frRecords_(frCall_(o, 'appointment/get', { appointmentIDs: chunk })));
+    supaPatch_('fr_subscriptions?initial_appointment_id=in.(' + chunk.join(',') + ')', { initial_checked_at: new Date().toISOString() });
+  }
+}
+
+/** One office's appointments → fr_appointments. */
+function saveAppts_(o, appts) {
   const now = new Date().toISOString();
-  const appts = frFetch_(o, 'appointment', params);
   supaUpsert_('fr_appointments', appts.map(a => ({
     appointment_id: id_(a.appointmentID), office: officeOf_(a, o), customer_id: id_(a.customerID),
     subscription_id: id_(a.subscriptionID), date: day_(a.date), start_time: time_(a.start), end_time: time_(a.end),
