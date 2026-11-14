@@ -921,3 +921,42 @@ function inspectFields() {
   });
   Logger.log('FieldRoutes calls used: ' + CALLS);
 }
+
+/**
+ * Logs what Samsara returns for 3 matched trucks: the truck's safety score and, when a driver
+ * with the same name exists, that driver's score, for this month and this year. Numbers only;
+ * changes nothing. Compare with the scores Samsara shows on its Safety page.
+ */
+function inspectSamsaraScores() {
+  const trucks = supaGet_('tech_vehicles?select=vehicle_id,vehicle_name&vehicle_id=not.is.null&order=vehicle_name&limit=3');
+  const wins = ssWindows_().filter(w => w.key === 'thisMonth:cur' || w.key === 'thisYear:cur');
+  const norm = x => String(x || '').toLowerCase().replace(/[^a-z]/g, '');
+  let drivers = [];
+  try {
+    let after = '';
+    do {
+      const r = ssGet_('/fleet/drivers', { limit: 512, after: after });
+      drivers = drivers.concat((r.data || []).map(d => ({ id: String(d.id), name: String(d.name || '') })));
+      after = r.pagination && r.pagination.hasNextPage ? r.pagination.endCursor : '';
+    } while (after);
+    Logger.log('Samsara drivers: ' + drivers.length);
+  } catch (e) { Logger.log('Drivers list: ' + e.message); }
+  const keep = x => JSON.stringify(x, (k, v) => (/name|phone|email|license|address|username/i.test(k) ? undefined : v)).slice(0, 1200);
+  trucks.forEach(t => {
+    const person = String(t.vehicle_name || '').replace(/[-–\s]*\d+\s*$/, '').trim();   // "Adin Sanford -118" → "Adin Sanford"
+    const driver = drivers.find(d => norm(d.name) === norm(person));
+    wins.forEach(w => {
+      try {
+        const v = ssGet_('/v1/fleet/vehicles/' + encodeURIComponent(t.vehicle_id) + '/safety/score', { startMs: w.s, endMs: w.e });
+        Logger.log(person + ' · ' + w.key + ' · TRUCK: ' + keep(v));
+      } catch (e) { Logger.log(person + ' · ' + w.key + ' · TRUCK error: ' + e.message); }
+      if (!driver) { Logger.log(person + ' · no Samsara driver with this name'); return; }
+      try {
+        const d = ssGet_('/v1/fleet/drivers/' + encodeURIComponent(driver.id) + '/safety/score', { startMs: w.s, endMs: w.e });
+        Logger.log(person + ' · ' + w.key + ' · DRIVER: ' + keep(d));
+      } catch (e) { Logger.log(person + ' · ' + w.key + ' · DRIVER error: ' + e.message); }
+    });
+  });
+  Logger.log('Samsara calls used: ' + SS_CALLS);
+}
+
