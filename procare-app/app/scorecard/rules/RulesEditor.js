@@ -12,9 +12,6 @@ const GROUPS = [
     ['comp_hi', 'Top tier at or above', '%'], ['comp_hi_amt', 'Top tier pays', '$'],
     ['comp_lo', 'Second tier at or above', '%'], ['comp_lo_amt', 'Second tier pays', '$'],
   ] },
-  { title: 'Production', fields: [
-    ['prod_floor', 'Production before the bonus starts', '$'], ['prod_pct', 'Bonus on production above that', '%'],
-  ] },
   { title: 'Reviews and sales', fields: [
     ['star_amt', 'Each top review pays', '$'], ['star_min', 'Stars that count as a top review', 'stars'],
     ['sale_amt', 'Each sale whose first service is done pays', '$'],

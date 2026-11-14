@@ -6,6 +6,7 @@ import { DAY_NAMES, WEEK_ORDER, clock, fromMinutes, roleTitle, shortDate, toMinu
 import { APPS, appsFor } from '@/lib/apps';
 import { photoSrc } from '@/lib/photo';
 import ProfileActions from './ProfileActions';
+import TodayRoute from './TodayRoute';
 import SignOut from './SignOut';
 
 export const dynamic = 'force-dynamic';
@@ -32,6 +33,8 @@ export default async function Home({ searchParams }) {
       </main>
     );
   }
+
+  const { data: route } = me.department === 'technician' ? await supabase.rpc('my_route') : { data: null };
 
   const { data: schedule } = await supabase
     .from('schedules')
@@ -147,6 +150,8 @@ export default async function Home({ searchParams }) {
             })}
           </ul>
         </section>
+
+        {route && <TodayRoute jobs={route} />}
 
         <ProfileActions employeeId={me.id} email={user.email} isSales={me.department === 'sales'} />
 

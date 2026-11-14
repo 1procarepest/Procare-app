@@ -131,6 +131,7 @@ function dueSteps_() {
   const day = Utilities.formatDate(new Date(), SYNC.TZ, 'yyyy-MM-dd');
   if (hour >= SYNC.ROUTE_SNAPSHOT_HOUR && PROPS.getProperty('LAST_ROUTE_SNAPSHOT') !== day) {
     PROPS.setProperty('LAST_ROUTE_SNAPSHOT', day);
+    every(['appts:today']);                       // fresh copy of today's jobs (notes flag, assignments)
     steps.push({ o: '-', job: 'routes:snapshot' });
   }
   return steps;
@@ -246,6 +247,10 @@ function runStep_(s) {
 
     case 'appts:since': return since_(o, 'appts', from => pullAppts_(o, { dateUpdated: { operator: '>=', value: from } }));
     case 'appts:range': return pullAppts_(o, { date: { operator: 'BETWEEN', value: [s.from, s.to] } });
+    case 'appts:today': {
+      const d = Utilities.formatDate(new Date(), SYNC.TZ, 'yyyy-MM-dd');
+      return pullAppts_(o, { date: { operator: 'BETWEEN', value: [d, d] } });
+    }
 
     case 'doors:since': return since_(o, 'doors', from => pullDoors_(o, { dateUpdated: { operator: '>=', value: from } }));
     case 'doors:range':
@@ -464,6 +469,7 @@ function pullAppts_(o, params) {
     route_id: id_(a.routeID), spot_id: id_(a.spotID),
     cancellation_reason_id: id_(a.cancellationReasonID), date_cancelled: ts_(a.dateCancelled),
     is_initial: bool_(a.isInitial), production_value: num_(a[SYNC.PRODUCTION_FIELD]),
+    has_notes: ['notes', 'officeNotes', 'appointmentNotes'].some(k => String(a[k] === undefined || a[k] === null ? '' : a[k]).trim() !== ''),
     original_appointment_id: id_(a.originalAppointmentID), reservice_reason_id: id_(a.reserviceReasonID),
     date_added: ts_(a.dateAdded), date_completed: ts_(a.dateCompleted), date_updated: ts_(a.dateUpdated),
     synced_at: now
