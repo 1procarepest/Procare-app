@@ -6,7 +6,11 @@ function reply(status, message) {
   return NextResponse.json({ message }, { status });
 }
 
-/** Creates a login or resets a passcode, for someone the signed-in person manages. */
+/**
+ * Creates a login or resets a passcode for someone else. Managers and up only, and only for people
+ * they manage (a department manager: their department; C-Suite and the President: everyone).
+ * Everyone changes their own passcode from their profile instead.
+ */
 export async function POST(request) {
   const { employeeId, passcode } = await request.json().catch(() => ({}));
   if (!employeeId || !/^\S{6,64}$/.test(String(passcode || ''))) {
@@ -17,8 +21,11 @@ export async function POST(request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return reply(401, 'Sign in again, then try once more.');
 
-  const { data: allowed } = await supabase.rpc('can_manage', { target: employeeId });
-  if (!allowed) return reply(403, 'You can only change logins for people you manage.');
+  const [{ data: allowed }, { data: rank }] = await Promise.all([
+    supabase.rpc('can_manage', { target: employeeId }),
+    supabase.rpc('my_rank'),
+  ]);
+  if (!allowed || (rank || 0) < 3) return reply(403, 'Only the manager over this person’s department can set their passcode.');
 
   const secret = process.env.SUPABASE_SECRET_KEY;
   if (!secret) return reply(500, 'The app is missing SUPABASE_SECRET_KEY in Vercel’s environment variables.');

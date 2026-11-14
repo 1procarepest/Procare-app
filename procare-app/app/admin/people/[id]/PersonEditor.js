@@ -109,9 +109,14 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
     <div className="editor">
       <div className="admin-head">
         <div className="with-face big"><Face person={person} size={64} /><h1>{person.first_name} {person.last_name}</h1></div>
-        <p className="note">
-          {roleTitle(person.department, person.level)}. {person.email}{person.phone ? `, ${person.phone}` : ''}
+        <p className="note">{roleTitle(person.department, person.level)}</p>
+        <p className="login-line">
+          <span className="login-label">Login email</span>
+          {person.email
+            ? <><span className="login-email">{person.email}</span>{person.auth_user_id ? <span className="pill pill-good">Has a login</span> : <span className="pill">No login yet</span>}</>
+            : <span className="note">Not available</span>}
         </p>
+        {person.phone && <p className="note">Phone {person.phone}</p>}
         {!canManage && !isSelf && <p className="note">You can view this person, but changes are made by their manager.</p>}
       </div>
 
@@ -226,7 +231,14 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
         )}
       </form>
 
-      {canManage && (
+      {canManage && me.rank < 3 && (
+        <section className="panel">
+          <h2>Login</h2>
+          <p className="note">{person.auth_user_id ? 'Has a login.' : 'No login yet.'} Passcodes are set by the department manager. {person.first_name} can change their own from their profile.</p>
+        </section>
+      )}
+
+      {canManage && me.rank >= 3 && (
         <form className="panel" onSubmit={saveLogin}>
           <h2>{person.auth_user_id ? 'Reset passcode' : 'Create login'}</h2>
           <p className="note">
