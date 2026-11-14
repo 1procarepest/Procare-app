@@ -18,6 +18,7 @@ export default async function OpsLayout({ children }) {
         <Link href="/" aria-label="Back to my profile"><img src="/logo.png" alt="Procare" /></Link>
         <div className="topbar-links">
           <Link className="toplink" href="/ops">Operations</Link>
+          <Link className="toplink" href="/ops/route-plan">Route plan</Link>
           <Link className="toplink" href="/">My profile</Link>
           <SignOut />
         </div>

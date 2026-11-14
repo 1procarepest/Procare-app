@@ -239,6 +239,7 @@ export default function OpsView({ view, range, today, stats, snap, syncedAt }) {
         <div>
           <p className="rc-kicker">Operations</p>
           <h1 className="rc-title">Operation <em>Suite</em></h1>
+          <p className="rc-updated"><Link href="/ops/route-plan">Route plan for next month →</Link></p>
         </div>
         {syncedAt && <p className="rc-updated">Updated {time(syncedAt)} ET · refreshes from FieldRoutes about every 15 minutes</p>}
       </div>

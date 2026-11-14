@@ -419,3 +419,6 @@ BEGIN
   END LOOP;
 END;
 $function$;
+
+-- Route plan data for the /ops/route-plan page (change 2026-11-14-28). See that file for the body.
+-- route_plan_data(p_from date, p_to date) returns json: techs, schedules, approved time off, usual, days, builds, changes since built, FieldRoutes template names.

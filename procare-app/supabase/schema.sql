@@ -124,3 +124,31 @@ create table public.activity_log (
   after      jsonb,
   created_at timestamptz not null default now()
 );
+
+-- ---------- Route plan (change 2026-11-14-28) ----------
+-- Office's usual template/office per tech and weekday, one-day changes, and when a month was built.
+create table public.route_plan_usual (
+  employee_id uuid not null references public.employees(id) on delete cascade,
+  weekday     smallint not null check (weekday between 1 and 6),
+  template    text not null check (length(trim(template)) > 0),
+  office      text references public.offices(key),
+  updated_by  uuid references public.employees(id) default public.my_id(),
+  updated_at  timestamptz not null default now(),
+  primary key (employee_id, weekday)
+);
+create table public.route_plan_days (
+  employee_id uuid not null references public.employees(id) on delete cascade,
+  day         date not null,
+  template    text not null check (length(trim(template)) > 0),
+  office      text references public.offices(key),
+  updated_by  uuid references public.employees(id) default public.my_id(),
+  updated_at  timestamptz not null default now(),
+  primary key (employee_id, day)
+);
+create table public.route_plan_builds (
+  office   text not null references public.offices(key),
+  month    date not null check (extract(day from month) = 1),
+  built_at timestamptz not null default now(),
+  built_by uuid references public.employees(id) default public.my_id(),
+  primary key (office, month)
+);

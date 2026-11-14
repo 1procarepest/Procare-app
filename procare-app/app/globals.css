@@ -855,3 +855,53 @@ span.ops-pill:not(.ops-delta) { color: var(--muted); font-weight: 500; }
 .sb-summary dd { margin: 0; font-variant-numeric: tabular-nums; }
 .sb-basis { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 14px; }
 .sb-basis-note { font-size: 13px; color: var(--muted); flex: 1 1 260px; }
+
+/* ---------- Route plan (/ops/route-plan) ---------- */
+.rp-dates { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; }
+.rp-builds { display: grid; gap: 12px; margin-bottom: 22px; }
+.rp-build { background: var(--white); border: 1px solid var(--line); border-left: 5px solid var(--lime); border-radius: 14px; padding: 16px 18px; }
+.rp-build.done { border-left-color: var(--forest); }
+.rp-build-head { display: flex; align-items: flex-start; gap: 12px; }
+.rp-build-head > div { flex: 1; }
+.rp-build-head h2 { font-size: 18px; font-weight: 700; }
+.rp-build-head p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.rp-build-head .btn { flex: none; }
+.rp-changes { margin: 12px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.rp-changes li { background: var(--paper); border-radius: 8px; padding: 8px 10px; font-size: 14px; }
+.rp-when { display: block; font-size: 12px; color: var(--muted); }
+.rp-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; }
+.rp-copy { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 8px; border: 1.5px solid var(--forest); background: var(--white); color: var(--forest); cursor: pointer; }
+.rp-copy:hover { background: var(--sage); }
+.rp-copy-all { background: var(--forest); color: var(--white); padding: 10px 16px; }
+.rp-copy-all:hover { background: #014a39; }
+.rp-days { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.rp-day { background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.rp-day header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.rp-day h3 { font-size: 17px; font-weight: 700; }
+.rp-group { margin-top: 8px; }
+.rp-template { margin: 0 0 4px; font-size: 13px; font-weight: 700; color: var(--white); background: var(--forest); border-radius: 6px; padding: 3px 8px; display: inline-block; }
+.rp-template.other { background: var(--ink); }
+.rp-template span { opacity: 0.75; font-weight: 500; margin-left: 4px; }
+.rp-group ul { margin: 0; padding: 0; list-style: none; }
+.rp-group li { font-size: 14px; padding: 3px 0; border-bottom: 1px dashed var(--line); }
+.rp-group li:last-child { border-bottom: 0; }
+.rp-group li.flag span { color: #8a4b00; font-weight: 500; }
+.rp-off { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+.rp-panel .rc-panel-head.as-div { cursor: default; }
+.rp-table-wrap { overflow-x: auto; max-width: 100%; }
+.rp-table { border-collapse: collapse; font-size: 13px; min-width: 760px; }
+.rp-table th, .rp-table td { padding: 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.rp-table th small { color: var(--muted); font-weight: 400; }
+.rp-table td input { padding: 6px 8px; font-size: 13px; min-width: 120px; }
+.rp-table td select { margin-top: 4px; padding: 4px 6px; font-size: 12px; width: 100%; }
+.rp-table td.idle input { background: var(--paper); }
+.rp-oneday { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; align-items: end; }
+.rp-oneday label { margin: 0; }
+.rp-oneday select, .rp-oneday input { margin-top: 6px; width: 100%; }
+.rp-list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 6px; }
+.rp-list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--paper); border-radius: 8px; padding: 8px 10px; font-size: 14px; }
+.rp-remove { font: inherit; font-size: 13px; border: 0; background: none; color: var(--danger); cursor: pointer; text-decoration: underline; }
+@media (max-width: 640px) {
+  .rp-build-head { flex-wrap: wrap; }
+  .rp-dates input { max-width: 140px; }
+}
