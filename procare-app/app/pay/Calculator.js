@@ -38,6 +38,9 @@ export default function Calculator({ data, year, rep }) {
     ? Object.fromEntries(GROUPS.map((g) => [g, Math.round((100 * mySales.filter((x) => x.g === g).length) / mySales.length)]))
     : { pest: 70, termite: 20, mosquito: 10 };
 
+  // Reps on the commission plan only see the commission plan (flat rate is going away).
+  // Managers and the President, and reps without a plan or on flat rate, can compare both.
+  const commissionOnly = !data.boss && mine?.plan === 'commission';
   const [plan, setPlan] = useState(mine?.plan || 'commission');
   const [scale, setScale] = useState(mine?.scale || 'first_year');
   const [daysWk, setDaysWk] = useState(5);
@@ -77,16 +80,18 @@ export default function Calculator({ data, year, rep }) {
         <div className="rc-panel-body calc-body">
           <h2 className="calc-h">Your plan</h2>
           <div className="calc-row">
-            <div className="rc-seg" role="group" aria-label="Plan">
-              {['commission', 'flat'].map((k) => <button key={k} type="button" className={plan === k ? 'on' : ''} onClick={() => setPlan(k)}>{k === 'commission' ? 'Commission' : 'Flat rate'}</button>)}
-            </div>
+            {!commissionOnly && (
+              <div className="rc-seg" role="group" aria-label="Plan">
+                {['commission', 'flat'].map((k) => <button key={k} type="button" className={plan === k ? 'on' : ''} onClick={() => setPlan(k)}>{k === 'commission' ? 'Commission' : 'Flat rate'}</button>)}
+              </div>
+            )}
             {plan === 'commission' && (
               <div className="rc-seg" role="group" aria-label="Pay scale">
                 {scaleOpts.map(([k, v]) => <button key={k} type="button" className={scale === k ? 'on' : ''} onClick={() => setScale(k)}>{v.name}</button>)}
               </div>
             )}
           </div>
-          {mine && <p className="calc-hint">{mine.plan === plan && (plan === 'flat' || mine.scale === scale) ? `This is your ${year} plan.` : `Your ${year} plan is the ${PLAN_LABEL[mine.plan].toLowerCase()}. Plans change only on January 1.`}</p>}
+          {mine && <p className="calc-hint">{commissionOnly ? `You’re on the ${PLAN_LABEL.commission.toLowerCase()} for ${year}.` : mine.plan === plan && (plan === 'flat' || mine.scale === scale) ? `This is your ${year} plan.` : `Your ${year} plan is the ${PLAN_LABEL[mine.plan].toLowerCase()}. Plans change only on January 1.`}</p>}
 
           <h2 className="calc-h">How much you’ll work</h2>
           <div className="calc-days" role="group" aria-label="Days a week">
@@ -173,7 +178,7 @@ export default function Calculator({ data, year, rep }) {
         </div>
 
         <p className="calc-hint">
-          On the {plan === 'flat' ? 'commission plan (First year)' : 'flat rate plan'}, the same year would pay {money0(other.year)}.
+          {!commissionOnly && <>On the {plan === 'flat' ? 'commission plan (First year)' : 'flat rate plan'}, the same year would pay {money0(other.year)}. </>}
           These are estimates from your inputs, not a promise of pay.
         </p>
       </section>
