@@ -152,3 +152,37 @@ create table public.route_plan_builds (
   built_by uuid references public.employees(id) default public.my_id(),
   primary key (office, month)
 );
+
+-- ---------- Sales pay plans (change 2026-11-15-32) ----------
+-- Settings (one row), service types that pay, and each rep's plan per year. Shadow mode only.
+create table public.comp_settings (
+  id             integer primary key default 1 check (id = 1),
+  upfront        numeric not null default 100 check (upfront >= 0),
+  hold_pct       numeric not null default 20 check (hold_pct between 0 and 100),
+  past_due_days  integer not null default 60 check (past_due_days >= 0),
+  clawback_days  integer not null default 365 check (clawback_days >= 0),
+  flat_pest      numeric not null default 200 check (flat_pest >= 0),
+  flat_termite   numeric not null default 150 check (flat_termite >= 0),
+  flat_mosquito  numeric not null default 100 check (flat_mosquito >= 0),
+  bonus          jsonb not null default '[{"min":600,"rate":60},{"min":780,"rate":65},{"min":1080,"rate":70}]',
+  scales         jsonb not null default '{"first_year":{"name":"First year","start":25,"step":2,"every":50,"max":50},"experienced":{"name":"Experienced","start":30,"step":3,"every":50,"max":50}}',
+  updated_by     uuid references public.employees(id) default public.my_id(),
+  updated_at     timestamptz not null default now()
+);
+create table public.comp_service_groups (
+  service_type text primary key,
+  grp          text not null check (grp in ('pest', 'termite', 'mosquito'))
+);
+create table public.comp_assignments (
+  employee_id uuid not null references public.employees(id) on delete cascade,
+  year        integer not null check (year between 2024 and 2100),
+  plan        text not null check (plan in ('commission', 'flat')),
+  scale       text not null default 'first_year',
+  upfront     numeric check (upfront >= 0),        -- blank = the plan's up-front amount
+  start_rate  numeric check (start_rate between 0 and 100),
+  step_rate   numeric check (step_rate between 0 and 100),
+  note        text,
+  updated_by  uuid references public.employees(id) default public.my_id(),
+  updated_at  timestamptz not null default now(),
+  primary key (employee_id, year)
+);

@@ -8,9 +8,11 @@ import SignOut from '../SignOut';
 export const dynamic = 'force-dynamic';
 
 export default async function RepsLayout({ children }) {
-  const { user, me } = await getMe(createClient());
+  const supabase = createClient();
+  const { user, me } = await getMe(supabase);
   if (!user) redirect('/login');
   if (!me || !appsFor(me.department, me.level).includes('sales')) redirect('/');
+  const { data: boss } = me.department === 'sales' ? { data: true } : await supabase.rpc('can_manage_pay');
 
   return (
     <>
@@ -18,6 +20,7 @@ export default async function RepsLayout({ children }) {
         <Link href="/" aria-label="Back to my profile"><img src="/logo.png" alt="Procare" /></Link>
         <div className="topbar-links">
           <Link className="toplink" href="/reps">Rep cards</Link>
+          {boss && <Link className="toplink" href="/pay">Pay</Link>}
           <Link className="toplink" href="/">My profile</Link>
           <SignOut />
         </div>

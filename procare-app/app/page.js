@@ -11,6 +11,7 @@ import TodayRoute from './TodayRoute';
 import RepCard from './reps/RepCard';
 import { buildCards, measure, periodRange, todayYmd as atlantaToday } from '@/lib/repcards';
 import SignOut from './SignOut';
+import { money, money0, nextMonday, nice, statement } from '@/lib/comp';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +59,19 @@ export default async function Home({ searchParams }) {
       id: me.id, first_name: me.first_name, last_name: me.last_name, name: `${me.first_name} ${me.last_name}`,
       office: me.office, photo: me.photo_url, m: measure({}), weeks: [],
     };
+  }
+
+  // Sales reps: pay at a glance (shadow mode)
+  let myPay = null;
+  if (me.department === 'sales') {
+    const today = atlantaToday();
+    const { data: comp } = await supabase.rpc('comp_sales', { p_year: Number(today.slice(0, 4)), p_emp: me.id });
+    if (comp) {
+      const st = statement(comp, me.id, Number(today.slice(0, 4)), today);
+      const monday = nextMonday(today);
+      const q = st.quarters.find((x) => x.payDate > today);
+      myPay = { st, monday, week: st.weeks.find((w) => w.payday === monday), q };
+    }
   }
 
   const { data: schedule } = await supabase
@@ -161,6 +175,23 @@ export default async function Home({ searchParams }) {
               <Link href="/reps">All rep cards ›</Link>
             </div>
             <RepCard rep={myCard} me showWeeks={false} />
+          </section>
+        )}
+
+        {myPay && (
+          <section className="section my-pay" aria-labelledby="pay-heading">
+            <div className="my-card-head">
+              <h2 id="pay-heading">Your pay</h2>
+              <Link href="/pay">Statement and calculator ›</Link>
+            </div>
+            {myPay.st.plan ? (
+              <div className="my-pay-box">
+                <div><small>Monday, {nice(myPay.monday)}</small><strong>{money(myPay.week?.total || 0)}</strong><small>{myPay.week?.sales.length || 0} serviced last week</small></div>
+                {myPay.q
+                  ? <div><small>Q{myPay.q.q} check, {nice(myPay.q.payDate)}</small><strong>{money0(myPay.q.paidOut)}</strong><small>{myPay.q.rate}% · so far</small></div>
+                  : <div><small>Up front this year</small><strong>{money0(myPay.st.upfrontYtd)}</strong><small>flat rate plan</small></div>}
+              </div>
+            ) : <p className="note">Your pay plan isn’t set up in the app yet. Try the <Link href="/pay?tab=calc">pay calculator</Link>.</p>}
           </section>
         )}
 

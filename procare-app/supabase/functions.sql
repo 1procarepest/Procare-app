@@ -429,3 +429,10 @@ $function$;
 -- Also adds fr_customers.city and fr_customers.zip (no street address), filled by Procare Sync.
 -- Change 2026-11-14-30: fr_spots (route spots from today to 7 days out, no customer details; RLS on, no policies)
 -- and rep_work_areas() also returns days (per area and day, up to 3 routes: open spots first, then closest job) and spots_loaded.
+
+-- Who can see every rep's pay and edit pay plans: sales managers, C-Suite and the President (change 2026-11-15-32).
+-- comp_sales(year, rep) is in changes/2026-11-15-32-comp-plans.sql.
+create or replace function public.can_manage_pay()
+returns boolean language sql stable security definer set search_path = public as $$
+  select my_rank() >= 4 or (my_department() = 'sales' and my_rank() >= 3)
+$$;
