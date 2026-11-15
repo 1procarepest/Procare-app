@@ -48,13 +48,15 @@ export default function Calculator({ data, year, rep }) {
   const [perDay, setPerDay] = useState(2);
   const [mix, setMix] = useState(myMix);
   const [pestCv, setPestCv] = useState(avgCv);
+  const myTerm = mySales.filter((x) => x.g === 'termite');
+  const [termiteInit, setTermiteInit] = useState(myTerm.length ? Math.round(myTerm.reduce((t, x) => t + n(x.init), 0) / myTerm.length) : 0);
   const [cancelPct, setCancelPct] = useState(10);
   const [goal, setGoal] = useState('');
 
   // The rep's own deal (up front, start rate, step) applies when the plan and scale match theirs
   const a = useMemo(() => (mine && mine.plan === plan && (plan === 'flat' || mine.scale === scale) ? mine : { plan, scale }), [mine, plan, scale]);
   const days = n(daysWk) * n(weeks);
-  const inputs = { days, perDay: n(perDay), mix, pestCv: n(pestCv), cancelPct: n(cancelPct) };
+  const inputs = { days, perDay: n(perDay), mix, pestCv: n(pestCv), cancelPct: n(cancelPct), termiteInit: n(termiteInit) };
   const p = project(s, a, inputs);
   const other = project(s, { plan: plan === 'flat' ? 'commission' : 'flat', scale: 'first_year' }, inputs);
   const needed = goal ? perDayFor(s, a, inputs, n(goal)) : null;
@@ -119,6 +121,10 @@ export default function Calculator({ data, year, rep }) {
               ))}
             </div>
           )}
+          {plan === 'commission' && n(s.termite_initial_pct ?? 100) > 0 && mix.termite > 0 && (
+            <Num label="Average termite initial you charge" value={termiteInit} onChange={setTermiteInit} prefix="$" step={25}
+              hint={`You get ${n(s.termite_initial_pct ?? 100)}% of it on top of the ${money0(n(a.upfront ?? s.upfront))} up front.`} />
+          )}
           <Slider label="Sales that cancel or don’t pay" value={n(cancelPct)} onChange={setCancelPct} min={0} max={40} step={1} show={(v) => `${v}%`} />
         </div>
       </section>
@@ -141,7 +147,7 @@ export default function Calculator({ data, year, rep }) {
           <div className="calc-card">
             <h3>How it’s paid</h3>
             <ul className="calc-paid">
-              <li><span>Every Monday, {money0(n(a.upfront ?? s.upfront))} per sale serviced the week before</span><strong>≈ {money0(p.upfront / weeksWorked)} a week</strong></li>
+              <li><span>Every Monday, {money0(n(a.upfront ?? s.upfront))} per sale serviced the week before{n(s.termite_initial_pct ?? 100) > 0 ? `, plus ${n(s.termite_initial_pct ?? 100)}% of each termite initial` : ''}</span><strong>≈ {money0(p.upfront / weeksWorked)} a week</strong></li>
               <li><span>The rest in quarter checks on Apr 20, Jul 20, Oct 20, with {n(s.hold_pct)}% held until Jan 20</span><strong>{money0(Math.max(0, p.backend))} a year</strong></li>
             </ul>
           </div>

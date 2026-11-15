@@ -70,6 +70,7 @@ export default function PlanSettings({ data, year, nextPlans }) {
   const [s, setS] = useState({
     upfront: s0.upfront, hold_pct: s0.hold_pct, past_due_days: s0.past_due_days, clawback_days: s0.clawback_days,
     flat_pest: s0.flat_pest, flat_termite: s0.flat_termite, flat_mosquito: s0.flat_mosquito,
+    termite_initial_pct: s0.termite_initial_pct ?? 100,
     bonus: (s0.bonus || []).map((b) => ({ ...b })), scales: JSON.parse(JSON.stringify(s0.scales || {})),
   });
   const [groups, setGroups] = useState(data.groups || {});
@@ -90,6 +91,7 @@ export default function PlanSettings({ data, year, nextPlans }) {
   const saveSettings = () => save('Pay settings', (c) => c.from('comp_settings').update({
     upfront: n(s.upfront), hold_pct: n(s.hold_pct), past_due_days: Math.round(n(s.past_due_days)), clawback_days: Math.round(n(s.clawback_days)),
     flat_pest: n(s.flat_pest), flat_termite: n(s.flat_termite), flat_mosquito: n(s.flat_mosquito),
+    termite_initial_pct: n(s.termite_initial_pct),
     bonus: s.bonus.filter((b) => b.min !== '' && b.rate !== '').map((b) => ({ min: n(b.min), rate: n(b.rate) })).sort((x, y) => x.min - y.min),
     scales: Object.fromEntries(Object.entries(s.scales).map(([k, v]) => [k, { name: String(v.name || k), start: n(v.start), step: n(v.step), every: Math.max(1, Math.round(n(v.every))), max: n(v.max) }])),
     updated_at: new Date().toISOString(),
@@ -131,7 +133,16 @@ export default function PlanSettings({ data, year, nextPlans }) {
             <Field label="Held back in Q1–Q3" value={s.hold_pct} onChange={setNum('hold_pct')} suffix="%" />
             <Field label="Past due after" value={s.past_due_days} onChange={setNum('past_due_days')} suffix="days" />
             <Field label="Clawback if canceled within" value={s.clawback_days} onChange={setNum('clawback_days')} suffix="days" />
+            <label className="calc-field">
+              <span className="rc-label">Termite initial payout</span>
+              <span className="calc-input">
+                <select value={String(n(s.termite_initial_pct))} onChange={(e) => setNum('termite_initial_pct')(e.target.value)}>
+                  {[0, 50, 100].map((v) => <option key={v} value={String(v)}>{v}% of the initial</option>)}
+                </select>
+              </span>
+            </label>
           </div>
+          <p className="calc-hint">Termite sales pay the up-front amount plus this share of the initial price, the same Monday. Example: a $200 initial at {n(s.termite_initial_pct)}% pays ${n(s.upfront) + 2 * n(s.termite_initial_pct)}.</p>
           <h3 className="pay-sub">Pay scales</h3>
           {Object.entries(s.scales).map(([key, v]) => (
             <div key={key} className="pay-fields">

@@ -12,6 +12,7 @@
  *    A rep who has left loses the hold.
  *  - Clawbacks: a cancel within clawback_days of the first service takes back everything paid on the
  *    sale, even across years. Customers more than past_due_days past due don't count until they pay.
+ *  - Termite on the commission plan also pays termite_initial_pct (0/50/100%) of the initial price, up front.
  *  - Flat plan: a set amount per service type, paid in full up front; no bonus, holds or clawbacks.
  */
 
@@ -60,6 +61,12 @@ export function upfrontFor(settings, a, grp) {
   if (a?.plan === 'flat') return n(settings?.[`flat_${grp}`]);
   return a?.upfront ?? n(settings?.upfront);
 }
+/** Commission plan: a termite sale also pays termite_initial_pct of the initial price the rep charged. */
+export function termiteInitial(settings, a, init) {
+  return a?.plan === 'commission' ? (n(init) * n(settings?.termite_initial_pct ?? 100)) / 100 : 0;
+}
+/** Everything paid up front on one sale. */
+export const saleUpfront = (settings, a, x) => upfrontFor(settings, a, x.g) + (x.g === 'termite' ? termiteInitial(settings, a, x.init) : 0);
 export const planOf = (data, emp, year) => (data?.plans || []).find((p) => p.employee_id === emp && p.year === year) || null;
 
 // ---------- statement ----------
@@ -78,7 +85,7 @@ export function statement(data, emp, year, today, { prior = true } = {}) {
   const scale = scaleFor(s, a);
   out.scale = scale;
 
-  const up = (x) => upfrontFor(s, a, x.g);
+  const up = (x) => cents(saleUpfront(s, a, x));
   const cancelledBy = (x, asOf) => x.can && x.can <= asOf && daysBetween(x.served, x.can) <= n(s.clawback_days);
   const pastDue = (x) => n(x.bal) > 0 && n(x.age) > n(s.past_due_days);
 
@@ -168,7 +175,7 @@ export const nextMonday = (today) => { const k = (8 - D(today).getUTCDay()) % 7;
  * A year's pay from a plan and a pace. mix = { pest, termite, mosquito } in %.
  * cancelPct of sales are assumed to cancel or go past due (no pay on them).
  */
-export function project(settings, a, { days, perDay, mix, pestCv, cancelPct }) {
+export function project(settings, a, { days, perDay, mix, pestCv, cancelPct, termiteInit = 0 }) {
   const total = Math.max(0, Math.round(n(days) * n(perDay)));
   const share = (g) => n(mix[g]) / Math.max(1, GROUPS.reduce((t, k) => t + n(mix[k]), 0));
   const count = { pest: Math.round(total * share('pest')), termite: Math.round(total * share('termite')) };
@@ -187,11 +194,11 @@ export function project(settings, a, { days, perDay, mix, pestCv, cancelPct }) {
   const upAmt = upfrontFor(settings, a, 'pest');
   const by = {
     pest: count.pest * keep * n(pestCv) * pestRate / 100,
-    termite: count.termite * keep * upFor(settings, a, 'termite'),
+    termite: count.termite * keep * (upFor(settings, a, 'termite') + termiteInitial(settings, a, termiteInit)),
     mosquito: count.mosquito * keep * upFor(settings, a, 'mosquito'),
   };
   const year = GROUPS.reduce((t, g) => t + by[g], 0);
-  const upfront = total * upAmt;                      // up-fronts go out on every serviced sale
+  const upfront = total * upAmt + count.termite * termiteInitial(settings, a, termiteInit);   // up fronts go out on every serviced sale
   const ladder = [];
   for (let k = 0; ; k += 1) {
     const at = k * scale.every;

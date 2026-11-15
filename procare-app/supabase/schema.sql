@@ -164,6 +164,7 @@ create table public.comp_settings (
   flat_pest      numeric not null default 200 check (flat_pest >= 0),
   flat_termite   numeric not null default 150 check (flat_termite >= 0),
   flat_mosquito  numeric not null default 100 check (flat_mosquito >= 0),
+  termite_initial_pct numeric not null default 100 check (termite_initial_pct between 0 and 100),  -- change 34
   bonus          jsonb not null default '[{"min":600,"rate":60},{"min":780,"rate":65},{"min":1080,"rate":70}]',
   scales         jsonb not null default '{"first_year":{"name":"First year","start":25,"step":2,"every":50,"max":50},"experienced":{"name":"Experienced","start":30,"step":3,"every":50,"max":50}}',
   updated_by     uuid references public.employees(id) default public.my_id(),
