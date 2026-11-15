@@ -221,6 +221,18 @@ function resetQueue() {
   Logger.log('Queue cleared.');
 }
 
+/** One time: reloads customers so city and zip fill in for rep work areas. Runs a piece every 5 minutes. */
+function fillCustomerCities() {
+  const q = loadQueue_();
+  SYNC.OFFICES.forEach(o => {
+    q.push({ o: o.key, job: 'full:customers' });
+    q.push({ o: o.key, job: 'cust:query', from: SYNC.BACKFILL_START });
+  });
+  saveQueue_(q);
+  Logger.log('Queued customer reload for city and zip. It runs on the 5-minute schedule; starting now…');
+  tick();
+}
+
 function showStatus() {
   const q = loadQueue_();
   Logger.log('Backfill: ' + (PROPS.getProperty('BACKFILL_DONE') ? 'done ' + PROPS.getProperty('BACKFILL_DONE') : 'not finished'));
@@ -557,7 +569,8 @@ function pullCustomers_(o, params) {
   const custs = frFetch_(o, 'customer', params);
   supaUpsert_('fr_customers', custs.map(c => ({
     customer_id: id_(c.customerID), office: officeOf_(c, o),
-    last_name: str_(c.lname), company_name: str_(c.companyName),          // never first name or address
+    last_name: str_(c.lname), company_name: str_(c.companyName),          // never first name or street address
+    city: str_(c.city), zip: str_(c.zip),                                 // for rep work areas
     status: num_(c.status), autopay: str_(c.aPay), autopay_profile_id: id_(c.autoPayPaymentProfileID),
     balance: num_(c.responsibleBalance !== undefined ? c.responsibleBalance : c.balance),
     balance_age: num_(c.responsibleBalanceAge !== undefined ? c.responsibleBalanceAge : c.balanceAge),

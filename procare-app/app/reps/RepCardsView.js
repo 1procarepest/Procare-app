@@ -9,8 +9,9 @@ import { initialsOf } from '@/lib/photo';
 import { LEADER_TITLE, OUTCOMES, VIEWS, byStanding, leaders, money0, one, pct0, shiftPeriod } from '@/lib/repcards';
 import RepCard, { SalesSide } from './RepCard';
 import SalesBoard from './SalesBoard';
+import WorkAreas from './WorkAreas';
 
-const href = (view, date, tab, basis) => `/reps?view=${view}&date=${date}${tab === 'board' ? `&tab=board${basis === 'service' ? '&basis=service' : ''}` : ''}`;
+const href = (view, date, tab, basis) => `/reps?view=${view}&date=${date}${tab === 'board' ? `&tab=board${basis === 'service' ? '&basis=service' : ''}` : tab === 'areas' ? '&tab=areas' : ''}`;
 const OFFICE_BUG = { east: 'ant', south: 'stinging', west: 'mosquito' };
 const LEADER_ART = {
   services: ['roach', 'ink'], new: ['ant', 'forest'], convos: ['cricket', 'lime'], hours: ['termite', 'sage'], close: ['spider', 'forest'],
@@ -182,7 +183,7 @@ function Glossary() {
   );
 }
 
-export default function RepCardsView({ view, date, today, label, isCurrent, reps, offices, team, officeReps = {}, meId, syncedAt, tab = 'cards', basis = 'sold', board }) {
+export default function RepCardsView({ view, date, today, label, isCurrent, reps, offices, team, officeReps = {}, meId, syncedAt, tab = 'cards', basis = 'sold', board, canSeeAreas = false, areas = null }) {
   const [office, setOffice] = useState('all');
   const shown = reps.filter((r) => office === 'all' || r.office === office).sort(byStanding);
   const m = office === 'all' ? team : offices[office];
@@ -205,8 +206,9 @@ export default function RepCardsView({ view, date, today, label, isCurrent, reps
 
       <div className="rc-controls">
         <nav className="rc-seg rc-tabs" aria-label="View">
-          <Link href={href(view, date, 'cards')} className={tab !== 'board' ? 'on' : ''} aria-current={tab !== 'board' ? 'page' : undefined} scroll={false}>Rep Cards</Link>
+          <Link href={href(view, date, 'cards')} className={tab === 'cards' ? 'on' : ''} aria-current={tab === 'cards' ? 'page' : undefined} scroll={false}>Rep Cards</Link>
           <Link href={href(view, date, 'board', basis)} className={tab === 'board' ? 'on' : ''} aria-current={tab === 'board' ? 'page' : undefined} scroll={false}>Sales Leaderboard</Link>
+          {canSeeAreas && <Link href={href(view, date, 'areas')} className={tab === 'areas' ? 'on' : ''} aria-current={tab === 'areas' ? 'page' : undefined} scroll={false}>Work areas</Link>}
         </nav>
         <nav className="rc-seg" aria-label="Period">
           {VIEWS.map((v) => (
@@ -226,7 +228,7 @@ export default function RepCardsView({ view, date, today, label, isCurrent, reps
         </select>
       </div>
 
-      {tab === 'board' ? <SalesBoard data={board} office={office} label={label} onOffice={setOffice} basis={basis}
+      {tab === 'areas' ? <WorkAreas data={areas} office={office} label={label} isCurrent={isCurrent} /> : tab === 'board' ? <SalesBoard data={board} office={office} label={label} onOffice={setOffice} basis={basis}
         basisLinks={{ sold: href(view, date, 'board', 'sold'), service: href(view, date, 'board', 'service') }} /> : (<>
       <Panel title={office === 'all' ? 'Team Totals' : `${OFFICE_NAME[office]} Totals`} summary={`${m?.services || 0} services sold · ${money0(m?.far)}`}>
         {m ? <Totals m={m} /> : <p className="note">No doors or sales in this period.</p>}
