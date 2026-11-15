@@ -17,7 +17,9 @@ create policy comp_groups_write on public.comp_service_groups for all to authent
 drop policy if exists comp_assignments_read on public.comp_assignments;
 create policy comp_assignments_read on public.comp_assignments for select to authenticated using (employee_id = my_id() or can_manage_pay());
 drop policy if exists comp_assignments_write on public.comp_assignments;
-create policy comp_assignments_write on public.comp_assignments for all to authenticated using (can_manage_pay()) with check (can_manage_pay());
+create policy comp_assignments_write on public.comp_assignments for all to authenticated
+  using (can_manage_pay())
+  with check (can_manage_pay() and exists (select 1 from employees e where e.id = employee_id and e.department = 'sales'));  -- change 33: sales reps only
 drop trigger if exists log_comp_settings on public.comp_settings;
 create trigger log_comp_settings after insert or delete or update on public.comp_settings for each row execute function log_change();
 drop trigger if exists log_comp_service_groups on public.comp_service_groups;
