@@ -274,7 +274,8 @@ function runStep_(s) {
     // Techs look at their route up to 7 days back and ahead, so routes and jobs cover that stretch.
     case 'routes:today': {
       const d = ymd_(new Date());
-      return pullRoutes_(o, addDays_(d, -SYNC.ROUTE_DAYS), addDays_(d, SYNC.ROUTE_DAYS));
+      pullRoutes_(o, addDays_(d, -SYNC.ROUTE_DAYS), addDays_(d, SYNC.ROUTE_DAYS));
+      return pullSpots_(o, d, addDays_(d, SYNC.ROUTE_DAYS));       // open spots, for rep work areas
     }
     case 'appts:today': {
       const d = ymd_(new Date());
@@ -538,6 +539,37 @@ function pullRoutes_(o, from, to) {
     assigned_tech: id_(first_(r, ['assignedTech', 'assignedTechID', 'techID', 'employeeID'])),
     template_id: id_(r.templateID), synced_at: now
   })).filter(r => r.route_id), ['route_id']);
+}
+
+/**
+ * Spots on the routes from `from` to `to` (no customer details), so rep work areas can show open
+ * spots near a rep. A spot is open when it has room, no appointment and no block.
+ */
+function pullSpots_(o, from, to) {
+  const now = new Date().toISOString();
+  const routeIds = supaSelectIds_('fr_routes', 'route_id', 'office=eq.' + o.key + '&date=gte.' + from + '&date=lte.' + to);
+  for (let i = 0; i < routeIds.length; i += 100) {
+    const chunk = routeIds.slice(i, i + 100);
+    const spots = frFetch_(o, 'spot', { routeIDs: chunk, date: { operator: 'BETWEEN', value: [from, to] } });
+    supaFetch_('delete', 'fr_spots?route_id=in.(' + chunk.join(',') + ')');
+    supaUpsert_('fr_spots', spots.map(x => ({
+      spot_id: id_(x.spotID), office: o.key, route_id: id_(x.routeID), date: day_(x.date),
+      start_time: str_(x.start), end_time: str_(x.end),
+      capacity: num_(first_(x, ['spotCapacity', 'capacity'])),
+      blocked: str_(x.blockReason) !== null,
+      appointment_id: id_(first_(x, ['currentAppointment', 'appointmentID'])),
+      synced_at: now
+    })).filter(r => r.spot_id && r.route_id), ['spot_id']);
+  }
+}
+
+/** Logs the field names FieldRoutes sends for one spot (no values). For checking the spot sync. */
+function peekSpotFields() {
+  const o = SYNC.OFFICES[0];
+  const d = ymd_(new Date());
+  const ids = supaSelectIds_('fr_routes', 'route_id', 'office=eq.' + o.key + '&date=gte.' + d);
+  const spots = ids.length ? frFetch_(o, 'spot', { routeIDs: ids.slice(0, 1), date: { operator: '>=', value: d } }) : [];
+  Logger.log(spots.length ? Object.keys(spots[0]).join(', ') : 'No spots found.');
 }
 
 /** Fixes today's routes right away (after a sync change), instead of waiting for tomorrow morning. */

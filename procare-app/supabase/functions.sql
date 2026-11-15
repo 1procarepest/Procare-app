@@ -427,3 +427,5 @@ $function$;
 -- can_see_rep_areas() is true for the President, C-suite and sales managers.
 -- rep_work_areas(p_from date, p_to date) returns json: areas (rep + city with 5+ pins), techs in or within 6 miles of each area (period and next 7 days), cities_loaded.
 -- Also adds fr_customers.city and fr_customers.zip (no street address), filled by Procare Sync.
+-- Change 2026-11-14-30: fr_spots (route spots from today to 7 days out, no customer details; RLS on, no policies)
+-- and rep_work_areas() also returns days (per area and day, up to 3 routes: open spots first, then closest job) and spots_loaded.
