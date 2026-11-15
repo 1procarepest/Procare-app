@@ -228,7 +228,7 @@ export default function RepCardsView({ view, date, today, label, isCurrent, reps
         </select>
       </div>
 
-      {tab === 'areas' ? <WorkAreas data={areas} office={office} label={label} isCurrent={isCurrent} /> : tab === 'board' ? <SalesBoard data={board} office={office} label={label} onOffice={setOffice} basis={basis}
+      {tab === 'areas' ? <WorkAreas data={areas} office={office} label={label} isCurrent={isCurrent} meId={meId} /> : tab === 'board' ? <SalesBoard data={board} office={office} label={label} onOffice={setOffice} basis={basis}
         basisLinks={{ sold: href(view, date, 'board', 'sold'), service: href(view, date, 'board', 'service') }} /> : (<>
       <Panel title={office === 'all' ? 'Team Totals' : `${OFFICE_NAME[office]} Totals`} summary={`${m?.services || 0} services sold · ${money0(m?.far)}`}>
         {m ? <Totals m={m} /> : <p className="note">No doors or sales in this period.</p>}

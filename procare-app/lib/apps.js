@@ -10,5 +10,5 @@ export function appsFor(department, level) {
   if (level === 'team_member') return [department === 'administrative' ? 'operations' : department];
   if (department === 'sales') return ['sales', 'operations'];
   if (department === 'technician') return ['technician', 'sales', 'operations'];
-  return ['operations', 'technician'];
+  return ['operations', 'technician', 'sales'];                 // office leads and up
 }

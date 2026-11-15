@@ -71,8 +71,8 @@ function Booking({ list, spotsLoaded }) {
   );
 }
 
-export default function WorkAreas({ data, office, label, isCurrent }) {
-  if (!data) return <p className="note">Work areas are only for sales managers and the President.</p>;
+export default function WorkAreas({ data, office, label, isCurrent, meId }) {
+  if (!data) return <p className="note">Work areas are for the sales team and leadership.</p>;
   const techs = {};
   for (const t of data.techs || []) (techs[`${t.rep}|${t.area}|${t.win}`] ||= []).push(t);
   const booking = {};
@@ -86,40 +86,56 @@ export default function WorkAreas({ data, office, label, isCurrent }) {
     byRep[a.rep].areas.push(a);
     byRep[a.rep].pins += a.pins;
   }
-  reps.sort((a, b) => b.pins - a.pins);
+  reps.sort((a, b) => (b.rep === meId) - (a.rep === meId) || b.pins - a.pins);   // your own areas first
+
+  const firstPick = (rep, city) => (booking[`${rep}|${city}`] || []).find((p) => p.open_spots > 0);
 
   return (
     <section className="rc-block">
       <div className="rc-block-head"><h2>Work areas</h2><span className="rc-label">Where each rep knocked · {label}</span></div>
-      <p className="note">Cities where a rep dropped 5 or more pins. <b>Where to book next</b> lists, for each day this week, the routes with open spots closest to where the rep knocked: best pick first. Miles are from the middle of the rep’s pins to the city of the route’s closest job. <b>Techs who worked nearby</b> shows jobs done in or within 6 miles of the area during the period above.</p>
+      <p className="note">Cities where a rep dropped 5 or more pins. <b>Where to book next</b> lists, for each day this week, the routes with open spots closest to where the rep knocked: best pick first. Miles are from the middle of the rep’s pins to the city of the route’s closest job. <b>Techs who worked nearby</b> shows jobs done in or within 6 miles of the area during the period above. Tap a rep or a city to open it.</p>
       {!data.cities_loaded && <p className="note wa-warn">Customer cities are still loading from FieldRoutes, so techs will show up after the next sync.</p>}
       {reps.length ? reps.map((r) => (
-        <article key={r.rep} className="wa-rep">
-          <header className="wa-rep-head">
+        <details key={r.rep} className={`wa-rep${r.rep === meId ? ' wa-me' : ''}`} open={r.rep === meId}>
+          <summary className="wa-rep-head">
             <Face person={r} size={36} />
-            <div><h3>{r.first_name} {r.last_name}</h3><span className="rc-label">{plural(r.pins, 'pin')} in {plural(r.areas.length, 'area')}</span></div>
-          </header>
+            <div>
+              <h3>{r.first_name} {r.last_name}{r.rep === meId && <em className="wa-you">You</em>}</h3>
+              <span className="rc-label">{plural(r.pins, 'pin')} in {plural(r.areas.length, 'area')} · {r.areas.slice(0, 3).map((a) => a.city).join(', ')}{r.areas.length > 3 ? '…' : ''}</span>
+            </div>
+            <span className="wa-caret" aria-hidden="true">⌄</span>
+          </summary>
           <ul className="wa-areas">
-            {r.areas.map((a) => (
-              <li key={a.city} className="wa-area">
-                <div className="wa-where">
-                  <h4>{a.city}</h4>
-                  <span className="wa-pins">{plural(a.pins, 'pin')}</span>
-                  <span className="wa-meta">{span(a)}</span>
-                  <span className="wa-meta">{plural(a.convos, 'conversation')} · {plural(a.sales, 'sale')}{a.zips?.length ? ` · zip ${a.zips.join(', ')}` : ''}</span>
-                </div>
-                <div className="wa-col wa-book">
-                  <span className="rc-label">Where to book next</span>
-                  <Booking list={booking[`${r.rep}|${a.city}`] || []} spotsLoaded={data.spots_loaded} />
-                </div>
-                <div className="wa-col">
-                  <span className="rc-label">Techs who worked nearby {isCurrent ? 'this period' : 'then'}</span>
-                  <Techs list={techs[`${r.rep}|${a.city}|period`] || []} empty="No tech jobs in or near here." />
-                </div>
-              </li>
-            ))}
+            {r.areas.map((a, i) => {
+              const pick = firstPick(r.rep, a.city);
+              return (
+                <li key={a.city}>
+                  <details className="wa-area-box" open={r.rep === meId && i === 0}>
+                    <summary className="wa-area-sum">
+                      <span><b>{a.city}</b> <span className="wa-pins">{plural(a.pins, 'pin')}</span></span>
+                      <small>{pick ? `Next best: ${weekday(pick.date)}, ${pick.tech ? `${pick.first_name} ${pick.last_name}` : pick.route || 'open route'} (${plural(pick.open_spots, 'open spot')})` : 'No open spots nearby this week'}</small>
+                      <span className="wa-caret" aria-hidden="true">⌄</span>
+                    </summary>
+                    <div className="wa-area">
+                      <div className="wa-where">
+                        <span className="wa-meta">{span(a)}</span>
+                        <span className="wa-meta">{plural(a.convos, 'conversation')} · {plural(a.sales, 'sale')}{a.zips?.length ? ` · zip ${a.zips.join(', ')}` : ''}</span>
+                      </div>
+                      <div className="wa-col wa-book">
+                        <span className="rc-label">Where to book next</span>
+                        <Booking list={booking[`${r.rep}|${a.city}`] || []} spotsLoaded={data.spots_loaded} />
+                      </div>
+                      <div className="wa-col">
+                        <span className="rc-label">Techs who worked nearby {isCurrent ? 'this period' : 'then'}</span>
+                        <Techs list={techs[`${r.rep}|${a.city}|period`] || []} empty="No tech jobs in or near here." />
+                      </div>
+                    </div>
+                  </details>
+                </li>
+              );
+            })}
           </ul>
-        </article>
+        </details>
       )) : <p className="note rc-empty"><Bug kind="ant" size={28} color="var(--forest)" /> No area with 5 or more pins in this period.</p>}
     </section>
   );
