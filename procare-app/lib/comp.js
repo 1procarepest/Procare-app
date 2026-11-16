@@ -225,6 +225,19 @@ export function perDayFor(settings, a, inputs, goal) {
 
 // ---------- customer list ----------
 /**
+ * Where a not-yet-done first service stands. FieldRoutes says "No Show" whenever the tech couldn't do
+ * it, so that word isn't shown: Scheduled (booked, still ahead), Rescheduled (a new date is booked),
+ * Needs a new date (still active, nothing booked), or Canceled.
+ */
+export function firstService(x, today) {
+  // A canceled first appointment on a service that's still active usually means it's being moved
+  if (x.live === false || (x.live === undefined && /cancel/i.test(x.st || ''))) return { key: 'canceled', label: 'Canceled', short: 'Canceled', note: 'no pay', tone: 'muted' };
+  if (x.st === 'Pending' && x.on && x.on >= today) return { key: 'scheduled', label: 'Scheduled', short: nice(x.on), note: `first service ${nice(x.on)}` };
+  if (x.next) return { key: 'rescheduled', label: 'Rescheduled', short: nice(x.next), note: `new date ${nice(x.next)}` };
+  return { key: 'needs', label: 'Needs a new date', short: 'Not done', note: 'couldn’t be done; office to reschedule', tone: 'warn' };
+}
+
+/**
  * Every customer a rep added this year (plus last year's that canceled this year), with what the
  * sale earns, what has been paid on it, what is left, and any deduction. `open` = sales not serviced yet.
  */
@@ -302,13 +315,12 @@ export function customers(st, open, today) {
   }));
 
   (open || []).forEach((x) => {
-    const pending = x.st === 'Pending';
+    const st = firstService(x, today);
     const up = a ? cents(saleUpfront(s, a, x)) : 0;
+    const coming = st.key !== 'canceled';
     rows.push({
-      ...x, kind: 'open', served: null, up, earned: pending ? up : 0, paid: 0, left: pending ? up : 0, deduction: 0,
-      status: pending ? 'Not serviced yet' : x.st === 'No Show' ? 'No-show, not serviced' : 'Canceled before service',
-      note: pending ? (x.on ? `first service ${nice(x.on)}` : 'pays the Monday after service') : 'no pay',
-      tone: pending ? null : 'muted',
+      ...x, kind: 'open', served: null, svc: st, up, earned: coming ? up : 0, paid: 0, left: coming ? up : 0, deduction: 0,
+      status: st.label, note: st.note, tone: st.tone,
     });
   });
 

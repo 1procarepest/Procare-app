@@ -72,8 +72,8 @@ const FILTERS = [
   { k: 'all', label: 'All', test: () => true },
   { k: 'left', label: 'Still to be paid', test: (r) => r.left > 0 },
   { k: 'paid', label: 'Paid in full', test: (r) => r.status === 'Paid in full' },
-  { k: 'cancel', label: 'Canceled', test: (r) => r.tone === 'bad' },
-  { k: 'open', label: 'Not serviced yet', test: (r) => r.kind === 'open' },
+  { k: 'cancel', label: 'Canceled', test: (r) => r.tone === 'bad' || r.svc?.key === 'canceled' },
+  { k: 'open', label: 'Not serviced yet', test: (r) => r.kind === 'open' && r.svc?.key !== 'canceled' },
 ];
 
 /** Every customer the rep added: status, what it earns, what's been paid, what's left, deductions. */
@@ -101,7 +101,7 @@ function CustomerList({ st, open, today }) {
                 <td>{GROUP_LABEL[r.g]}</td>
                 <td>{money0(r.cv)}</td>
                 <td>{nice(r.sold)}</td>
-                <td>{r.served ? nice(r.served) : r.st === 'Pending' ? 'Pending' : r.st === 'No Show' ? 'No-show' : r.kind === 'open' ? 'Canceled' : '—'}</td>
+                <td>{r.served ? nice(r.served) : r.svc ? r.svc.short : '—'}</td>
                 <td><span className="pay-status-text">{r.status}</span>{r.note && <small>{r.note}</small>}</td>
                 <td>{money(r.earned)}{r.g === 'pest' && r.rate ? <small>{r.rate}%{r.bonus ? ' bonus' : ''}</small> : null}</td>
                 <td>{money(r.paid)}</td>
