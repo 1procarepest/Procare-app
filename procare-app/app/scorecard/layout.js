@@ -3,26 +3,19 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { appsFor } from '@/lib/apps';
-import SignOut from '../SignOut';
+import TopNav from '../TopNav';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ScorecardLayout({ children }) {
-  const { user, me } = await getMe(createClient());
+  const supabase = createClient();
+  const { user, me } = await getMe(supabase);
   if (!user) redirect('/login');
   if (!me || !appsFor(me.department, me.level).includes('technician')) redirect('/');
 
   return (
     <>
-      <header className="topbar">
-        <Link href="/" aria-label="Back to my profile"><img src="/logo.png" alt="Procare" /></Link>
-        <div className="topbar-links">
-          <Link className="toplink" href="/scorecard">Performance Card</Link>
-          {me.rank >= 4 && <Link className="toplink" href="/scorecard/rules">Rules</Link>}
-          <Link className="toplink" href="/">My profile</Link>
-          <SignOut />
-        </div>
-      </header>
+      <TopNav me={me} supabase={supabase} current="technician" extra={me.rank >= 4 && <Link className="toplink" href="/scorecard/rules">Rules</Link>} />
       <main className="admin scorecard">{children}</main>
     </>
   );

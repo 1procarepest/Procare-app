@@ -1028,3 +1028,26 @@ details[open] > summary > .wa-caret { transform: rotate(180deg); }
 .my-pay-box div { display: flex; flex-direction: column; gap: 2px; }
 .my-pay-box strong { font-size: 24px; }
 .my-pay-box small { color: var(--muted); font-size: 12.5px; }
+
+/* top links on every page */
+.topnav { max-width: 1240px; flex-wrap: wrap; }
+.topnav .topbar-links { flex-wrap: wrap; justify-content: flex-end; gap: 2px 4px; }
+.toplink.on { color: var(--forest); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 6px; }
+@media (max-width: 640px) {
+  .topnav { justify-content: center; }
+  .topnav .topbar-links { justify-content: center; }
+  .toplink { padding: 6px; font-size: 13.5px; }
+}
+
+/* customer list on the pay statement */
+.pay-filter { margin-bottom: 12px; }
+.pay-cust td, .pay-cust th { vertical-align: top; }
+.pay-cust td small, .pay-cust th small { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
+.pay-cust td:nth-child(5) { text-align: left; }
+.pay-status-text { font-weight: 600; white-space: nowrap; }
+.pay-good .pay-status-text { color: var(--forest); }
+.pay-warn .pay-status-text { color: #8a6d00; }
+.pay-bad .pay-status-text, .pay-deduct { color: var(--danger); font-weight: 600; }
+.pay-muted th, .pay-muted td { color: var(--muted); }
+.pay-cust tfoot th, .pay-cust tfoot td { font-weight: 700; background: var(--paper); border-top: 1.5px solid var(--line); }
+.pay-noplan { margin-bottom: 14px; }

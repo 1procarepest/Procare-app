@@ -10,7 +10,7 @@ import { OFFICE_NAME, roleTitle, timeOffWhen } from '@/lib/labels';
 //   { event: 'time_off_decided', id }  approves or denies a request (→ the employee)
 //   { event: 'issue', id }             reports a schedule issue (switch schedule_issue) or a sales
 //                                      schedule update (switch sales_schedule_change) → whoever handles their schedule
-// Each email has a switch on Manage team → Email settings (notification_settings.key).
+// Each email has a switch on Settings → Email settings (notification_settings.key).
 // People can only trigger emails about their own action, and only within a few minutes of it.
 
 const RECENT_MS = 10 * 60 * 1000;

@@ -11,6 +11,7 @@ import TodayRoute from './TodayRoute';
 import RepCard from './reps/RepCard';
 import { buildCards, measure, periodRange, todayYmd as atlantaToday } from '@/lib/repcards';
 import SignOut from './SignOut';
+import TopNav from './TopNav';
 import { money, money0, nextMonday, nice, statement } from '@/lib/comp';
 
 export const dynamic = 'force-dynamic';
@@ -149,13 +150,7 @@ export default async function Home({ searchParams }) {
 
   return (
     <>
-      <header className="topbar">
-        <img src="/logo.png" alt="Procare" />
-        <div className="topbar-links">
-          {me.rank >= 2 && <Link className="toplink" href="/admin">Manage team</Link>}
-          <SignOut />
-        </div>
-      </header>
+      <TopNav me={me} supabase={supabase} current="home" />
 
       <main className="home">
         <section className="hello bug-band">

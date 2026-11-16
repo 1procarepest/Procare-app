@@ -61,7 +61,7 @@ export async function sendEmail({ to, subject, heading, lines, link }) {
       ${lines.map((l) => `<p style="font-size:15px;line-height:1.5;margin:0 0 8px">${escapeHtml(l)}</p>`).join('')}
       ${link ? `<p style="margin:20px 0 0"><a href="${escapeHtml(link.href)}" style="display:inline-block;background:#025F49;color:#FFFFFF;text-decoration:none;font-family:'IBM Plex Mono','Courier New',monospace;font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:12px 18px;border-radius:10px">${escapeHtml(link.label)}</a></p>` : ''}
     </div>
-    <p style="font-size:12px;color:#4A6366;margin:14px 4px 0">Procare Team app. Automatic email; C-Suite can turn it off under Manage team → Email settings.</p>
+    <p style="font-size:12px;color:#4A6366;margin:14px 4px 0">Procare Team app. Automatic email; C-Suite can turn it off under Settings → Email settings.</p>
   </div>
 </body></html>`;
 

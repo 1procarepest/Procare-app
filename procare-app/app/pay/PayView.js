@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import {
-  GROUP_LABEL, PLAN_LABEL, money, money0, nextMonday, nice, rateAt, statement,
+  GROUP_LABEL, PLAN_LABEL, customers, money, money0, nextMonday, nice, rateAt, statement,
 } from '@/lib/comp';
 import Calculator from './Calculator';
 import PlanSettings from './PlanSettings';
@@ -65,7 +65,59 @@ const custCol = { k: 'c', h: 'Customer', v: (r) => r.c || `#${r.id}` };
 const typeCol = { k: 'g', h: 'Service', v: (r) => GROUP_LABEL[r.g] };
 const servedCol = { k: 's', h: 'Serviced', v: (r) => nice(r.served) };
 
-function Statement({ st, today }) {
+const FILTERS = [
+  { k: 'all', label: 'All', test: () => true },
+  { k: 'left', label: 'Still to be paid', test: (r) => r.left > 0 },
+  { k: 'paid', label: 'Paid in full', test: (r) => r.status === 'Paid in full' },
+  { k: 'cancel', label: 'Canceled', test: (r) => r.tone === 'bad' },
+  { k: 'open', label: 'Not serviced yet', test: (r) => r.kind === 'open' },
+];
+
+/** Every customer the rep added: status, what it earns, what's been paid, what's left, deductions. */
+function CustomerList({ st, open, today }) {
+  const [f, setF] = useState('all');
+  const { rows, totals } = useMemo(() => customers(st, open, today), [st, open, today]);
+  const shown = rows.filter(FILTERS.find((x) => x.k === f).test);
+  return (
+    <Panel open title="Your customers" summary={`${rows.length} · ${money0(totals.paid)} paid · ${money0(totals.left)} to go`}>
+      <div className="calc-chips pay-filter" role="group" aria-label="Show">
+        {FILTERS.map((x) => {
+          const k = rows.filter(x.test).length;
+          return <button key={x.k} type="button" className={f === x.k ? 'on' : ''} onClick={() => setF(x.k)}>{x.label} {k}</button>;
+        })}
+      </div>
+      <div className="pay-scroll">
+        <table className="ops-table pay-cust">
+          <thead>
+            <tr><th scope="col">Customer</th><th scope="col">Service</th><th scope="col">Sold</th><th scope="col">Serviced</th><th scope="col">Status</th><th scope="col">Earns</th><th scope="col">Paid</th><th scope="col">Left to pay</th></tr>
+          </thead>
+          <tbody>
+            {shown.map((r) => (
+              <tr key={`${r.kind}-${r.id}`} className={r.tone ? `pay-${r.tone}` : ''}>
+                <th scope="row">{r.c || `#${r.id}`}</th>
+                <td>{GROUP_LABEL[r.g]}{r.g === 'pest' && r.cv ? <small> {money0(r.cv)}{r.rate ? ` · ${r.rate}%${r.bonus ? ' bonus' : ''}` : ''}</small> : null}</td>
+                <td>{nice(r.sold)}</td>
+                <td>{r.served ? nice(r.served) : '—'}</td>
+                <td><span className="pay-status-text">{r.status}</span>{r.note && <small>{r.note}</small>}</td>
+                <td>{money(r.earned)}</td>
+                <td>{money(r.paid)}</td>
+                <td>{r.deduction < 0 && <span className="pay-deduct">{money(r.deduction)} taken back</span>}{r.left < 0 ? <span className="pay-deduct">{money(r.left)} to take back</span> : r.deduction < 0 ? null : money(r.left)}</td>
+              </tr>
+            ))}
+            {shown.length === 0 && <tr><td colSpan={8} className="pay-muted">Nothing here.</td></tr>}
+          </tbody>
+          <tfoot>
+            <tr><th scope="row" colSpan={5}>All {rows.length} customers</th><td>{money(totals.earned)}</td><td>{money(totals.paid)}</td><td>{money(totals.left)}{totals.deduction < 0 && <small className="pay-deduct">{money(totals.deduction)} taken back</small>}</td></tr>
+            <tr><th scope="row" colSpan={6}>Paid so far, after what was taken back</th><td colSpan={2}>{money(totals.paid + totals.deduction)}</td></tr>
+          </tfoot>
+        </table>
+      </div>
+      <p className="calc-hint">“Earns” uses your rate today; if your rate goes up, older pest sales earn more too. Pest sales are paid {money0(st.settings.upfront)} up front, then the rest in quarter checks with {st.settings.hold_pct}% held until January 20.</p>
+    </Panel>
+  );
+}
+
+function Statement({ st, today, open }) {
   const now = rateNow(st);
   const next = nextMonday(today);
   const nextWeek = st.weeks.find((w) => w.payday === next);
@@ -73,7 +125,12 @@ function Statement({ st, today }) {
   const held = st.quarters.length ? st.quarters[st.quarters.length - 1].held : 0;
 
   if (!st.plan) {
-    return <p className="note">No pay plan is set for {st.rep?.name || 'this rep'} in {st.year}. A sales manager or the President sets it on the Plans tab.</p>;
+    return (
+      <>
+        <p className="note pay-noplan">No pay plan is set for {st.rep?.name || 'this rep'} in {st.year}. A sales manager or the President sets it on the Plans tab.</p>
+        <CustomerList st={st} open={open} today={today} />
+      </>
+    );
   }
   const isFlat = st.plan.plan === 'flat';
 
@@ -86,6 +143,8 @@ function Statement({ st, today }) {
         {!isFlat && <Tile label={openQ ? `Q${openQ.q} check, ${nice(openQ.payDate)}` : 'Quarter checks'} value={money(openQ ? openQ.paidOut : 0)} sub={openQ && !openQ.done ? 'so far this quarter' : 'estimate'} />}
         {!isFlat && <Tile label="Held back" value={money0(held)} sub={`paid with the Jan 20 check`} />}
       </div>
+
+      <CustomerList st={st} open={open} today={today} />
 
       {!isFlat && st.quarters.slice().reverse().map((q) => (
         <Panel key={q.q} open={q === openQ}
@@ -176,6 +235,7 @@ function TeamTable({ data, year, today }) {
 export default function PayView({ data, year, thisYear, today, tab, rep, meId, nextPlans }) {
   const st = useMemo(() => (rep ? statement(data, rep, year, today) : null), [data, rep, year, today]);
   const who = data.reps.find((r) => r.id === rep);
+  const openSales = useMemo(() => (data.open || []).filter((x) => x.e === rep), [data, rep]);
   const tabHref = (t) => qs({ tab: t === 'statement' ? null : t, year, rep: data.boss ? rep : null });
 
   return (
@@ -213,7 +273,7 @@ export default function PayView({ data, year, thisYear, today, tab, rep, meId, n
         </p>
       )}
 
-      {tab === 'statement' && (rep ? <Statement st={st} today={today} /> : <TeamTable data={data} year={year} today={today} />)}
+      {tab === 'statement' && (rep ? <Statement st={st} today={today} open={openSales} /> : <TeamTable data={data} year={year} today={today} />)}
       {tab === 'calc' && <Calculator data={data} year={year} rep={rep} />}
       {tab === 'plans' && <PlanSettings data={data} year={year} nextPlans={nextPlans} />}
     </>

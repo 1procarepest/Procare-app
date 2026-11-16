@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
-import SignOut from '../SignOut';
+import TopNav from '../TopNav';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,14 +16,7 @@ export default async function PayLayout({ children }) {
 
   return (
     <>
-      <header className="topbar">
-        <Link href="/" aria-label="Back to my profile"><img src="/logo.png" alt="Procare" /></Link>
-        <div className="topbar-links">
-          <Link className="toplink" href="/reps">Rep cards</Link>
-          <Link className="toplink" href="/">My profile</Link>
-          <SignOut />
-        </div>
-      </header>
+      <TopNav me={me} supabase={supabase} current="pay" />
       <main className="admin scorecard reps pay">{children}</main>
     </>
   );

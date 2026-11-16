@@ -222,3 +222,97 @@ export function perDayFor(settings, a, inputs, goal) {
   }
   return hi;
 }
+
+// ---------- customer list ----------
+/**
+ * Every customer a rep added this year (plus last year's that canceled this year), with what the
+ * sale earns, what has been paid on it, what is left, and any deduction. `open` = sales not serviced yet.
+ */
+export function customers(st, open, today) {
+  const s = st.settings || {};
+  const a = st.plan;
+  const flat = a?.plan === 'flat';
+  const hold = n(s.hold_pct) / 100;
+  const now = st.quarters[st.quarters.length - 1];
+  const lineNow = Object.fromEntries((now?.lines || []).map((l) => [l.id, l]));
+  const paidQs = st.quarters.filter((q) => q.payDate <= today).reverse();
+  const nextQ = st.quarters.find((q) => q.payDate > today);
+  const rows = [];
+
+  // A canceled or past-due sale: what was paid on it comes back out of the quarter checks. A Q1–Q3
+  // check takes back (100 − hold)% of it (the rest comes out with the hold in January).
+  const takeBack = (row, x) => {
+    const q = paidQs.find((y) => y.lines.some((l) => l.id === x.id && !l.good));
+    const taken = q ? cents(row.paid * (q.q < 4 ? 1 - hold : 1)) : 0;
+    row.deduction = -taken;
+    row.left = -cents(row.paid - taken);
+    const when = q ? `of the held amount on ${nice(`${st.year + 1}-01-20`)}` : nextQ ? `of the ${nice(nextQ.payDate)} check` : 'of the next check';
+    row.note = row.paid === 0 ? 'no pay' : row.left < 0 ? `${money(-row.left)} comes out ${when}` : 'taken back';
+  };
+
+  st.sales.forEach((x) => {
+    const up = a ? cents(saleUpfront(s, a, x)) : 0;
+    const monday = payMonday(x.served);
+    let paid = monday <= today ? up : 0;
+    if (a && !flat) {
+      for (const q of paidQs) {
+        const l = q.lines.find((y) => y.id === x.id);
+        if (l) {
+          if (l.good && l.g === 'pest') paid = up + Math.max(0, l.earned - l.upfront) * (q.q < 4 ? 1 - hold : 1);
+          break;
+        }
+      }
+    }
+    paid = cents(paid);
+    const l = lineNow[x.id];
+    const earned = !a ? 0 : flat ? up : cents(l ? l.earned : up);
+    const cancelled = x.can && daysBetween(x.served, x.can) <= n(s.clawback_days);
+    const row = { ...x, kind: 'sale', up, earned, paid, left: 0, deduction: 0, rate: l?.rate ?? null, bonus: l && l.bonus > (now?.rate || 0) };
+    if (!a) {
+      row.status = 'No pay plan yet';
+    } else if (cancelled && !flat) {
+      row.status = `Canceled ${nice(x.can)}`;
+      row.earned = 0;
+      takeBack(row, x);
+      row.tone = 'bad';
+    } else if (cancelled) {
+      row.status = `Canceled ${nice(x.can)}`;
+      row.note = 'flat rate: no deduction';
+      row.tone = 'bad';
+    } else if (!flat && n(x.bal) > 0 && n(x.age) > n(s.past_due_days)) {
+      row.status = `Past due ${x.age} days`;
+      takeBack(row, x);
+      row.note = `${row.note}; paid again once they pay`;
+      row.tone = 'warn';
+    } else {
+      row.left = cents(Math.max(0, earned - paid));
+      if (row.left <= 0) { row.status = 'Paid in full'; row.tone = 'good'; } else if (paid > 0) {
+        row.status = 'Partly paid';
+        row.note = nextQ ? `next check ${nice(nextQ.payDate)}` : '';
+      } else {
+        row.status = 'Not paid yet';
+        row.note = `pays ${nice(monday)}`;
+      }
+    }
+    rows.push(row);
+  });
+
+  (st.priorClawbacks || []).forEach((x) => rows.push({
+    ...x, kind: 'prior', earned: 0, paid: 0, left: 0, deduction: -x.amount, status: `Canceled ${nice(x.can)}`, note: `${x.served.slice(0, 4)} sale, taken back`, tone: 'bad',
+  }));
+
+  (open || []).forEach((x) => {
+    const pending = x.st === 'Pending';
+    const up = a ? cents(saleUpfront(s, a, x)) : 0;
+    rows.push({
+      ...x, kind: 'open', served: null, up, earned: pending ? up : 0, paid: 0, left: pending ? up : 0, deduction: 0,
+      status: pending ? 'Not serviced yet' : x.st === 'No Show' ? 'No-show, not serviced' : 'Canceled before service',
+      note: pending ? (x.on ? `first service ${nice(x.on)}` : 'pays the Monday after service') : 'no pay',
+      tone: pending ? null : 'muted',
+    });
+  });
+
+  rows.sort((p, q) => ((q.served || q.sold) > (p.served || p.sold) ? 1 : -1));
+  const sum = (k) => cents(rows.reduce((t, r) => t + n(r[k]), 0));
+  return { rows, totals: { earned: sum('earned'), paid: sum('paid'), left: sum('left'), deduction: sum('deduction') } };
+}
