@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import Toggle from '../../Toggle';
 
 export default function Switches({ settings }) {
   const [rows, setRows] = useState(settings);
@@ -43,11 +44,10 @@ export default function Switches({ settings }) {
       <ul className="switches">
         {rows.map((r) => (
           <li key={r.key}>
-            <label className="switch">
-              <input type="checkbox" role="switch" checked={r.enabled} onChange={(e) => toggle(r.key, e.target.checked)} />
+            <Toggle className="switch" checked={r.enabled} onChange={(v) => toggle(r.key, v)}>
               <span>{r.label}</span>
               <span className="note">{r.enabled ? 'On' : 'Off'}</span>
-            </label>
+            </Toggle>
           </li>
         ))}
       </ul>

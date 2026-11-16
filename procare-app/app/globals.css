@@ -1275,3 +1275,19 @@ label.cp-person:has(input[type=checkbox]) { justify-content: flex-start; }
 .kpi-hit .kpi-pts { color: var(--forest); font-weight: 600; }
 .kpi-first .kpi-val { color: var(--forest); }
 .kpi-total td, .kpi-total th { font-weight: 700; font-size: 17px; border-top: 1.5px solid var(--ink); }
+
+/* Toggle switches everywhere (app/Toggle.js) */
+.toggle input:disabled + .toggle-track { opacity: 0.5; }
+.toggle-off { cursor: default; }
+.toggle-small { min-height: 34px; gap: 10px; }
+.toggle-small .toggle-track { width: 38px; height: 22px; }
+.toggle-small .toggle-track::after { width: 16px; height: 16px; }
+.toggle-small input:checked + .toggle-track::after { transform: translateX(16px); }
+.switch.toggle { display: flex; gap: 12px; }
+.switch.toggle .note { margin-left: auto; }
+.cp-people { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 2px 18px; }
+.cp-person-text { display: flex; flex-direction: column; line-height: 1.25; font-size: 15px; }
+.cp-person-text small { color: var(--muted); font-size: 12px; }
+.kpi-on { flex: 1 1 280px; align-items: center; }
+.kpi-text { display: flex; flex-direction: column; }
+.kpi-text small { color: var(--muted); font-size: 12px; }

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { BugTile } from '../Bug';
+import Toggle from '../Toggle';
 import { OFFICE_KPIS, kpiSettings } from '@/lib/officeKpis';
 import { OFFICE_NAME } from '@/lib/labels';
 import { addDays, bracketEnd, entrantCount, roundsFor } from '@/lib/bracket';
@@ -244,11 +245,10 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
               const c = kpis[k.key];
               return (
                 <div key={k.key} className={`kpi-row${c.on ? '' : ' off'}`}>
-                  <label className="kpi-on">
-                    <input type="checkbox" checked={c.on} onChange={(e) => setKpi(k.key, 'on', e.target.checked)} />
+                  <Toggle className="kpi-on" checked={c.on} onChange={(v) => setKpi(k.key, 'on', v)} label={k.label}>
                     <BugTile kind={k.bug} tone={c.on ? 'forest' : 'sage'} size={28} />
-                    <span><b>{k.label}</b><small>{k.hint}</small></span>
-                  </label>
+                    <span className="kpi-text"><b>{k.label}</b><small>{k.hint}</small></span>
+                  </Toggle>
                   {c.on && (
                     <div className="kpi-set">
                       <select value={c.mode} onChange={(e) => setKpi(k.key, 'mode', e.target.value)} aria-label={`${k.label} scoring`}>
@@ -363,10 +363,9 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
                       </select>
                     </label>
                   ) : (
-                    <label className="cp-person">
-                      <input type="checkbox" checked={p.id in inMap} onChange={(e) => setPerson(p.id, e.target.checked ? '' : null)} />
-                      <span>{p.first_name} {p.last_name} <small>{OFFICE_NAME[p.office] || ''}</small></span>
-                    </label>
+                    <Toggle small className="cp-person-toggle" checked={p.id in inMap} onChange={(v) => setPerson(p.id, v ? '' : null)}>
+                      <span className="cp-person-text">{p.first_name} {p.last_name}<small>{OFFICE_NAME[p.office] || ''}</small></span>
+                    </Toggle>
                   )}
                 </li>
               ))}

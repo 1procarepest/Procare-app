@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { DEPT_LABEL, OFFICES, OFFICE_NAME, roleTitle } from '@/lib/labels';
 import Face from '../Face';
+import Toggle from '../Toggle';
 
 export default function PeopleList({ people, myOffice, missing = [] }) {
   const [query, setQuery] = useState('');
@@ -42,10 +43,7 @@ export default function PeopleList({ people, myOffice, missing = [] }) {
           <option value="all">All departments</option>
           {Object.entries(DEPT_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <label className="check">
-          <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
-          Show deactivated team members
-        </label>
+        <Toggle checked={showInactive} onChange={setShowInactive}>Show deactivated team members</Toggle>
       </div>
 
       <ul className="people">

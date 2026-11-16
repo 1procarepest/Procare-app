@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { DAY_NAMES, DEPT_LABEL, LEVEL_LABEL, OFFICES, WEEK_ORDER, levelOptions, roleTitle, timeOffWhen } from '@/lib/labels';
 import Face from '../../../Face';
+import Toggle from '../../../Toggle';
 
 function trimTime(t) { return t ? String(t).slice(0, 5) : ''; }
 
@@ -160,10 +161,7 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
           </div>
         </div>
         {me.rank >= 4 && (
-          <label className="check">
-            <input type="checkbox" checked={hr} onChange={(e) => setHr(e.target.checked)} disabled={!canManage} />
-            Gives final approval on time off
-          </label>
+          <Toggle checked={hr} onChange={setHr} disabled={!canManage}>Gives final approval on time off</Toggle>
         )}
         {detailsMsg.text && <p className={detailsMsg.bad ? 'error' : 'ok'} role="status">{detailsMsg.text}</p>}
         {canManage && (
@@ -209,10 +207,9 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
         <ul className="sched">
           {WEEK_ORDER.map((d) => (
             <li key={d} className="sched-row">
-              <label className="check sched-day">
-                <input type="checkbox" checked={days[d].on} disabled={!canEditSchedule} onChange={(e) => setDay(d, { on: e.target.checked })} />
+              <Toggle small className="sched-day" checked={days[d].on} disabled={!canEditSchedule} onChange={(v) => setDay(d, { on: v })}>
                 {DAY_NAMES[d]}
-              </label>
+              </Toggle>
               {days[d].on ? (
                 <span className="sched-times">
                   <input type="time" aria-label={`${DAY_NAMES[d]} start`} value={days[d].start} disabled={!canEditSchedule} onChange={(e) => setDay(d, { start: e.target.value })} />
