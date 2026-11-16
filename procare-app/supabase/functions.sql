@@ -475,3 +475,8 @@ returns boolean language sql stable security definer set search_path = public as
 $$;
 revoke all on function public.can_edit_competition(uuid) from public, anon;
 grant execute on function public.can_edit_competition(uuid) to authenticated;
+
+-- Office KPI competitions (change 2026-11-15-42). Bodies are in that change file:
+--   save_office_kpis(): saves today's office numbers (accounts, valid auto-pay, AR, AR 30+, past-due job pool) into office_kpi_days.
+--   snapshot_routes() now also calls save_office_kpis() (errors there never stop the route snapshot).
+--   office_kpi_board(id): per office sales and cancels in the period, accounts at the start, numbers as of the end (rates only, no dollars).

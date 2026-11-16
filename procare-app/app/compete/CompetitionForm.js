@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { BugTile } from '../Bug';
+import { OFFICE_KPIS, kpiSettings } from '@/lib/officeKpis';
 import { OFFICE_NAME } from '@/lib/labels';
 import { addDays, bracketEnd, entrantCount, roundsFor } from '@/lib/bracket';
 import { shortDate } from '@/lib/labels';
@@ -26,6 +27,8 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
   const [roundDays, setRoundDays] = useState(comp?.round_days || 7);
   const [teamSize, setTeamSize] = useState(comp?.team_size || 1);
   const locked = !!comp?.locked_at;
+  const [kpis, setKpis] = useState(() => kpiSettings(comp?.points));
+  const setKpi = (k, f, v) => setKpis({ ...kpis, [k]: { ...kpis[k], [f]: v } });
   const [depts, setDepts] = useState(comp?.departments || (allowedDepts.length === 1 ? allowedDepts : ['technician', 'sales']));
   const [points, setPoints] = useState({ ...DEFAULT_POINTS, ...(comp?.points || {}) });
   const [tiers, setTiers] = useState(() => (comp?.points?.tiers || DEFAULT_TIERS).map((t) => ({ ...t })));
@@ -42,7 +45,8 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
   });
 
   const isBracket = style === 'bracket' && !officesOnly(depts);
-  const as = officesOnly(depts) ? 'offices' : isBracket ? (teamSize > 1 ? 'teams' : 'people') : asPick;
+  const isKpi = style === 'kpi';
+  const as = officesOnly(depts) || isKpi ? 'offices' : isBracket ? (teamSize > 1 ? 'teams' : 'people') : asPick;
   const handTeams = as === 'teams' && !isBracket;   // custom teams picked by hand (leaderboards)
   const kinds = kindsFor(depts);
   const shown = people.filter((p) => depts.includes(p.department));
@@ -98,13 +102,14 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
     if (isBracket && (!seedEnd || seedEnd < start)) return setStatus('Seeding has to end on or after the start date.');
     if (isBracket && !(Number(roundDays) >= 1 && Number(roundDays) <= 90)) return setStatus('Rounds must be 1 to 90 days.');
     if (!chosen.length) return setStatus('Pick at least one person.');
+    if (isKpi && !Object.values(kpis).some((k) => k.on)) return setStatus('Turn on at least one KPI.');
     if (isBracket && entrants < 2) return setStatus(teamSize > 1 ? `A bracket needs at least ${teamSize * 2} people for two teams.` : 'A bracket needs at least two people.');
     if (handTeams && new Set(chosen.map((p) => inMap[p.id])).size < 2) return setStatus('Put people on at least two teams.');
     if (handTeams && new Set(teamNames).size !== teamNames.length) return setStatus('Each team needs its own name.');
     setBusy(true);
     setStatus('Saving…');
     const row = {
-      name: name.trim(), style: isBracket ? 'bracket' : 'leaderboard', compete_as: as, departments: depts, start_date: start, end_date: finalEnd,
+      name: name.trim(), style: isKpi ? 'kpi' : isBracket ? 'bracket' : 'leaderboard', compete_as: as, departments: depts, start_date: start, end_date: finalEnd,
       seed_end: isBracket ? seedEnd : null, round_days: isBracket ? Number(roundDays) : null, team_size: isBracket ? Number(teamSize) : 1,
       prize: prize.trim() || null, updated_at: new Date().toISOString(),
       points: {
@@ -112,6 +117,7 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
         review_stars: Number(points.review_stars) || 5,
         tiers: tiers.filter((t) => t.over !== '' && t.over !== null).map((t) => ({ over: Number(t.over) || 0, pts: Number(t.pts) || 0 }))
           .sort((a, b) => a.over - b.over),
+        kpis: Object.fromEntries(Object.entries(kpis).map(([k, v]) => [k, { on: !!v.on, mode: v.mode, pts: Number(v.pts) || 0, goal: Number(v.goal) || 0 }])),
       },
     };
     let id = comp?.id;
@@ -156,9 +162,9 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
         <label className="calc-field"><span className="rc-label">Name</span>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="December Auto-pay Blitz" maxLength={80} />
         </label>
-        {!officesOnly(depts) && (
+        {(
           <div className="calc-chips" role="radiogroup" aria-label="Style">
-            {[['leaderboard', 'Leaderboard'], ['bracket', 'Bracket']].map(([k, label]) => (
+            {[['leaderboard', 'Leaderboard'], ['bracket', 'Bracket'], ['kpi', 'Office KPIs']].filter(([k]) => k !== 'bracket' || !officesOnly(depts)).map(([k, label]) => (
               <button key={k} type="button" role="radio" aria-checked={style === k} className={`cp-chip${style === k ? ' on' : ''}`} onClick={() => setStyle(k)} disabled={locked}>{label}</button>
             ))}
           </div>
@@ -191,7 +197,7 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
 
       <section className="calc-card">
         <h2 className="calc-h cp-h"><BugTile kind="spider" tone="forest" size={30} /> Who competes</h2>
-        {isBracket ? (
+        {isKpi ? null : isBracket ? (
           <div className="calc-chips" role="radiogroup" aria-label="Bracket entrants">
             <button type="button" role="radio" aria-checked={teamSize <= 1} className={`cp-chip${teamSize <= 1 ? ' on' : ''}`} onClick={() => setTeamSize(1)} disabled={locked}>One person each</button>
             <button type="button" role="radio" aria-checked={teamSize > 1} className={`cp-chip${teamSize > 1 ? ' on' : ''}`} onClick={() => setTeamSize(teamSize > 1 ? teamSize : 3)} disabled={locked}>Teams</button>
@@ -212,8 +218,9 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
           {isBracket && teamSize > 1 && `After seeding, the app makes balanced teams of ${teamSize}: each team gets a top, a middle and a bottom finisher (leftover people join teams; scores are averages per person).`}
           {isBracket && teamSize <= 1 && 'Each person gets a bracket spot by seeding rank. Top seeds get byes if the numbers aren’t even.'}
           {!isBracket && as === 'people' && 'Everyone is ranked on their own points.'}
-          {officesOnly(depts) && 'More than one department is company-wide, so it’s always office vs. office. '}
-          {as === 'offices' && 'East, West and South are ranked by average points per person (office total ÷ people in that office), so office size doesn’t matter.'}
+          {isKpi && 'East, West and South compete on rates (percentages), so a small office can beat a big one. Pick who’s on each office’s team below. '}
+          {!isKpi && officesOnly(depts) && 'More than one department is company-wide, so it’s always office vs. office. '}
+          {!isKpi && as === 'offices' && 'East, West and South are ranked by average points per person (office total ÷ people in that office), so office size doesn’t matter.'}
           {handTeams && 'You put people on teams. Teams are ranked by average points per person, so team size doesn’t matter.'}
         </p>
         {allowedDepts.length > 1 ? (
@@ -228,7 +235,48 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
         ) : <p className="calc-hint">For your department: {DEPTS.find((d) => d.key === allowedDepts[0])?.label}.</p>}
       </section>
 
-      <section className="calc-card">
+      {isKpi && (
+        <section className="calc-card">
+          <h2 className="calc-h cp-h"><BugTile kind="stinging" tone="lime" size={30} /> Office KPIs</h2>
+          <p className="calc-hint">Turn on the KPIs to compete on. <b>By place:</b> 1st gets 3 × the weight, 2nd 2 ×, 3rd 1 ×. <b>By goal:</b> every office that hits the goal gets the points. For a cancellation contest, turn on only Retention with a goal like 1%.</p>
+          <div className="kpi-rows">
+            {OFFICE_KPIS.map((k) => {
+              const c = kpis[k.key];
+              return (
+                <div key={k.key} className={`kpi-row${c.on ? '' : ' off'}`}>
+                  <label className="kpi-on">
+                    <input type="checkbox" checked={c.on} onChange={(e) => setKpi(k.key, 'on', e.target.checked)} />
+                    <BugTile kind={k.bug} tone={c.on ? 'forest' : 'sage'} size={28} />
+                    <span><b>{k.label}</b><small>{k.hint}</small></span>
+                  </label>
+                  {c.on && (
+                    <div className="kpi-set">
+                      <select value={c.mode} onChange={(e) => setKpi(k.key, 'mode', e.target.value)} aria-label={`${k.label} scoring`}>
+                        <option value="place">By place</option>
+                        <option value="goal">By goal</option>
+                      </select>
+                      {c.mode === 'goal' && (
+                        <span className="calc-input">
+                          <span className="calc-affix">{k.better === 'high' ? 'At least' : 'Under'}</span>
+                          <input type="number" min="0" step="0.1" inputMode="decimal" value={c.goal} onChange={(e) => setKpi(k.key, 'goal', e.target.value)} aria-label={`${k.label} goal`} />
+                          <span className="calc-affix">{k.unit}</span>
+                        </span>
+                      )}
+                      <span className="calc-input">
+                        <span className="calc-affix">{c.mode === 'goal' ? 'Worth' : 'Weight'}</span>
+                        <input type="number" min="0" step="0.5" inputMode="decimal" value={c.pts} onChange={(e) => setKpi(k.key, 'pts', e.target.value)} aria-label={`${k.label} points`} />
+                        <span className="calc-affix">{c.mode === 'goal' ? 'pts' : '×'}</span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {!isKpi && <section className="calc-card">
         <h2 className="calc-h cp-h"><BugTile kind="stinging" tone="lime" size={30} /> Points</h2>
         {kinds.length === 0 && <p className="calc-hint">Office KPI scoring (accounts receivable, job pool, retention) is coming next. For now, pick Technicians or Sales.</p>}
         <div className="calc-row">
@@ -271,7 +319,7 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
             <div><button type="button" className="btn btn-quiet btn-small" onClick={() => setTiers([...tiers, { over: (Number(tiers[tiers.length - 1]?.over) || 420) + 180, pts: 0.5 }])}>+ Add a tier</button></div>
           </div>
         )}
-      </section>
+      </section>}
 
       {handTeams && (
         <section className="calc-card">

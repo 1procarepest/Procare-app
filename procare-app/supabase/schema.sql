@@ -193,7 +193,7 @@ create table public.comp_assignments (
 create table public.competitions (
   id          uuid primary key default gen_random_uuid(),
   name        text not null check (length(trim(name)) > 0),
-  style       text not null default 'leaderboard' check (style in ('leaderboard', 'bracket')),
+  style       text not null default 'leaderboard' check (style in ('leaderboard', 'bracket', 'kpi')),   -- change 42 adds kpi
   compete_as  text not null default 'people' check (compete_as in ('people', 'offices', 'teams')),
   departments text[] not null check (cardinality(departments) > 0 and departments <@ array['technician', 'sales', 'administrative']),
   start_date  date not null,
@@ -220,3 +220,17 @@ create table public.competition_members (
   primary key (competition_id, employee_id)
 );
 create index competition_members_emp on public.competition_members (employee_id);
+
+-- ---------- Office KPI history (change 2026-11-15-42) ----------
+-- A copy of each office's numbers every morning, saved by snapshot_routes() → save_office_kpis(). Used by office KPI competitions.
+create table public.office_kpi_days (
+  day       date not null,                 -- saved that morning (= end of the day before)
+  office    text not null,
+  accounts  integer not null default 0,    -- recurring accounts
+  ap_valid  integer not null default 0,    -- of those, on valid auto-pay
+  ar        numeric not null default 0,    -- total AR
+  ar_past   numeric not null default 0,    -- AR 30+ days past due
+  pool_past integer not null default 0,    -- past-due jobs not on the schedule
+  saved_at  timestamptz not null default now(),
+  primary key (day, office)
+);

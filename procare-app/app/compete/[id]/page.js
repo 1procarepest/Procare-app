@@ -6,6 +6,7 @@ import { canEdit, scorePeople } from '@/lib/competitions';
 import { bracketEnd, makeEntrants } from '@/lib/bracket';
 import Standings from '../Standings';
 import BracketView from '../BracketView';
+import KpiView from '../KpiView';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,15 @@ export default async function CompetitionPage({ params }) {
   const today = todayYmd();
   let { data: comp } = await supabase.from('competitions').select('*').eq('id', params.id).maybeSingle();
   if (!comp) notFound();
+  if (comp.style === 'kpi') {
+    const [{ data: kb, error: ke }, { data: mem }] = await Promise.all([
+      supabase.rpc('office_kpi_board', { p_id: comp.id }),
+      supabase.from('competition_members').select('employees(id, first_name, last_name, office)').eq('competition_id', comp.id),
+    ]);
+    if (ke || !kb) return <p className="error">The standings couldn’t load: {ke?.message || 'nothing to show'}</p>;
+    const members = (mem || []).map((m) => m.employees).filter(Boolean).sort((a, b) => a.first_name.localeCompare(b.first_name));
+    return <KpiView comp={comp} board={kb} members={members} today={today} meOffice={me.office} editable={canEdit(me, comp)} />;
+  }
   let { data: board, error } = await supabase.rpc('competition_board', { p_id: comp.id });
   if (error || !board) return <p className="error">The standings couldn’t load: {error?.message || 'nothing to show'}</p>;
   const editable = canEdit(me, comp);

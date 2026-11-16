@@ -54,9 +54,9 @@ export default async function CompetePage() {
               {items.map((c, i) => (
                 <Link key={c.id} href={`/compete/${c.id}`} className={`cp-card cp-${s.key}`}>
                   <Bug kind={['ant', 'spider', 'roach', 'termite', 'cricket', 'tick'][i % 6]} size={110} className="cp-card-bug" />
-                  <span className="cp-tag">{s.tag}{c.style === 'bracket' ? ' · Bracket' : ''}</span>
+                  <span className="cp-tag">{s.tag}{c.style === 'bracket' ? ' · Bracket' : c.style === 'kpi' ? ' · Office KPIs' : ''}</span>
                   <span className="cp-card-name">{c.name}</span>
-                  <span className="cp-card-meta">{shortDate(c.start_date)} – {shortDate(c.end_date)} · {c.style === 'bracket' ? (c.team_size > 1 ? `Bracket, teams of ${c.team_size}` : 'Bracket') : COMPETE_AS[c.compete_as]} · {deptNames(c.departments)}</span>
+                  <span className="cp-card-meta">{shortDate(c.start_date)} – {shortDate(c.end_date)} · {c.style === 'kpi' ? 'Office KPIs' : c.style === 'bracket' ? (c.team_size > 1 ? `Bracket, teams of ${c.team_size}` : 'Bracket') : COMPETE_AS[c.compete_as]} · {deptNames(c.departments)}</span>
                   <span className="cp-card-meta">{c.competition_members?.[0]?.count ?? 0} people</span>
                   {c.prize && <span className="cp-prize">🏆 {c.prize}</span>}
                 </Link>
