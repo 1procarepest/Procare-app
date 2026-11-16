@@ -17,10 +17,13 @@ export default function LoginPage() {
     setError('');
     const { error: authError } = await createClient().auth.signInWithPassword({
       email: email.trim().toLowerCase(),
-      password: passcode,
+      password: passcode.trim(),   // passcodes never have spaces; phones sometimes add one at the end
     });
     if (authError) {
-      setError('That email and passcode don’t match. Check both and try again, or ask your lead to reset your passcode.');
+      const busyNow = authError.status >= 500 || /fetch|network|timeout/i.test(authError.message || '');
+      setError(busyNow
+        ? 'The app couldn’t reach the sign-in service. Wait a few seconds and try again.'
+        : 'That email and passcode don’t match. Check both and try again, or ask your lead to reset your passcode.');
       setBusy(false);
       return;
     }

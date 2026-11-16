@@ -259,3 +259,11 @@ create table public.competition_awards (
   created_at     timestamptz not null default now(),
   unique (competition_id, employee_id, award_key)
 );
+
+-- ---------- Competition standings cache (change 2026-11-16-44) ----------
+-- competition_board() keeps each result 5 minutes here; triggers drop it when the competition or its members change.
+create table public.competition_board_cache (
+  competition_id uuid primary key references public.competitions(id) on delete cascade,
+  data           jsonb not null,
+  computed_at    timestamptz not null default now()
+);

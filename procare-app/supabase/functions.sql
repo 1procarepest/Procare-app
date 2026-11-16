@@ -518,3 +518,7 @@ begin
 end $$;
 revoke all on function public.mark_payout_paid(uuid, text) from public, anon;
 grant execute on function public.mark_payout_paid(uuid, text) to authenticated;
+
+-- Change 2026-11-16-44: competition_board(id) now returns a saved result under 5 minutes old, else
+-- competition_board_calc(id) (the calculation, sales found by appointment date first). Triggers
+-- forget_board_for_competition / forget_board_for_member drop the saved copy on changes. Bodies in that change file.
