@@ -23,7 +23,7 @@ export default async function CompetePage() {
   await settleCompetitions(supabase, today);
   const [{ data, error }, { data: mine }] = await Promise.all([
     supabase.from('competitions')
-      .select('id, name, style, compete_as, team_size, departments, start_date, end_date, prize, payouts, created_by, creator:employees(first_name, last_name), competition_members(count)')
+      .select('id, name, style, compete_as, team_size, departments, start_date, end_date, prize, payouts, created_by, creator:employees!competitions_created_by_fkey(first_name, last_name), competition_members(count)')
       .order('start_date', { ascending: false }),
     supabase.from('competition_members').select('competition_id').eq('employee_id', me.id),
   ]);
