@@ -18,6 +18,8 @@ import { myLiveCompetitions } from '@/lib/myCompetitions';
 import { buildOps, buildSnapshot, opsRange } from '@/lib/ops';
 import OfficeKpis from './OfficeKpis';
 import MyCompetitions from './MyCompetitions';
+import MyFeedback from './MyFeedback';
+import Outbox from './reports/Outbox';
 import { money, money0, nextMonday, nice, statement } from '@/lib/comp';
 
 export const dynamic = 'force-dynamic';
@@ -60,6 +62,8 @@ export default async function Home({ searchParams }) {
     isOffice ? supabase.rpc('ops_snapshot') : { data: null },
   ]);
   const officeStats = opsSuite?.data && opsSnap?.data ? { stats: buildOps(opsSuite.data), snap: buildSnapshot(opsSnap.data) } : null;
+  // Technicians: feedback from ride-alongs and follow-behinds, and truck items to fix
+  const { data: feedback } = me.department === 'technician' ? await supabase.rpc('my_feedback') : { data: null };
 
   // Route day: ?day=0 is today, 1 tomorrow, -1 yesterday (7 days either way)
   const askedDay = parseInt(searchParams?.day, 10);
@@ -182,6 +186,10 @@ export default async function Home({ searchParams }) {
             <p>{roleTitle(me.department, me.level)}{officeName ? `, ${officeName}` : ''}</p>
           </div>
         </section>
+
+        {me.rank >= 2 && <Outbox />}
+
+        {feedback && <MyFeedback data={feedback} />}
 
         {officeStats && (
           <OfficeKpis office={me.office || 'total'} stats={officeStats.stats} snap={officeStats.snap} monthName={officeStats.snap.thisMonth} />

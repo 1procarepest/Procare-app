@@ -14,6 +14,8 @@ export default async function TopNav({ me, supabase, current, extra = null }) {
     const { data } = await supabase.rpc('can_manage_pay');
     pay = !!data;
   }
+  // Reports (ride-alongs and follow-behinds) and Bonus: only for the people they're for (change 47)
+  const { data: bonusLinks } = me.rank >= 2 || me.hr_approver ? await supabase.rpc('my_bonus_links') : { data: null };
   const link = (key, href, label) => (
     <Link key={key} className={`toplink${current === key ? ' on' : ''}`} href={href} aria-current={current === key ? 'page' : undefined}>{label}</Link>
   );
@@ -25,6 +27,8 @@ export default async function TopNav({ me, supabase, current, extra = null }) {
         {apps.map((k) => link(k, APPS[k].href, APPS[k].short))}
         {pay && link('pay', '/pay', 'Pay')}
         {canSeeTeamSchedule(me) && link('team', '/team', 'Schedule')}
+        {bonusLinks?.reports && link('reports', '/reports', 'Reports')}
+        {bonusLinks?.bonus && link('bonus', '/bonus', 'Bonus')}
         {link('compete', '/compete', 'Compete')}
         {extra}
         {me.rank >= 2 && link('settings', '/admin', 'Settings')}

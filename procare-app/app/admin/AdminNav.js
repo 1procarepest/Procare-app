@@ -10,6 +10,7 @@ export default function AdminNav({ showSettings, showPayouts }) {
     { href: '/admin/time-off', label: 'Time off' },
     { href: '/admin/issues', label: 'Schedule issues' },
   ];
+  if (showPayouts) tabs.push({ href: '/admin/bonuses', label: 'Bonuses' });
   if (showPayouts) tabs.push({ href: '/admin/payouts', label: 'Prize payouts' });
   if (showSettings) tabs.push({ href: '/admin/notifications', label: 'Email settings' });
 

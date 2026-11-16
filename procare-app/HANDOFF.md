@@ -6,9 +6,9 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - John Ely, President of Procare Pest (3 Atlanta offices: East, West, South). Not technical: short, plain answers, one step and one question at a time.
 - Repo `1procarepest/Procare-app`; the app is in `procare-app/` (Next.js 14 App Router, plain JS, Supabase). Vercel deploys from `main`.
 - Check with `npm run build` before pushing. Commit and push only your own files; end commit messages with the Co-Authored-By line.
-- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-16-46-competition-sold-date.sql`, so the next is 47). Copy it to the clipboard (`pbcopy` on a Mac). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
+- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-16-47-manager-bonuses.sql`, so the next is 48). Copy it to the clipboard (`pbcopy` on a Mac). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
 - Supabase cuts a request off after about 8 s. Time heavy queries on real data first.
-- SQL tests run in PGlite (`@electric-sql/pglite`); there's no local Postgres.
+- SQL tests run in PGlite (`@electric-sql/pglite`); there's no local Postgres. The new Mac (2026-11-16) had no Node.js or Homebrew at first.
 - **UI rules from John**: use toggle switches (`app/Toggle.js`), never checkboxes. Use the brand look: `.brand-head` patterned headers, bug art from `app/Bug.js` (bugs anywhere; wildlife icons only on future wildlife pages), colors ink/forest/green/lime/sage.
 
 ## What's built (all confirmed by John)
@@ -25,9 +25,11 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - **Speed (2026-11-16)**: the team's first morning overloaded Supabase. `competition_board` keeps results 5 minutes (`competition_board_cache`). `rep_cards`, `tech_scorecard`, `sales_leaderboard` and `comp_sales` do the same through `rpc_cache` (change 45); the calculations are `<name>_calc`. Edits to pay plans, tech rules or excluded service types clear the saved copy.
 - Sign-out only signs out the current device. Sign-in ignores a trailing space in the passcode.
 
+- **Manager bonuses, ride-alongs and follow-behinds** (change 47, branch `manager-bonuses`, NOT merged or live yet): see `BONUSES.md` for everything John agreed. `/bonus` progress, `/reports` and the two forms, Settings → Bonuses, tech feedback on the home page (`app/MyFeedback.js`). John wants to review exactly what techs see before it goes live. No photos yet (no Supabase Storage set up); customers have no street address in the app (privacy), so follow-behinds show name + city.
+
 ## Next up (John's list)
-1. **Manager quarterly bonuses**: a managers-only section. Managers set quarterly goals at the start of the year on the KPIs already in the app, then see how on track they are during the quarter.
-2. **Quality checks and ride-along reports**: managers fill these out in the app instead of Google Forms. The app tracks completion (credit toward their goals) and sends each report to Ryan Boyd (Operations Manager). John will send the Google Form questions.
+1. Finish and launch manager bonuses (above): run change 47, test on the Vercel preview, review tech feedback with John, merge.
+2. Inventory section (with manager bonuses), after the rest works.
 3. Tech bonus payouts on the Technician Performance Card (waiting on bonus amounts and whether to use a driving-score gate; could share the Earnings box and Cash out).
 4. Podium reviews credited to techs; sales pay through Everee (API enabled; token goes straight into Vercel/Supabase secrets, never into chat).
 

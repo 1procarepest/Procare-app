@@ -4,12 +4,16 @@ import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { sendEmail } from '@/lib/email';
 import { OFFICE_NAME, roleTitle, timeOffWhen } from '@/lib/labels';
+import { EXPERIENCE, KIND_LABEL, SKILL_LABEL, answerLines, lowScore } from '@/lib/reports';
 
 // Sends the automatic emails. The app calls this right after someone:
 //   { event: 'time_off', id }          adds time off (request → HR; sales notice → sales manager)
 //   { event: 'time_off_decided', id }  approves or denies a request (→ the employee)
 //   { event: 'issue', id }             reports a schedule issue (switch schedule_issue) or a sales
 //                                      schedule update (switch sales_schedule_change) → whoever handles their schedule
+//   { event: 'field_report', id }      files a ride-along or follow-behind (→ report recipients; truck items and
+//                                      Upset / Let down customers → the office's branch managers)
+//   { event: 'bonus_entry', id }       logs bonus proof (→ the HR approver to approve it)
 // Each email has a switch on Settings → Email settings (notification_settings.key).
 // People can only trigger emails about their own action, and only within a few minutes of it.
 
@@ -212,8 +216,8 @@ export async function POST(request) {
       const to = await others(await hrApprovers(), person.id);
       const { ok: sent, problem } = await sendEmail({
         to: to.map((p) => p.email),
-        subject: `Prize cash out: ${name(person)}, ${amount}`,
-        heading: `${name(person)} cashed out ${amount} in competition prizes`,
+        subject: `Cash out: ${name(person)}, ${amount}`,
+        heading: `${name(person)} cashed out ${amount} in prizes and bonuses`,
         lines: [who(person), ...list,
           person.department === 'sales' ? 'Sales rep: pay it the way you do today (Everee later).' : 'Enter it in ADP, then mark it paid in the app.'],
         link: { href: `${origin}/admin/payouts`, label: 'Open prize payouts' },
@@ -227,10 +231,101 @@ export async function POST(request) {
     if (!(await switchedOn('payout_paid'))) return reply(200, { sent: false });
     const { ok: sent, problem } = await sendEmail({
       to: [person.email],
-      subject: `Your ${amount} prize payout has been submitted`,
-      heading: `Nice work, ${person.first_name}! Your ${amount} prize is on its way`,
-      lines: ['Your competition prize money was submitted to payroll.', ...list, ...(r.note ? [`Note: ${r.note}`] : [])],
+      subject: `Your ${amount} payout has been submitted`,
+      heading: `Nice work, ${person.first_name}! Your ${amount} is on its way`,
+      lines: ['Your prize and bonus money was submitted to payroll.', ...list, ...(r.note ? [`Note: ${r.note}`] : [])],
       link: { href: `${origin}/`, label: 'See your earnings' },
+    });
+    return reply(200, { sent, problem });
+  }
+
+  // ---------- Ride-along or follow-behind → report recipients (Ryan); truck items and low scores → branch managers ----------
+  if (event === 'field_report') {
+    const { data: r } = await admin.from('field_reports').select('*').eq('id', id).maybeSingle();
+    if (!r) return reply(404, { message: 'Report not found.' });
+    if (r.author_id !== me.id || !recent(r.created_at)) return reply(403, { message: 'Not your recent report.' });
+    const [tech, author, { data: settings }, { data: truck }] = await Promise.all([
+      employee(r.tech_id), employee(r.author_id),
+      admin.from('bonus_settings').select('report_to').eq('id', 1).maybeSingle(),
+      admin.from('truck_issues').select('item').eq('report_id', r.id),
+    ]);
+    const kind = KIND_LABEL[r.kind];
+    const techName = tech ? name(tech) : 'a tech';
+    const where = r.office ? OFFICE_NAME[r.office] || r.office : '';
+    const link = { href: `${origin}/reports/${r.id}`, label: 'Open the report' };
+    const results = [];
+    // The office's branch managers (technician managers in the tech's office), or the President if there are none
+    const branch = async () => others(await people((q) => q.eq('department', 'technician').eq('level', 'manager').eq('office', r.office || '')), r.author_id);
+
+    if (await switchedOn('field_report')) {
+      const to = (settings?.report_to || []).length ? await people((q) => q.in('id', settings.report_to)) : [];
+      if (to.length) {
+        results.push(await sendEmail({
+          to: to.map((p) => p.email),
+          subject: `${kind}: ${techName}${where ? `, ${where}` : ''} (${r.day})`,
+          heading: `${author ? name(author) : 'A manager'} filed a ${kind.toLowerCase()} for ${techName}`,
+          lines: [
+            ...(r.customer ? [`Customer: ${r.customer}`] : []),
+            ...answerLines(r.kind, r.answers).map(([q, v]) => `${q}: ${v}`),
+            ...(r.improve?.length ? [`Where to improve: ${r.improve.map((k) => SKILL_LABEL[k] || k).join(', ')}`] : []),
+            ...(r.tech_note ? [`Note to the tech: ${r.tech_note}`] : []),
+            r.told_tech ? 'The manager told the tech.' : 'The manager hasn’t told the tech yet, so this doesn’t count toward their bonus.',
+          ],
+          link,
+        }));
+      }
+    }
+    if ((truck || []).length && (await switchedOn('truck_issue'))) {
+      const to = await branch();
+      results.push(await sendEmail({
+        to: to.map((p) => p.email),
+        subject: `Truck needs attention: ${techName}`,
+        heading: `${techName}’s truck needs attention`,
+        lines: [...truck.map((t) => `• ${t.item}`), `Found on a ride-along by ${author ? name(author) : 'a manager'} on ${r.day}.`,
+          `${tech?.first_name || 'The tech'} sees this on their home page. Switch it to Fixed in the app once it’s done.`],
+        link: { href: `${origin}/reports?office=${r.office || ''}`, label: 'Open truck items' },
+      }));
+    }
+    if (r.kind === 'follow_behind' && lowScore(r.answers) && (await switchedOn('low_score'))) {
+      const to = await branch();
+      const exp = EXPERIENCE.find((x) => x.v === Number(r.answers.experience));
+      results.push(await sendEmail({
+        to: to.map((p) => p.email),
+        subject: `Customer ${exp?.label.toLowerCase() || 'unhappy'}: ${r.customer || 'follow-behind'} (${techName})`,
+        heading: `A customer is ${exp?.label.toLowerCase() || 'unhappy'}. Reach out before they cancel`,
+        lines: [
+          `Customer: ${r.customer || '–'}`, `Tech: ${techName}${where ? `, ${where}` : ''}`,
+          `Overall experience: ${exp ? `${exp.emoji} ${exp.label}` : r.answers.experience}`,
+          ...(r.answers.negative ? [`What they said: ${r.answers.negative}`] : []),
+          ...(r.answers.wish ? [`They’d like to see: ${r.answers.wish}`] : []),
+          `Follow-behind by ${author ? name(author) : 'a manager'} on ${r.day}.`,
+        ],
+        link,
+      }));
+    }
+    const failed = results.find((x) => !x.ok);
+    return reply(200, { sent: results.some((x) => x.ok), problem: failed?.problem || null });
+  }
+
+  // ---------- Bonus proof logged → HR approver (Ally) ----------
+  if (event === 'bonus_entry') {
+    const { data: e } = await admin.from('bonus_entries').select('id, goal_id, employee_id, day, qty, link, note, created_at, bonus_goals(label, kind)').eq('id', id).maybeSingle();
+    if (!e) return reply(404, { message: 'Entry not found.' });
+    if (e.employee_id !== me.id || !recent(e.created_at)) return reply(403, { message: 'Not your recent entry.' });
+    if (!(await switchedOn('bonus_entry'))) return reply(200, { sent: false });
+    const person = await employee(e.employee_id);
+    const to = await others(await hrApprovers(), e.employee_id);
+    const { ok: sent, problem } = await sendEmail({
+      to: to.map((p) => p.email),
+      subject: `Bonus proof to approve: ${name(person)}, ${e.bonus_goals?.label || 'goal'}`,
+      heading: `${name(person)} logged proof for “${e.bonus_goals?.label || 'a goal'}”`,
+      lines: [
+        `Date: ${e.day}`,
+        `${e.bonus_goals?.kind === 'cost_per_customer' ? 'Ad spend' : 'Amount'}: ${e.bonus_goals?.kind === 'cost_per_customer' ? `$${Number(e.qty).toFixed(2)}` : e.qty}`,
+        ...(e.link ? [`Proof: ${e.link}`] : []), ...(e.note ? [`Note: ${e.note}`] : []),
+        'It counts toward their bonus once you approve it.',
+      ],
+      link: { href: `${origin}/admin/bonuses?tab=approve`, label: 'Approve or turn down' },
     });
     return reply(200, { sent, problem });
   }

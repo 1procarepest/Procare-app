@@ -23,7 +23,7 @@ export default async function PayoutsPage() {
   return (
     <>
       <h1>Prize payouts</h1>
-      <p className="note">Competition prizes people have cashed out. Pay each one, then mark it paid; the person gets an email.
+      <p className="note">Competition prizes and quarterly bonuses people have cashed out. Pay each one, then mark it paid; the person gets an email.
         Technicians and office staff: enter it in ADP. Sales reps: pay it the way you do today (Everee later).</p>
       <PayoutList requests={(requests || []).map((r) => ({ ...r, person: r.employees, items: items[r.id] || [] }))} meId={me.id} />
     </>

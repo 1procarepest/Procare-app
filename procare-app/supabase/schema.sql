@@ -274,3 +274,103 @@ create table public.rpc_cache (
   computed_at timestamptz not null default now(),
   primary key (fn, k)
 );
+
+-- ---------- Quarterly bonuses, ride-alongs and follow-behinds (change 2026-11-16-47) ----------
+-- See BONUSES.md. competition_awards also gets a unique index on (employee_id, award_key) where competition_id is null,
+-- for approved bonuses (award_key 'bonus:<set id>').
+create table public.bonus_settings (
+  id          integer primary key default 1 check (id = 1),
+  report_to   uuid[] not null default '{}',    -- employees who get every ride-along and follow-behind (Ryan Boyd)
+  sources_off text[] not null default '{}',    -- FieldRoutes sources that never count as marketing sales
+  scale       jsonb not null default '{"floor": 60, "floor_pay": 20, "stretch": false, "cap": 110}'::jsonb,
+  updated_by  uuid references public.employees(id) default public.my_id(),
+  updated_at  timestamptz not null default now()
+);
+
+create table public.bonus_plans (
+  employee_id uuid not null references public.employees(id) on delete cascade,
+  year        integer not null check (year between 2024 and 2100),
+  amount      numeric not null default 0 check (amount >= 0),
+  updated_by  uuid references public.employees(id) default public.my_id(),
+  updated_at  timestamptz not null default now(),
+  primary key (employee_id, year)
+);
+
+create table public.bonus_sets (
+  id          uuid primary key default gen_random_uuid(),
+  year        integer not null check (year between 2024 and 2100),
+  quarter     smallint not null check (quarter between 1 and 4),
+  name        text not null check (length(trim(name)) > 0),   -- "West service"
+  office      text references public.offices(key),            -- null = company-wide numbers
+  results     jsonb,                                          -- the final numbers, saved when approved
+  approved_at timestamptz,
+  approved_by uuid references public.employees(id) on delete set null,
+  created_by  uuid references public.employees(id) on delete set null default public.my_id(),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+create table public.bonus_members (
+  set_id      uuid not null references public.bonus_sets(id) on delete cascade,
+  employee_id uuid not null references public.employees(id) on delete cascade,
+  primary key (set_id, employee_id)
+);
+
+create table public.bonus_goals (
+  id          uuid primary key default gen_random_uuid(),
+  set_id      uuid not null references public.bonus_sets(id) on delete cascade,
+  sort        smallint not null default 0,
+  kind        text not null check (kind in ('tech_sales', 'office_sales', 'marketing_sales', 'autopay', 'ar_past', 'cancel',
+                                            'pool', 'reports', 'cost_per_customer', 'logged', 'project')),
+  label       text not null check (length(trim(label)) > 0),
+  target      numeric not null,
+  start_value numeric,
+  weight      numeric not null default 20 check (weight between 0 and 100),   -- % of the quarter's money
+  due_date    date,                                                         -- projects
+  created_at  timestamptz not null default now()
+);
+
+create table public.bonus_entries (
+  id          uuid primary key default gen_random_uuid(),
+  goal_id     uuid not null references public.bonus_goals(id) on delete cascade,
+  employee_id uuid not null references public.employees(id) on delete cascade default public.my_id(),
+  day         date not null,
+  qty         numeric not null default 1 check (qty >= 0),   -- how many, or dollars for ad spend
+  link        text,
+  note        text,
+  status      text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  review_note text,
+  reviewed_by uuid references public.employees(id) on delete set null,
+  reviewed_at timestamptz,
+  created_at  timestamptz not null default now()
+);
+
+create table public.field_reports (
+  id             uuid primary key,             -- made on the phone, so a re-sent form is saved once
+  kind           text not null check (kind in ('ride_along', 'follow_behind')),
+  author_id      uuid not null references public.employees(id) on delete cascade,
+  tech_id        uuid not null references public.employees(id) on delete cascade,
+  office         text references public.offices(key),   -- the tech's office
+  day            date not null,
+  customer_id    bigint,                       -- follow-behinds: the FieldRoutes customer and visit
+  appointment_id bigint,
+  customer       text,                         -- "Jane Smith, Marietta"
+  answers        jsonb not null default '{}'::jsonb,   -- manager-only answers (lib/reports.js)
+  improve        text[] not null default '{}',         -- Where to improve switches (the tech sees these)
+  tech_note      text,                                 -- the manager's note to the tech (the tech sees this)
+  told_tech      boolean not null default false,       -- must be on for the report to count toward a bonus
+  tech_seen_at   timestamptz,                          -- the tech tapped Got it
+  created_at     timestamptz not null default now()
+);
+
+create table public.truck_issues (
+  id         uuid primary key default gen_random_uuid(),
+  report_id  uuid not null references public.field_reports(id) on delete cascade,
+  tech_id    uuid not null references public.employees(id) on delete cascade,
+  office     text references public.offices(key),
+  item       text not null check (length(trim(item)) > 0),   -- "Check engine light", "Interior needs attention"
+  status     text not null default 'open' check (status in ('open', 'fixed')),
+  fixed_by   uuid references public.employees(id) on delete set null,
+  fixed_at   timestamptz,
+  created_at timestamptz not null default now()
+);

@@ -30,4 +30,10 @@ on/off switch under Manage team → Email settings (`notification_settings`).
 | `schedule_issue` | Someone outside sales reports a schedule issue | Their lead or manager, or the President |
 | `sales_schedule_change` | A sales rep sends a schedule update | Sales managers, or the President |
 
+| `payout_request` / `payout_paid` | Someone cashes out prizes or bonuses / it's marked paid | The HR approver / the employee |
+| `field_report` | A ride-along or follow-behind is filed | The report recipients set in Settings → Bonuses (Ryan) |
+| `truck_issue` | A ride-along finds a warning light or an interior that needs attention | The office's branch managers (technician managers in that office) |
+| `low_score` | A follow-behind customer is Upset or Let down | The office's branch managers |
+| `bonus_entry` | Someone logs bonus proof | The HR approver, to approve it |
+
 `payout_submitted` is for the incentive payouts that aren't built yet; it sends nothing today.

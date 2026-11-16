@@ -9,7 +9,7 @@ import Bug from './Bug';
 const money = (n) => `$${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const day = (ts) => new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' });
 
-/** Competition prize money on the profile: what's waiting, cash out, and past payouts. */
+/** Competition prize money and approved quarterly bonuses on the profile: what's waiting, cash out, and past payouts. */
 export default function Earnings({ awards, requests }) {
   const router = useRouter();
   const sb = useMemo(() => createClient(), []);
@@ -34,7 +34,7 @@ export default function Earnings({ awards, requests }) {
   return (
     <section className="section earn" aria-labelledby="earn-heading">
       <div className="my-card-head">
-        <h2 id="earn-heading">Competition earnings</h2>
+        <h2 id="earn-heading">Earnings</h2>
         <Link href="/compete">Competitions ›</Link>
       </div>
       <div className="earn-box">
@@ -42,7 +42,7 @@ export default function Earnings({ awards, requests }) {
         <div className="earn-main">
           <span className="earn-label">Ready to cash out</span>
           <span className="earn-val">{money(balance)}</span>
-          <span className="earn-sub">{paidTotal > 0 ? `${money(paidTotal)} paid so far` : 'Win competitions to earn prize money'}</span>
+          <span className="earn-sub">{paidTotal > 0 ? `${money(paidTotal)} paid so far` : 'Competition prizes and bonuses'}</span>
         </div>
         <button type="button" className="btn earn-btn" disabled={busy || balance <= 0} onClick={cashOut}>{busy ? 'Sending…' : 'Cash out'}</button>
       </div>

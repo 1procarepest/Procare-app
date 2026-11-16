@@ -12,6 +12,8 @@
 --   Trigger guards:  guard_employee, guard_time_off, guard_issue
 --   Other triggers:  default_schedule, log_change, link_auth_user
 --   Supabase:        rls_auto_enable
+--   Later changes keep their functions in changes/ (e.g. bonuses and reports: changes/2026-11-16-47-manager-bonuses.sql:
+--   can_manage_bonuses, bonus_numbers, approve_bonus_set, submit_field_report, my_feedback, recent_stops, …)
 
 -- ======================================================================
 -- Who am I
