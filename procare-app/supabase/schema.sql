@@ -267,3 +267,10 @@ create table public.competition_board_cache (
   data           jsonb not null,
   computed_at    timestamptz not null default now()
 );
+
+-- ---------- Saved results for heavy page functions (change 2026-11-16-45) ----------
+create table public.rpc_cache (
+  fn text not null, k text not null, data jsonb not null,
+  computed_at timestamptz not null default now(),
+  primary key (fn, k)
+);

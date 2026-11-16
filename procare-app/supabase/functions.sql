@@ -522,3 +522,9 @@ grant execute on function public.mark_payout_paid(uuid, text) to authenticated;
 -- Change 2026-11-16-44: competition_board(id) now returns a saved result under 5 minutes old, else
 -- competition_board_calc(id) (the calculation, sales found by appointment date first). Triggers
 -- forget_board_for_competition / forget_board_for_member drop the saved copy on changes. Bodies in that change file.
+
+-- Change 2026-11-16-45 (page speed): rep_cards, tech_scorecard, sales_leaderboard and comp_sales were renamed to
+-- <name>_calc (unchanged calculations, not callable from the app). Same-named functions in front of them return a
+-- result saved in rpc_cache when it is under 5 minutes old (rpc_cache_get / rpc_cache_put). comp_sales saves per
+-- (year, rep or all, manages pay). Triggers clear saved pay on comp_* edits, tech cards on scorecard_rules edits,
+-- and the Sales Leaderboard on sales_board_rules edits. Bodies are in that change file.
