@@ -201,10 +201,15 @@ create table public.competitions (
   round_days  integer check (round_days is null or round_days between 1 and 90),   -- brackets: days per round
   prize       text,
   points      jsonb not null default '{"sale": 3, "autopay": 2, "review": 1, "review_stars": 5, "service": 0, "tiers": [{"over": 420, "pts": 0.5}]}'::jsonb,  -- change 40 adds service, tiers
+  seed_end    date,                                  -- change 41: brackets: last day of seeding
+  team_size   integer not null default 1 check (team_size between 1 and 6),   -- brackets: 1 = person vs. person, else teams made from seeding
+  locked_at   timestamptz,                           -- brackets: when seeds (and teams) were saved on competition_members
   created_by  uuid references public.employees(id) on delete set null,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now(),
-  check (end_date >= start_date and end_date - start_date <= 400)
+  check (end_date >= start_date and end_date - start_date <= 400),
+  constraint competitions_bracket check (style = 'leaderboard'
+    or (seed_end is not null and round_days is not null and seed_end >= start_date and seed_end < end_date))
 );
 
 create table public.competition_members (

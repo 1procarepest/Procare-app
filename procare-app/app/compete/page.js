@@ -21,7 +21,7 @@ export default async function CompetePage() {
   const today = todayYmd();
   const { data, error } = await supabase
     .from('competitions')
-    .select('id, name, style, compete_as, departments, start_date, end_date, prize, competition_members(count)')
+    .select('id, name, style, compete_as, team_size, departments, start_date, end_date, prize, competition_members(count)')
     .order('start_date', { ascending: false });
   if (error) return <p className="error">Competitions couldn’t load: {error.message}</p>;
   const list = data || [];
@@ -53,7 +53,7 @@ export default async function CompetePage() {
               {items.map((c) => (
                 <Link key={c.id} href={`/compete/${c.id}`} className={`cp-card cp-${s.key}`}>
                   <span className="cp-card-name">{c.name}</span>
-                  <span className="cp-card-meta">{shortDate(c.start_date)} – {shortDate(c.end_date)} · {COMPETE_AS[c.compete_as]} · {deptNames(c.departments)}</span>
+                  <span className="cp-card-meta">{shortDate(c.start_date)} – {shortDate(c.end_date)} · {c.style === 'bracket' ? (c.team_size > 1 ? `Bracket, teams of ${c.team_size}` : 'Bracket') : COMPETE_AS[c.compete_as]} · {deptNames(c.departments)}</span>
                   <span className="cp-card-meta">{c.competition_members?.[0]?.count ?? 0} people</span>
                   {c.prize && <span className="cp-prize">🏆 {c.prize}</span>}
                 </Link>

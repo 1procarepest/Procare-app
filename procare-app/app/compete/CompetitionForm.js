@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { OFFICE_NAME } from '@/lib/labels';
+import { addDays, bracketEnd, entrantCount, roundsFor } from '@/lib/bracket';
+import { shortDate } from '@/lib/labels';
 import { COMPETE_AS, DEFAULT_POINTS, DEFAULT_TIERS, DEPTS, KINDS, kindsFor, officesOnly, usesTiers } from '@/lib/competitions';
 
 /** Create or edit a competition. `comp` and `members` are given when editing. */
@@ -18,6 +20,11 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
   const [end, setEnd] = useState(comp?.end_date || today);
   const [prize, setPrize] = useState(comp?.prize || '');
   const [asPick, setAs] = useState(comp?.compete_as || 'people');
+  const [style, setStyle] = useState(comp?.style || 'leaderboard');
+  const [seedEnd, setSeedEnd] = useState(comp?.seed_end || addDays(comp?.start_date || today, 6));
+  const [roundDays, setRoundDays] = useState(comp?.round_days || 7);
+  const [teamSize, setTeamSize] = useState(comp?.team_size || 1);
+  const locked = !!comp?.locked_at;
   const [depts, setDepts] = useState(comp?.departments || (allowedDepts.length === 1 ? allowedDepts : ['technician', 'sales']));
   const [points, setPoints] = useState({ ...DEFAULT_POINTS, ...(comp?.points || {}) });
   const [tiers, setTiers] = useState(() => (comp?.points?.tiers || DEFAULT_TIERS).map((t) => ({ ...t })));
@@ -33,10 +40,15 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
     return t.length ? t : ['Team 1', 'Team 2'];
   });
 
-  const as = officesOnly(depts) ? 'offices' : asPick;
+  const isBracket = style === 'bracket' && !officesOnly(depts);
+  const as = officesOnly(depts) ? 'offices' : isBracket ? (teamSize > 1 ? 'teams' : 'people') : asPick;
+  const handTeams = as === 'teams' && !isBracket;   // custom teams picked by hand (leaderboards)
   const kinds = kindsFor(depts);
   const shown = people.filter((p) => depts.includes(p.department));
-  const chosen = shown.filter((p) => p.id in inMap && (as !== 'teams' || inMap[p.id]));
+  const chosen = shown.filter((p) => p.id in inMap && (!handTeams || inMap[p.id]));
+  const entrants = entrantCount(chosen.length, teamSize);
+  const finalEnd = isBracket ? bracketEnd(seedEnd, Number(roundDays) || 1, entrants) : end;
+  const oldSeat = Object.fromEntries(members.map((m) => [m.employee_id, m]));
 
   const toggleDept = (k) => {
     const next = depts.includes(k) ? depts.filter((d) => d !== k) : [...depts, k];
@@ -82,13 +94,17 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
     const teamNames = teams.map((t) => t.trim()).filter(Boolean);
     if (!name.trim()) return setStatus('Give it a name.');
     if (!start || !end || end < start) return setStatus('The end date must be on or after the start date.');
+    if (isBracket && (!seedEnd || seedEnd < start)) return setStatus('Seeding has to end on or after the start date.');
+    if (isBracket && !(Number(roundDays) >= 1 && Number(roundDays) <= 90)) return setStatus('Rounds must be 1 to 90 days.');
     if (!chosen.length) return setStatus('Pick at least one person.');
-    if (as === 'teams' && new Set(chosen.map((p) => inMap[p.id])).size < 2) return setStatus('Put people on at least two teams.');
-    if (as === 'teams' && new Set(teamNames).size !== teamNames.length) return setStatus('Each team needs its own name.');
+    if (isBracket && entrants < 2) return setStatus(teamSize > 1 ? `A bracket needs at least ${teamSize * 2} people for two teams.` : 'A bracket needs at least two people.');
+    if (handTeams && new Set(chosen.map((p) => inMap[p.id])).size < 2) return setStatus('Put people on at least two teams.');
+    if (handTeams && new Set(teamNames).size !== teamNames.length) return setStatus('Each team needs its own name.');
     setBusy(true);
     setStatus('Saving…');
     const row = {
-      name: name.trim(), style: 'leaderboard', compete_as: as, departments: depts, start_date: start, end_date: end,
+      name: name.trim(), style: isBracket ? 'bracket' : 'leaderboard', compete_as: as, departments: depts, start_date: start, end_date: finalEnd,
+      seed_end: isBracket ? seedEnd : null, round_days: isBracket ? Number(roundDays) : null, team_size: isBracket ? Number(teamSize) : 1,
       prize: prize.trim() || null, updated_at: new Date().toISOString(),
       points: {
         ...Object.fromEntries(KINDS.map((k) => [k.key, Number(points[k.key]) || 0])),
@@ -109,7 +125,10 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
       id = data.id;
     }
     const { error: e3 } = await sb.from('competition_members').insert(chosen.map((p) => ({
-      competition_id: id, employee_id: p.id, team: as === 'teams' ? inMap[p.id] : null,
+      competition_id: id, employee_id: p.id,
+      // A locked bracket keeps everyone's seed and team; anyone added later isn't in the bracket.
+      team: isBracket ? (locked ? oldSeat[p.id]?.team ?? null : null) : handTeams ? inMap[p.id] : null,
+      seed: isBracket && locked ? oldSeat[p.id]?.seed ?? null : null,
     })));
     if (e3) { setBusy(false); return setStatus(`Couldn’t save the people: ${e3.message}`); }
     router.push(`/compete/${id}`);
@@ -136,10 +155,34 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
         <label className="calc-field"><span className="rc-label">Name</span>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="December Auto-pay Blitz" maxLength={80} />
         </label>
-        <div className="calc-row">
-          <label className="calc-field"><span className="rc-label">Starts</span><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></label>
-          <label className="calc-field"><span className="rc-label">Ends</span><input type="date" value={end} min={start} onChange={(e) => setEnd(e.target.value)} /></label>
-        </div>
+        {!officesOnly(depts) && (
+          <div className="calc-chips" role="radiogroup" aria-label="Style">
+            {[['leaderboard', 'Leaderboard'], ['bracket', 'Bracket']].map(([k, label]) => (
+              <button key={k} type="button" role="radio" aria-checked={style === k} className={`cp-chip${style === k ? ' on' : ''}`} onClick={() => setStyle(k)} disabled={locked}>{label}</button>
+            ))}
+          </div>
+        )}
+        {isBracket ? (
+          <>
+            <div className="calc-row">
+              <label className="calc-field"><span className="rc-label">Seeding starts</span><input type="date" value={start} onChange={(e) => setStart(e.target.value)} disabled={locked} /></label>
+              <label className="calc-field"><span className="rc-label">Seeding ends</span><input type="date" value={seedEnd} min={start} onChange={(e) => setSeedEnd(e.target.value)} disabled={locked} /></label>
+              <label className="calc-field cp-points"><span className="rc-label">Days per round</span>
+                <span className="calc-input"><input type="number" min="1" max="90" value={roundDays} onChange={(e) => setRoundDays(e.target.value)} /><span className="calc-affix">days</span></span>
+              </label>
+            </div>
+            <p className="calc-hint">
+              Everyone competes on a leaderboard during seeding; the standings set the bracket. Round 1 starts {shortDate(addDays(seedEnd, 1))}.
+              {entrants >= 2 && ` ${entrants} ${teamSize > 1 ? 'teams' : 'people'} → ${roundsFor(entrants)} rounds → final ends ${shortDate(finalEnd)}.`}
+              {locked && ' The bracket is locked, so seeding can’t change.'}
+            </p>
+          </>
+        ) : (
+          <div className="calc-row">
+            <label className="calc-field"><span className="rc-label">Starts</span><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></label>
+            <label className="calc-field"><span className="rc-label">Ends</span><input type="date" value={end} min={start} onChange={(e) => setEnd(e.target.value)} /></label>
+          </div>
+        )}
         <label className="calc-field"><span className="rc-label">Prize (optional)</span>
           <input value={prize} onChange={(e) => setPrize(e.target.value)} placeholder="$200 gift card for the winner" maxLength={160} />
         </label>
@@ -147,16 +190,30 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
 
       <section className="calc-card">
         <h2 className="calc-h">Who competes</h2>
+        {isBracket ? (
+          <div className="calc-chips" role="radiogroup" aria-label="Bracket entrants">
+            <button type="button" role="radio" aria-checked={teamSize <= 1} className={`cp-chip${teamSize <= 1 ? ' on' : ''}`} onClick={() => setTeamSize(1)} disabled={locked}>One person each</button>
+            <button type="button" role="radio" aria-checked={teamSize > 1} className={`cp-chip${teamSize > 1 ? ' on' : ''}`} onClick={() => setTeamSize(teamSize > 1 ? teamSize : 3)} disabled={locked}>Teams</button>
+            {teamSize > 1 && (
+              <select value={teamSize} onChange={(e) => setTeamSize(Number(e.target.value))} aria-label="Team size" disabled={locked}>
+                {[2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>of {n}</option>)}
+              </select>
+            )}
+          </div>
+        ) : (
         <div className="calc-chips" role="radiogroup" aria-label="Who competes">
           {Object.entries(COMPETE_AS).filter(([k]) => !officesOnly(depts) || k === 'offices').map(([k, label]) => (
             <button key={k} type="button" role="radio" aria-checked={as === k} className={`cp-chip${as === k ? ' on' : ''}`} onClick={() => setAs(k)}>{label}</button>
           ))}
         </div>
+        )}
         <p className="calc-hint">
-          {as === 'people' && 'Everyone is ranked on their own points.'}
+          {isBracket && teamSize > 1 && `After seeding, the app makes balanced teams of ${teamSize}: each team gets a top, a middle and a bottom finisher (leftover people join teams; scores are averages per person).`}
+          {isBracket && teamSize <= 1 && 'Each person gets a bracket spot by seeding rank. Top seeds get byes if the numbers aren’t even.'}
+          {!isBracket && as === 'people' && 'Everyone is ranked on their own points.'}
           {officesOnly(depts) && 'More than one department is company-wide, so it’s always office vs. office. '}
           {as === 'offices' && 'East, West and South are ranked by average points per person (office total ÷ people in that office), so office size doesn’t matter.'}
-          {as === 'teams' && 'You put people on teams. Teams are ranked by average points per person, so team size doesn’t matter.'}
+          {handTeams && 'You put people on teams. Teams are ranked by average points per person, so team size doesn’t matter.'}
         </p>
         {allowedDepts.length > 1 ? (
           <>
@@ -215,7 +272,7 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
         )}
       </section>
 
-      {as === 'teams' && (
+      {handTeams && (
         <section className="calc-card">
           <h2 className="calc-h">Teams</h2>
           <div className="cp-teams">
@@ -247,7 +304,7 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
             <ul className="cp-people">
               {d.list.map((p) => (
                 <li key={p.id}>
-                  {as === 'teams' ? (
+                  {handTeams ? (
                     <label className="cp-person">
                       <span>{p.first_name} {p.last_name} <small>{OFFICE_NAME[p.office] || ''}</small></span>
                       <select value={p.id in inMap ? inMap[p.id] : '-'} onChange={(e) => setPerson(p.id, e.target.value === '-' ? null : e.target.value)}>
