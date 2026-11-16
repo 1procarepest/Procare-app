@@ -1145,3 +1145,6 @@ label.cp-person:has(input[type=checkbox]) { justify-content: flex-start; }
 .cp-actions { align-items: center; }
 .cp-delete { margin-left: auto; }
 @media (max-width: 560px) { .cp-hero { padding: 18px; } .cp-people { grid-template-columns: 1fr; } }
+.cp-tiers { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
+.cp-tier { align-items: center; }
+.cp-tier .calc-input input { width: 90px; }

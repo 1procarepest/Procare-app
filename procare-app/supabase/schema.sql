@@ -200,7 +200,7 @@ create table public.competitions (
   end_date    date not null,
   round_days  integer check (round_days is null or round_days between 1 and 90),   -- brackets: days per round
   prize       text,
-  points      jsonb not null default '{"sale": 3, "autopay": 2, "review": 1, "review_stars": 5}'::jsonb,
+  points      jsonb not null default '{"sale": 3, "autopay": 2, "review": 1, "review_stars": 5, "service": 0, "tiers": [{"over": 420, "pts": 0.5}]}'::jsonb,  -- change 40 adds service, tiers
   created_by  uuid references public.employees(id) on delete set null,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now(),

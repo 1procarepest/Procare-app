@@ -5,20 +5,24 @@ import { useMemo, useState } from 'react';
 import Face from '../Face';
 import Bug from '../Bug';
 import { OFFICE_NAME, shortDate } from '@/lib/labels';
-import { COMPETE_AS, DEFAULT_POINTS, KINDS, daysBetween, fmt, scoreGroups, scorePeople, stageOf } from '@/lib/competitions';
+import { COMPETE_AS, DEFAULT_POINTS, daysBetween, fmt, kindsFor, scoreGroups, scorePeople, stageOf, usesTiers } from '@/lib/competitions';
 
 const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
 function Counts({ row, kinds }) {
-  return kinds.map((k) => <td key={k.key} className="num">{row[k.key] || 0}</td>);
+  return kinds.map((k) => <td key={k.key} className="num">{fmt(row[k.key] || 0)}</td>);
 }
 
 export default function Standings({ comp, board, today, meId, editable }) {
   const pts = { ...DEFAULT_POINTS, ...(comp.points || {}) };
   const stage = stageOf(comp, today);
-  const people = useMemo(() => scorePeople(board, pts), [board, comp.points]); // eslint-disable-line react-hooks/exhaustive-deps
+  const people = useMemo(() => scorePeople(board, pts, comp.departments), [board, comp.points, comp.departments]); // eslint-disable-line react-hooks/exhaustive-deps
   const groups = useMemo(() => (comp.compete_as === 'people' ? [] : scoreGroups(people, comp.compete_as)), [people, comp.compete_as]);
-  const kinds = KINDS.filter((k) => Number(pts[k.key]) > 0);
+  const tiers = usesTiers(comp.departments) ? (pts.tiers || []).filter((t) => Number(t.pts) > 0) : [];
+  const kinds = [
+    ...kindsFor(comp.departments).filter((k) => Number(pts[k.key]) > 0),
+    ...(tiers.length ? [{ key: 'bonus', label: 'Contract bonus', short: 'Contract bonus' }] : []),
+  ];
   const [open, setOpen] = useState(null);
   const me = people.find((p) => p.id === meId);
   const myGroup = me && groups.find((g) => g.members.some((m) => m.id === meId));
@@ -59,9 +63,10 @@ export default function Standings({ comp, board, today, meId, editable }) {
           )}
         </div>
         <ul className="cp-rules" aria-label="How points are earned">
-          {kinds.map((k) => (
+          {kinds.filter((k) => k.key !== 'bonus').map((k) => (
             <li key={k.key}><b>{pts[k.key]}</b> {k.key === 'review' ? `${pts.review_stars === 5 ? '5-star' : `${pts.review_stars}+ star`} review` : k.label.toLowerCase()}</li>
           ))}
+          {tiers.map((t, i) => <li key={`t${i}`}><b>+{t.pts}</b> pest contract over ${t.over}</li>)}
         </ul>
         <Bug kind="ant" size={88} className="cp-hero-bug" />
       </div>
@@ -84,7 +89,7 @@ export default function Standings({ comp, board, today, meId, editable }) {
                   <span className="cp-group-name">{g.name}</span>
                   <span className="cp-group-avg">{fmt(g.avg)}<small> per person</small></span>
                   <span className="cp-group-sub">{fmt(g.points)} points · {g.members.length} {g.members.length === 1 ? 'person' : 'people'}</span>
-                  <span className="cp-group-sub">{kinds.map((k) => `${g[k.key]} ${k.short.toLowerCase()}`).join(' · ')}</span>
+                  <span className="cp-group-sub">{kinds.map((k) => `${fmt(g[k.key])} ${k.short.toLowerCase()}`).join(' · ')}</span>
                   <span className={`rc-caret${open === g.key ? ' open' : ''}`} aria-hidden="true">⌄</span>
                 </button>
                 {open === g.key && (
@@ -128,8 +133,9 @@ export default function Standings({ comp, board, today, meId, editable }) {
           </table>
         </div>
         <p className="calc-hint cp-foot">
-          Sales count when the first service is completed, credited to the rep who sold it. Auto-pay counts for the tech who serviced the customer that day.
-          Reviews count for the tech on the reviewed visit. Points update with each FieldRoutes sync.
+          Sales count when the first service is completed, credited to whoever sold it. Auto-pay counts for the tech who serviced the customer that day,
+          and for the rep when a serviced sale is on auto-pay. Reviews count for the tech on the reviewed visit.
+          {tiers.length > 0 && ' Contract bonus: points for serviced pest-control sales over each contract value tier.'} Points update with each FieldRoutes sync.
         </p>
       </section>
     </>

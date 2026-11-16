@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { OFFICE_NAME } from '@/lib/labels';
-import { COMPETE_AS, DEFAULT_POINTS, DEPTS, KINDS } from '@/lib/competitions';
+import { COMPETE_AS, DEFAULT_POINTS, DEFAULT_TIERS, DEPTS, KINDS, kindsFor, officesOnly, usesTiers } from '@/lib/competitions';
 
 /** Create or edit a competition. `comp` and `members` are given when editing. */
 export default function CompetitionForm({ me, people, allowedDepts, today, comp = null, members = [] }) {
@@ -17,9 +17,11 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
   const [start, setStart] = useState(comp?.start_date || today);
   const [end, setEnd] = useState(comp?.end_date || today);
   const [prize, setPrize] = useState(comp?.prize || '');
-  const [as, setAs] = useState(comp?.compete_as || 'people');
+  const [asPick, setAs] = useState(comp?.compete_as || 'people');
   const [depts, setDepts] = useState(comp?.departments || (allowedDepts.length === 1 ? allowedDepts : ['technician', 'sales']));
   const [points, setPoints] = useState({ ...DEFAULT_POINTS, ...(comp?.points || {}) });
+  const [tiers, setTiers] = useState(() => (comp?.points?.tiers || DEFAULT_TIERS).map((t) => ({ ...t })));
+  const setTier = (i, k, v) => setTiers(tiers.map((t, j) => (j === i ? { ...t, [k]: v } : t)));
 
   // Who's in: id → team name ('' = in, no team). Missing = not in.
   const startIn = comp
@@ -31,6 +33,8 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
     return t.length ? t : ['Team 1', 'Team 2'];
   });
 
+  const as = officesOnly(depts) ? 'offices' : asPick;
+  const kinds = kindsFor(depts);
   const shown = people.filter((p) => depts.includes(p.department));
   const chosen = shown.filter((p) => p.id in inMap && (as !== 'teams' || inMap[p.id]));
 
@@ -86,7 +90,12 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
     const row = {
       name: name.trim(), style: 'leaderboard', compete_as: as, departments: depts, start_date: start, end_date: end,
       prize: prize.trim() || null, updated_at: new Date().toISOString(),
-      points: Object.fromEntries(Object.entries(points).map(([k, v]) => [k, Number(v) || 0])),
+      points: {
+        ...Object.fromEntries(KINDS.map((k) => [k.key, Number(points[k.key]) || 0])),
+        review_stars: Number(points.review_stars) || 5,
+        tiers: tiers.filter((t) => t.over !== '' && t.over !== null).map((t) => ({ over: Number(t.over) || 0, pts: Number(t.pts) || 0 }))
+          .sort((a, b) => a.over - b.over),
+      },
     };
     let id = comp?.id;
     if (id) {
@@ -117,7 +126,6 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
   };
 
   const byDept = DEPTS.filter((d) => depts.includes(d.key)).map((d) => ({ ...d, list: shown.filter((p) => p.department === d.key) }));
-  const unused = KINDS.filter((k) => !depts.includes(k.dept));
 
   return (
     <div className="cp-form">
@@ -140,12 +148,13 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
       <section className="calc-card">
         <h2 className="calc-h">Who competes</h2>
         <div className="calc-chips" role="radiogroup" aria-label="Who competes">
-          {Object.entries(COMPETE_AS).map(([k, label]) => (
+          {Object.entries(COMPETE_AS).filter(([k]) => !officesOnly(depts) || k === 'offices').map(([k, label]) => (
             <button key={k} type="button" role="radio" aria-checked={as === k} className={`cp-chip${as === k ? ' on' : ''}`} onClick={() => setAs(k)}>{label}</button>
           ))}
         </div>
         <p className="calc-hint">
           {as === 'people' && 'Everyone is ranked on their own points.'}
+          {officesOnly(depts) && 'More than one department is company-wide, so it’s always office vs. office. '}
           {as === 'offices' && 'East, West and South are ranked by average points per person (office total ÷ people in that office), so office size doesn’t matter.'}
           {as === 'teams' && 'You put people on teams. Teams are ranked by average points per person, so team size doesn’t matter.'}
         </p>
@@ -163,25 +172,47 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
 
       <section className="calc-card">
         <h2 className="calc-h">Points</h2>
+        {kinds.length === 0 && <p className="calc-hint">Office KPI scoring (accounts receivable, job pool, retention) is coming next. For now, pick Technicians or Sales.</p>}
         <div className="calc-row">
-          {KINDS.map((k) => (
+          {kinds.map((k) => (
             <label key={k.key} className="calc-field cp-points" title={k.hint}>
               <span className="rc-label">{k.label}</span>
               <span className="calc-input">
-                <input type="number" min="0" step="1" inputMode="numeric" value={points[k.key]} onChange={(e) => setPoints({ ...points, [k.key]: e.target.value })} />
+                <input type="number" min="0" step="0.5" inputMode="decimal" value={points[k.key]} onChange={(e) => setPoints({ ...points, [k.key]: e.target.value })} />
                 <span className="calc-affix">pts</span>
               </span>
             </label>
           ))}
-          <label className="calc-field cp-points"><span className="rc-label">Reviews count at</span>
-            <select value={points.review_stars} onChange={(e) => setPoints({ ...points, review_stars: Number(e.target.value) })}>
-              {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n === 5 ? '5 stars only' : `${n}+ stars`}</option>)}
-            </select>
-          </label>
+          {kinds.some((k) => k.key === 'review') && (
+            <label className="calc-field cp-points"><span className="rc-label">Reviews count at</span>
+              <select value={points.review_stars} onChange={(e) => setPoints({ ...points, review_stars: Number(e.target.value) })}>
+                {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n === 5 ? '5 stars only' : `${n}+ stars`}</option>)}
+              </select>
+            </label>
+          )}
         </div>
-        <ul className="cp-hints">{KINDS.map((k) => <li key={k.key}><b>{k.label}:</b> {k.hint}</li>)}</ul>
-        {depts.includes('administrative') && <p className="calc-hint">Office staff don’t earn any of these points yet.</p>}
-        {unused.length > 0 && <p className="calc-hint">{unused.map((k) => k.label).join(' and ')} won’t score for the departments picked.</p>}
+        {kinds.length > 0 && <ul className="cp-hints">{kinds.map((k) => <li key={k.key}><b>{k.label}:</b> {k.hint}</li>)}</ul>}
+        {usesTiers(depts) && (
+          <div className="cp-tiers">
+            <span className="rc-label">Pest contract value bonus</span>
+            <p className="calc-hint">Extra points for each serviced pest-control sale with a contract value over each amount. Tiers add up. Set points to 0 to turn one off.</p>
+            {tiers.map((t, i) => (
+              <div key={i} className="calc-row cp-tier">
+                <span className="calc-input">
+                  <span className="calc-affix">Over $</span>
+                  <input type="number" min="0" step="10" inputMode="decimal" value={t.over} onChange={(e) => setTier(i, 'over', e.target.value)} aria-label={`Tier ${i + 1} contract value`} />
+                </span>
+                <span className="calc-input">
+                  <span className="calc-affix">+</span>
+                  <input type="number" min="0" step="0.5" inputMode="decimal" value={t.pts} onChange={(e) => setTier(i, 'pts', e.target.value)} aria-label={`Tier ${i + 1} points`} />
+                  <span className="calc-affix">pts</span>
+                </span>
+                {tiers.length > 1 && <button type="button" className="btn-quiet cp-x" onClick={() => setTiers(tiers.filter((_, j) => j !== i))} aria-label={`Remove tier ${i + 1}`}>×</button>}
+              </div>
+            ))}
+            <div><button type="button" className="btn btn-quiet btn-small" onClick={() => setTiers([...tiers, { over: (Number(tiers[tiers.length - 1]?.over) || 420) + 180, pts: 0.5 }])}>+ Add a tier</button></div>
+          </div>
+        )}
       </section>
 
       {as === 'teams' && (

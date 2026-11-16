@@ -455,6 +455,7 @@ grant execute on function public.team_schedule_depts() to authenticated;
 
 -- Competitions (change 2026-11-15-39). competition_board(id) is in that change file: members, and
 -- points events (sale / autopay / review) per member per day from the start date through today or the end date.
+-- Change 2026-11-15-40 replaces it: adds service events, auto-pay on reps' serviced sales, and contracts (serviced pest sales with contract value).
 -- May the signed-in person run a competition for these departments?
 create or replace function public.can_run_competition(depts text[])
 returns boolean language sql stable security definer set search_path = public as $$
