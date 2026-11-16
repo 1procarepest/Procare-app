@@ -36,10 +36,10 @@ export default async function BonusPage({ searchParams }) {
 
   return (
     <>
-      <div className="rc-top brand-head">
+      <div className="rc-top brand-head brand-hero">
         <Bug kind="termite" size={150} className="brand-head-bug" />
         <div>
-          <p className="rc-kicker">Quarterly bonus</p>
+          <p className="rc-kicker">Quarterly bonus · Extreme ownership</p>
           <h1 className="rc-title">Your <em>goals</em></h1>
           <p className="note">{shortDate(from)} to {shortDate(to)}</p>
         </div>

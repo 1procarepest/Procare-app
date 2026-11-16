@@ -50,7 +50,8 @@ Truck cleanliness: 🗑️ Messy "Something may be living in here." · 🍟 Live
 🏆 Your mother would be proud "Spotless. Frame-worthy."
 
 ### Follow-behind (one per visit)
-Customer picked from the tech's stops in the last 7 days; the app suggests random ones so nobody cherry-picks.
+Customer picked from the tech's stops in the last 7 days (one row per visit, all services listed); the app suggests random
+ones so nobody cherry-picks. Suggestions only: the manager can pick any stop or type a name. Termite rating optional.
 Talking to the account holder? · communicated Just before / Just after / Both / Neither · ratings (1-5, below) ·
 upsell Taken / Missed / None + notes · auto-pay Yes / No / Already on · positive / negative feedback · what they'd
 like improved · switch: "I reached out to the tech to let them know their work was checked and shared feedback."
@@ -72,7 +73,8 @@ like improved · switch: "I reached out to the tech to let them know their work 
 - Warning light or interior "Needs attention" → email the tech's office branch managers (technician managers in that
   office: West Brandon Logan and KC Todd, East Lisa Shaw, South Oscar). Each truck item stays open until switched to Fixed.
 - Follow-behind marked Upset or Let down → branch managers get an alert right away.
-- Tech landing page: "Your work was checked" notes, Where to improve + the manager's comment, open truck items,
+- Tech landing page (change 48: praise first): the customer's positive feedback, the manager's "What they did well", then
+  "Your work was checked" notes, Where to improve + what to work on, open truck items,
   shout-out when a customer rates them "Their favorite", and a **Got it** button. Everything else is manager-only.
   **John wants to review exactly what techs see before it goes live.**
 - Training patterns: the Where to improve switches added up per office per quarter.

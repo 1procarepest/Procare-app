@@ -44,6 +44,7 @@ export const CLEAN = [
 ];
 export const LIGHTS = ['Oil change', 'Tire pressure', 'Check engine'];
 export const IMPROVE_HINT = 'What should this tech focus on next? Give one or two specific things they can practice before the next ride-along.';
+export const PRAISE_HINT = 'Start with the good. What did they do well today? Be specific.';
 
 // ---------- Follow-behind (one per visit) ----------
 export const COMMS = [
@@ -122,7 +123,7 @@ export function answerLines(kind, a = {}) {
     ...(a.termite ? [['Termite stations', scaleText(TERMITE, a.termite)], ['Why that rating?', a.termite_why || '–']] : []),
     ['Upsell opportunity', `${choice(FB_UPSELL, a.upsell)}${a.upsell_note ? ` · ${a.upsell_note}` : ''}`],
     ['Auto-pay collected', choice(FB_AUTOPAY, a.autopay)],
-    ['Customer positive feedback', a.positive || '–'],
+    ['Customer positive feedback (the tech sees this)', a.positive || '–'],
     ['Customer negative feedback', a.negative || '–'],
     ['Anything the customer would like to see improved', a.wish || '–'],
   ];
@@ -140,11 +141,10 @@ export function missing(kind, f) {
     if (!a.clean) out.push('truck cleanliness');
     if (!a.lights_checked) out.push('dash warning lights (pick None if there aren’t any)');
   } else {
-    if (!f.appointment_id) out.push('the customer');
+    if (!f.appointment_id && !String(f.customer || '').trim()) out.push('the customer (pick one, or type their name)');
     if (!a.experience) out.push('overall experience');
     if (!a.impression) out.push('impression of the tech');
     if (!a.webs) out.push('webs');
-    if (f.termite && !a.termite) out.push('termite stations');
     if (!a.upsell) out.push('upsell');
     if (!a.autopay) out.push('auto-pay');
     if (!String(a.positive || '').trim()) out.push('positive feedback');

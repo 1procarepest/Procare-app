@@ -55,10 +55,10 @@ export default async function ReportsPage({ searchParams }) {
 
   return (
     <>
-      <div className="rc-top brand-head">
+      <div className="rc-top brand-head brand-hero">
         <Bug kind="spider" size={150} className="brand-head-bug" />
         <div>
-          <p className="rc-kicker">Reports · {quarterName(year, quarter)}</p>
+          <p className="rc-kicker">Professionals who care · {quarterName(year, quarter)}</p>
           <h1 className="rc-title">Ride-alongs and <em>follow-behinds</em></h1>
         </div>
         {canFile && (

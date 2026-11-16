@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { OFFICES, OFFICE_NAME, RANK, roleTitle, shortDate } from '@/lib/labels';
 import { KINDS, KIND_ORDER, equalWeights, fmt, money0, money2, quarterName, whereName } from '@/lib/bonus';
 import Toggle from '../../Toggle';
+import Picker from '../../Picker';
 import GoalCard from '../../bonus/GoalCard';
 
 const fullName = (p) => `${p?.first_name || ''} ${p?.last_name || ''}`.trim();
@@ -52,7 +53,6 @@ const blankGoal = (kind = 'tech_sales') => ({ kind, label: KINDS[kind].label, ta
 
 function SetEditor({ initial, people, starts, techCount, onSave, onCancel, busy }) {
   const [d, setD] = useState(initial);
-  const [pick, setPick] = useState('');
   const set = (patch) => setD((x) => ({ ...x, ...patch }));
   const setGoal = (i, patch) => setD((x) => ({ ...x, goals: x.goals.map((g, j) => (j === i ? { ...g, ...patch } : g)) }));
   const total = d.goals.reduce((t, g) => t + Number(g.weight || 0), 0);
@@ -64,12 +64,10 @@ function SetEditor({ initial, people, starts, techCount, onSave, onCancel, busy 
     <div className="bn-editor">
       <div className="row">
         <label className="calc-field">Name<input value={d.name} placeholder="West service" onChange={(e) => set({ name: e.target.value })} /></label>
-        <label className="calc-field">Numbers from
-          <select value={d.office || ''} onChange={(e) => set({ office: e.target.value || null })}>
-            <option value="">Company-wide</option>
-            {OFFICES.map((o) => <option key={o.key} value={o.key}>{o.name}</option>)}
-          </select>
-        </label>
+        <div className="calc-field"><span className="rf-label">Numbers from</span>
+          <Picker label="Numbers from" value={d.office || ''} onChange={(v) => set({ office: v || null })}
+            options={[{ value: '', label: 'Company-wide' }, ...OFFICES.map((o) => ({ value: o.key, label: o.name }))]} />
+        </div>
       </div>
 
       <div className="calc-field">
@@ -80,10 +78,8 @@ function SetEditor({ initial, people, starts, techCount, onSave, onCancel, busy 
             return <button key={id} type="button" className="chip on" onClick={() => set({ members: d.members.filter((x) => x !== id) })} aria-label={`Remove ${fullName(p)}`}>{fullName(p) || 'Former employee'} ×</button>;
           })}
         </div>
-        <select value={pick} onChange={(e) => { if (e.target.value) set({ members: [...d.members, e.target.value] }); setPick(''); }}>
-          <option value="">Add a person…</option>
-          {candidates.map((p) => <option key={p.id} value={p.id}>{fullName(p)} · {roleTitle(p.department, p.level)}{p.office ? `, ${OFFICE_NAME[p.office]}` : ''}</option>)}
-        </select>
+        <Picker label="Add a person" value="" placeholder="+ Add a person…" onChange={(v) => { if (v) set({ members: [...d.members, v] }); }}
+          options={candidates.map((p) => ({ value: p.id, label: fullName(p), sub: `${roleTitle(p.department, p.level)}${p.office ? `, ${OFFICE_NAME[p.office]}` : ''}` }))} />
         {d.members.length > 1 && (
           <Toggle checked={d.shared} onChange={(on) => set({ shared: on })}>
             {d.shared ? 'Shared goals: everyone works toward the same goals' : 'Separate goals: saving makes a copy for each person to change'}
@@ -99,11 +95,10 @@ function SetEditor({ initial, people, starts, techCount, onSave, onCancel, busy 
             return (
               <li key={g.id || `new-${i}`}>
                 <div className="calc-row">
-                  <label className="calc-field bn-grow">Measures
-                    <select value={g.kind} onChange={(e) => setGoal(i, { kind: e.target.value, label: g.label === k.label || !g.label ? KINDS[e.target.value].label : g.label })}>
-                      {KIND_ORDER.map((key) => <option key={key} value={key}>{KINDS[key].label}</option>)}
-                    </select>
-                  </label>
+                  <div className="calc-field bn-grow"><span className="rf-label">Measures</span>
+                    <Picker label="Measures" value={g.kind} search={false} onChange={(v) => setGoal(i, { kind: v, label: g.label === k.label || !g.label ? KINDS[v].label : g.label })}
+                      options={KIND_ORDER.map((key) => ({ value: key, label: KINDS[key].label }))} />
+                  </div>
                   <label className="calc-field bn-grow">Name on the goal<input value={g.label} onChange={(e) => setGoal(i, { label: e.target.value })} /></label>
                 </div>
                 <div className="calc-row">
@@ -369,7 +364,6 @@ function SettingsTab({ settings, sources, people, sb, router }) {
   const [reportTo, setReportTo] = useState(settings.report_to || []);
   const [off, setOff] = useState(settings.sources_off || []);
   const [scale, setScale] = useState(settings.scale);
-  const [pick, setPick] = useState('');
   const [msg, setMsg] = useState('');
   const names = useMemo(() => {
     const m = {};
@@ -396,10 +390,8 @@ function SettingsTab({ settings, sources, people, sb, router }) {
             return <button key={id} type="button" className="chip on" onClick={() => { const v = reportTo.filter((x) => x !== id); setReportTo(v); save({ report_to: v }, 'Saved.'); }}>{fullName(p) || 'Former employee'} ×</button>;
           })}
         </div>
-        <select value={pick} onChange={(e) => { if (e.target.value) { const v = [...reportTo, e.target.value]; setReportTo(v); save({ report_to: v }, 'Saved.'); } setPick(''); }}>
-          <option value="">Add a person…</option>
-          {leads.map((p) => <option key={p.id} value={p.id}>{fullName(p)} · {roleTitle(p.department, p.level)}</option>)}
-        </select>
+        <Picker label="Add a person" value="" placeholder="+ Add a person…" onChange={(id) => { if (id) { const v = [...reportTo, id]; setReportTo(v); save({ report_to: v }, 'Saved.'); } }}
+          options={leads.map((p) => ({ value: p.id, label: fullName(p), sub: roleTitle(p.department, p.level) }))} />
       </div></section>
 
       <section className="rc-panel"><div className="rc-panel-body rf-sec">

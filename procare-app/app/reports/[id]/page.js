@@ -22,7 +22,7 @@ export default async function ReportPage({ params }) {
   const tech = `${r.tech?.first_name || ''} ${r.tech?.last_name || ''}`.trim();
   return (
     <>
-      <div className="rc-top brand-head">
+      <div className="rc-top brand-head brand-hero">
         <Bug kind={r.kind === 'ride_along' ? 'cricket' : 'spider'} size={150} className="brand-head-bug" />
         <div>
           <p className="rc-kicker"><Link href="/reports">Reports</Link> · {KIND_LABEL[r.kind]}</p>
@@ -43,8 +43,10 @@ export default async function ReportPage({ params }) {
 
       <section className="rc-panel rf-tech"><div className="rc-panel-body rf-sec">
         <h2>What {r.tech?.first_name || 'the tech'} sees</h2>
+        {r.kind === 'follow_behind' && r.answers?.positive && <p><b>The customer said:</b> “{r.answers.positive}”</p>}
+        {r.tech_praise && <p><b>What they did well:</b> {r.tech_praise}</p>}
         {r.improve?.length > 0 && <p><b>Where to improve:</b> {r.improve.map((k) => SKILL_LABEL[k] || k).join(', ')}</p>}
-        <p>{r.tech_note || <span className="note">No note.</span>}</p>
+        <p><b>{r.kind === 'ride_along' ? 'What to work on' : 'One thing to work on'}:</b> {r.tech_note || <span className="note">nothing written.</span>}</p>
         <p className={r.told_tech ? 'ok' : 'rf-warn'}>
           {r.told_tech
             ? `${r.author?.first_name} told the tech.${r.tech_seen_at ? ` The tech tapped Got it on ${shortDate(new Date(r.tech_seen_at).toISOString().slice(0, 10))}.` : ' The tech hasn’t tapped Got it yet.'}`

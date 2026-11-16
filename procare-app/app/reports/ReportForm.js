@@ -5,16 +5,18 @@ import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { OFFICE_NAME, shortDate } from '@/lib/labels';
 import {
-  CLEAN, COMMS, EXPERIENCE, FB_AUTOPAY, FB_UPSELL, IMPRESSION, IMPROVE_HINT, INTERIOR, KIND_LABEL, LIGHTS, RIDE_SERVICE,
+  CLEAN, COMMS, EXPERIENCE, FB_AUTOPAY, FB_UPSELL, IMPRESSION, IMPROVE_HINT, INTERIOR, KIND_LABEL, LIGHTS, PRAISE_HINT, RIDE_SERVICE,
   RIDE_UPSELL, SKILLS, TERMITE, WEBS, YES_NO, missing, truckItems,
 } from '@/lib/reports';
 import { clearDraft, enqueue, loadDraft, saveDraft, sendReport } from '@/lib/outbox';
 import Toggle from '../Toggle';
+import Picker from '../Picker';
+import { BugTile } from '../Bug';
 
 const newId = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID()
   : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = (Math.random() * 16) | 0; return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16); }));
 
-const blank = (kind, today) => ({ id: newId(), kind, day: today, tech_id: '', answers: {}, improve: [], tech_note: '', told_tech: false });
+const blank = (kind, today) => ({ id: newId(), kind, day: today, tech_id: '', answers: {}, improve: [], tech_praise: '', tech_note: '', told_tech: false });
 
 /** Buttons for one answer (Yes / No …). */
 function Choice({ options, value, onChange, label }) {
@@ -22,7 +24,7 @@ function Choice({ options, value, onChange, label }) {
     <div className="rf-choice" role="radiogroup" aria-label={label}>
       {options.map((o) => (
         <button key={o.v} type="button" role="radio" aria-checked={String(value) === String(o.v)}
-          className={`cp-chip${String(value) === String(o.v) ? ' on' : ''}`} onClick={() => onChange(o.v)}>{o.label}</button>
+          className={`cp-chip${String(value) === String(o.v) ? ' on' : ''}`} onClick={() => onChange(String(value) === String(o.v) ? undefined : o.v)}>{o.label}</button>
       ))}
     </div>
   );
@@ -34,7 +36,7 @@ function Scale({ options, value, onChange, label }) {
     <div className="rf-scale" role="radiogroup" aria-label={label}>
       {options.map((o) => (
         <button key={o.v} type="button" role="radio" aria-checked={Number(value) === o.v}
-          className={`rf-level${Number(value) === o.v ? ' on' : ''}`} onClick={() => onChange(o.v)}>
+          className={`rf-level${Number(value) === o.v ? ' on' : ''}`} onClick={() => onChange(Number(value) === o.v ? undefined : o.v)}>
           <span className="rf-level-n">{o.v}</span>
           <span className="rf-level-text">
             <b>{o.emoji ? `${o.emoji} ` : ''}{o.label}</b>
@@ -56,6 +58,19 @@ function Q({ title, children, hint }) {
   );
 }
 
+/** A numbered section with a bug, in the brand's mono-caps label style. */
+function Step({ n, bug, tone = 'sage', title, kicker, className = '', children }) {
+  return (
+    <section className={`rf-card ${className}`.trim()}>
+      <div className="rf-step">
+        <BugTile kind={bug} tone={tone} size={38} />
+        <div><p className="rf-kicker">{kicker || `Step ${n}`}</p><h2>{title}</h2></div>
+      </div>
+      <div className="rf-sec">{children}</div>
+    </section>
+  );
+}
+
 export default function ReportForm({ kind, techs, today, myOffice }) {
   const router = useRouter();
   const sb = useMemo(() => createClient(), []);
@@ -70,14 +85,14 @@ export default function ReportForm({ kind, techs, today, myOffice }) {
   // Pick up a draft left on this phone
   useEffect(() => {
     const d = loadDraft(kind);
-    if (d && d.kind === kind) setF(d);
+    if (d && d.kind === kind) setF({ ...blank(kind, today), ...d });
     setReady(true);
-  }, [kind]);
+  }, [kind, today]);
   useEffect(() => { if (ready) saveDraft(kind, f); }, [ready, kind, f]);
 
   // Follow-behinds: the chosen tech's stops in the last 7 days
   useEffect(() => {
-    if (kind !== 'follow_behind' || !f.tech_id) { setStops(null); return; }
+    if (kind !== 'follow_behind' || !f.tech_id) { setStops(null); return undefined; }
     let live = true;
     setStops(null);
     sb.rpc('recent_stops', { p_tech: f.tech_id }).then(({ data, error }) => {
@@ -92,17 +107,16 @@ export default function ReportForm({ kind, techs, today, myOffice }) {
   const tech = techs.find((t) => t.id === f.tech_id);
   const name = tech ? tech.first_name : 'the tech';
 
-  const byOffice = useMemo(() => {
-    const groups = {};
-    techs.forEach((t) => (groups[t.office || ''] ||= []).push(t));
-    return Object.entries(groups).sort(([x], [y]) => (x === myOffice ? -1 : y === myOffice ? 1 : x.localeCompare(y)));
-  }, [techs, myOffice]);
+  const techOptions = useMemo(() => [...techs]
+    .sort((x, y) => (x.office === myOffice ? -1 : 0) - (y.office === myOffice ? -1 : 0) || String(x.office).localeCompare(String(y.office)))
+    .map((t) => ({ value: t.id, label: `${t.first_name} ${t.last_name}`, group: OFFICE_NAME[t.office] || 'No office' })), [techs, myOffice]);
 
   const pickStop = (s) => set({
-    appointment_id: s.appointment_id, customer_id: s.customer_id, day: s.day, termite: !!s.termite,
+    appointment_id: s.appointment_id, customer_id: s.customer_id, day: s.day, termite: !!s.termite, typed: false,
     customer: [s.customer, s.city].filter(Boolean).join(', '),
-    answers: { ...f.answers, autopay: s.autopay ? 'already' : f.answers.autopay, ...(s.termite ? {} : { termite: undefined, termite_why: undefined }) },
+    answers: { ...f.answers, autopay: s.autopay ? 'already' : f.answers.autopay },
   });
+  const typeCustomer = (text) => set({ appointment_id: null, customer_id: null, typed: true, customer: text });
 
   const lightOn = (l) => (a.lights || []).includes(l);
   const toggleLight = (l) => ans({ lights_checked: true, no_lights: false, lights: lightOn(l) ? a.lights.filter((x) => x !== l) : [...(a.lights || []), l] });
@@ -113,10 +127,12 @@ export default function ReportForm({ kind, techs, today, myOffice }) {
     if (left.length) { setMsg(''); return; }
     setBusy(true);
     setMsg('');
+    const answers = { ...f.answers };
+    if (!f.termite) { delete answers.termite; delete answers.termite_why; }
     const report = {
       id: f.id, kind, tech_id: f.tech_id, day: f.day,
       customer_id: f.customer_id || null, appointment_id: f.appointment_id || null, customer: f.customer || null,
-      answers: f.answers, improve: f.improve, tech_note: f.tech_note, told_tech: f.told_tech,
+      answers, improve: f.improve, tech_praise: f.tech_praise, tech_note: f.tech_note, told_tech: f.told_tech,
       truck_issues: kind === 'ride_along' ? truckItems(f.answers) : [],
     };
     const res = typeof navigator !== 'undefined' && navigator.onLine === false ? { ok: false, offline: true } : await sendReport(sb, report);
@@ -132,70 +148,63 @@ export default function ReportForm({ kind, techs, today, myOffice }) {
 
   if (!ready) return null;
   const suggested = Array.isArray(stops) ? stops.filter((s) => !s.checked).sort((x, y) => x.pick - y.pick).slice(0, 3) : [];
-  const chosen = Array.isArray(stops) ? stops.find((s) => s.appointment_id === f.appointment_id) : null;
+  const list = showAll ? (Array.isArray(stops) ? stops : []) : suggested;
+  let n = 0;
 
   return (
     <form className="rf" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-      <section className="rc-panel"><div className="rc-panel-body rf-sec">
-        <h2>{kind === 'ride_along' ? 'The day' : 'The visit'}</h2>
+      <Step n={++n} bug="ant" tone="lime" title={kind === 'ride_along' ? 'The day' : 'The visit'}>
         <div className="row">
-          <div>
-            <label htmlFor="rf-tech">Technician</label>
-            <select id="rf-tech" value={f.tech_id} onChange={(e) => set({ tech_id: e.target.value, appointment_id: null, customer_id: null, customer: null, termite: false })}>
-              <option value="">Pick a technician…</option>
-              {byOffice.map(([office, list]) => (
-                <optgroup key={office} label={OFFICE_NAME[office] || 'No office'}>
-                  {list.map((t) => <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>)}
-                </optgroup>
-              ))}
-            </select>
+          <div className="calc-field">
+            <span className="rf-label">Technician</span>
+            <Picker label="Technician" value={f.tech_id} options={techOptions} placeholder="Pick a technician…"
+              onChange={(v) => set({ tech_id: v, appointment_id: null, customer_id: null, customer: '', typed: false, termite: false })} />
           </div>
           {kind === 'ride_along' && (
-            <div>
-              <label htmlFor="rf-day">Date</label>
-              <input id="rf-day" type="date" value={f.day} max={today} onChange={(e) => set({ day: e.target.value })} />
-            </div>
+            <label className="calc-field"><span className="rf-label">Date</span>
+              <input type="date" value={f.day} max={today} onChange={(e) => set({ day: e.target.value })} />
+            </label>
           )}
         </div>
 
         {kind === 'follow_behind' && f.tech_id && (
-          <Q title="Customer" hint={`From ${name}’s completed stops in the last 7 days. Suggested ones are picked at random so any stop could be checked.`}>
+          <Q title="Customer" hint={`Suggested from ${name}’s stops in the last 7 days, picked at random so any stop could be checked. You can also choose another stop or type a customer’s name.`}>
             {stops === null && <p className="note">Loading stops…</p>}
             {stops?.error && <p className="error">Stops couldn’t load: {stops.error}</p>}
-            {Array.isArray(stops) && stops.length === 0 && <p className="note">No completed stops for {name} in the last 7 days.</p>}
-            {chosen && <p className="rf-picked">✓ {f.customer} · {shortDate(f.day)} · {chosen.service}</p>}
-            {Array.isArray(stops) && stops.length > 0 && (
-              <>
-                {suggested.length > 0 && <p className="rf-sub">Suggested</p>}
-                <ul className="rf-stops">
-                  {(showAll ? stops : suggested).map((s) => (
-                    <li key={s.appointment_id}>
-                      <button type="button" className={`rf-stop${s.appointment_id === f.appointment_id ? ' on' : ''}`} onClick={() => pickStop(s)}>
-                        <b>{s.customer}</b>{s.city ? `, ${s.city}` : ''}
-                        <small>{shortDate(s.day)} · {s.service}{s.termite ? ' · termite' : ''}{s.checked ? ' · already checked' : ''}</small>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                <button type="button" className="link" onClick={() => setShowAll(!showAll)}>{showAll ? 'Show suggested only' : `Choose another stop (${stops.length})`}</button>
-              </>
+            {Array.isArray(stops) && stops.length === 0 && <p className="note">No completed stops for {name} in the last 7 days. Type the customer’s name below.</p>}
+            {list.length > 0 && (
+              <ul className="rf-stops">
+                {list.map((s) => (
+                  <li key={s.appointment_id}>
+                    <button type="button" className={`rf-stop${s.appointment_id === f.appointment_id ? ' on' : ''}`} onClick={() => pickStop(s)}>
+                      <span><b>{s.customer}</b>{s.city ? `, ${s.city}` : ''}</span>
+                      <small>{shortDate(s.day)} · {s.service}{s.checked ? ' · already checked' : ''}</small>
+                      {s.appointment_id === f.appointment_id && <span className="rf-stop-check" aria-hidden="true">✓</span>}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
+            {Array.isArray(stops) && stops.length > suggested.length && (
+              <button type="button" className="link" onClick={() => setShowAll(!showAll)}>{showAll ? 'Show suggested only' : `See all ${stops.length} stops`}</button>
+            )}
+            <input value={f.typed ? f.customer || '' : ''} maxLength={120} placeholder="Not listed? Type the customer’s name and city"
+              onChange={(e) => typeCustomer(e.target.value)} />
+            {f.typed && f.customer && <p className="calc-hint">Typed in. Pick a stop above instead if they’re listed.</p>}
           </Q>
         )}
-      </div></section>
+      </Step>
 
       {kind === 'ride_along' ? (
         <>
-          <section className="rc-panel"><div className="rc-panel-body rf-sec">
-            <h2>Service</h2>
+          <Step n={++n} bug="spider" title="Service">
             {RIDE_SERVICE.map((q) => (
               <Q key={q.key} title={q.q}><Choice label={q.q} options={YES_NO} value={a[q.key]} onChange={(v) => ans({ [q.key]: v })} /></Q>
             ))}
             <Q title="Was the tech able to upsell?"><Choice label="Upsell" options={RIDE_UPSELL} value={a.upsell} onChange={(v) => ans({ upsell: v })} /></Q>
-          </div></section>
+          </Step>
 
-          <section className="rc-panel"><div className="rc-panel-body rf-sec">
-            <h2>The truck</h2>
+          <Step n={++n} bug="tick" title="The truck">
             <Q title="Is the interior in good condition?"><Choice label="Interior" options={INTERIOR} value={a.interior} onChange={(v) => ans({ interior: v })} /></Q>
             <Q title="How clean is the truck?"><Scale label="Cleanliness" options={CLEAN} value={a.clean} onChange={(v) => ans({ clean: v })} /></Q>
             <Q title="Any warning lights on the dash?" hint="Pick every one that’s on. The tech and the office’s branch managers are told so it gets fixed.">
@@ -206,63 +215,69 @@ export default function ReportForm({ kind, techs, today, myOffice }) {
               <input value={a.other_light || ''} maxLength={80} placeholder="Other light (type it in)"
                 onChange={(e) => ans({ other_light: e.target.value, lights_checked: true, no_lights: false })} />
             </Q>
-          </div></section>
+          </Step>
 
-          <section className="rc-panel"><div className="rc-panel-body rf-sec">
-            <h2>Summary</h2>
+          <Step n={++n} bug="cricket" title="Summary of the day">
             <textarea rows={4} value={a.summary || ''} onChange={(e) => ans({ summary: e.target.value })} placeholder="How did the day go? (managers only)" />
-          </div></section>
+          </Step>
         </>
       ) : (
         <>
-          <section className="rc-panel"><div className="rc-panel-body rf-sec">
-            <h2>Talking with the customer</h2>
+          <Step n={++n} bug="spider" title="Talking with the customer">
             <Q title="Is the person you’re speaking with on the account?"><Choice label="On the account" options={YES_NO} value={a.on_account} onChange={(v) => ans({ on_account: v })} /></Q>
             <Q title="Were they communicated with before and after service?"><Choice label="Communication" options={COMMS} value={a.comms} onChange={(v) => ans({ comms: v })} /></Q>
-          </div></section>
+          </Step>
 
-          <section className="rc-panel"><div className="rc-panel-body rf-sec">
-            <h2>Ratings</h2>
+          <Step n={++n} bug="ant" title="Ratings">
             <Q title="Customer’s overall experience"><Scale label="Overall experience" options={EXPERIENCE} value={a.experience} onChange={(v) => ans({ experience: v })} /></Q>
             <Q title="Customer’s impression of the tech"><Scale label="Impression of the tech" options={IMPRESSION} value={a.impression} onChange={(v) => ans({ impression: v })} /></Q>
             <Q title="Webs (pest service)"><Scale label="Webs" options={WEBS} value={a.webs} onChange={(v) => ans({ webs: v })} /></Q>
+            <Toggle checked={!!f.termite} onChange={(on) => set({ termite: on })}>I checked termite stations on this visit</Toggle>
             {f.termite && (
               <>
-                <Q title="Termite stations (maintenance or install)"><Scale label="Termite stations" options={TERMITE} value={a.termite} onChange={(v) => ans({ termite: v })} /></Q>
+                <Q title="Termite stations (maintenance or install)" hint="Optional. Skip it if you didn’t get to them.">
+                  <Scale label="Termite stations" options={TERMITE} value={a.termite} onChange={(v) => ans({ termite: v })} />
+                </Q>
                 <Q title="Why this rating?"><textarea rows={2} value={a.termite_why || ''} onChange={(e) => ans({ termite_why: e.target.value })} /></Q>
               </>
             )}
-          </div></section>
+          </Step>
 
-          <section className="rc-panel"><div className="rc-panel-body rf-sec">
-            <h2>Sales</h2>
+          <Step n={++n} bug="stinging" title="Sales">
             <Q title="Upsell opportunity"><Choice label="Upsell" options={FB_UPSELL} value={a.upsell} onChange={(v) => ans({ upsell: v })} /></Q>
             <input value={a.upsell_note || ''} maxLength={200} placeholder="Upsell notes (optional)" onChange={(e) => ans({ upsell_note: e.target.value })} />
             <Q title="Was auto-pay collected?"><Choice label="Auto-pay" options={FB_AUTOPAY} value={a.autopay} onChange={(v) => ans({ autopay: v })} /></Q>
-          </div></section>
+          </Step>
 
-          <section className="rc-panel"><div className="rc-panel-body rf-sec">
-            <h2>Customer feedback</h2>
-            <Q title="Positive feedback"><textarea rows={2} value={a.positive || ''} onChange={(e) => ans({ positive: e.target.value })} /></Q>
-            <Q title="Negative feedback"><textarea rows={2} value={a.negative || ''} onChange={(e) => ans({ negative: e.target.value })} placeholder="Nothing? Write “None.”" /></Q>
-            <Q title="Anything they’d like to see improved?"><textarea rows={2} value={a.wish || ''} onChange={(e) => ans({ wish: e.target.value })} /></Q>
-          </div></section>
+          <Step n={++n} bug="cricket" title="Customer feedback">
+            <Q title="Positive feedback" hint={`${name === 'the tech' ? 'The tech' : name} sees this, so they hear what customers love.`}>
+              <textarea rows={2} value={a.positive || ''} onChange={(e) => ans({ positive: e.target.value })} />
+            </Q>
+            <Q title="Negative feedback" hint="Managers only."><textarea rows={2} value={a.negative || ''} onChange={(e) => ans({ negative: e.target.value })} placeholder="Nothing? Write “None.”" /></Q>
+            <Q title="Anything they’d like to see improved?" hint="Managers only."><textarea rows={2} value={a.wish || ''} onChange={(e) => ans({ wish: e.target.value })} /></Q>
+          </Step>
         </>
       )}
 
-      <section className="rc-panel rf-tech"><div className="rc-panel-body rf-sec">
-        <h2>{kind === 'ride_along' ? 'Where to improve' : 'Feedback for the tech'}</h2>
-        <p className="note">{name === 'the tech' ? 'The tech' : name} sees this part on their home page. Everything above is for managers only.</p>
+      <Step n={++n} bug="termite" tone="lime" className="rf-tech" kicker="The tech sees this part" title={`Feedback for ${name}`}>
+        <p className="note">Everything above stays with managers. Lead with what they did well, then what to work on.</p>
+        <Q title="What they did well">
+          <textarea rows={3} value={f.tech_praise || ''} onChange={(e) => set({ tech_praise: e.target.value })} placeholder={PRAISE_HINT} />
+        </Q>
         {kind === 'ride_along' && (
-          <div className="rf-skills">
-            {SKILLS.map((s) => (
-              <Toggle key={s.key} checked={f.improve.includes(s.key)}
-                onChange={(on) => set({ improve: on ? [...f.improve, s.key] : f.improve.filter((x) => x !== s.key) })}>{s.label}</Toggle>
-            ))}
-          </div>
+          <Q title="Where to improve">
+            <div className="rf-skills">
+              {SKILLS.map((s) => (
+                <Toggle key={s.key} checked={f.improve.includes(s.key)}
+                  onChange={(on) => set({ improve: on ? [...f.improve, s.key] : f.improve.filter((x) => x !== s.key) })}>{s.label}</Toggle>
+              ))}
+            </div>
+          </Q>
         )}
-        <textarea rows={3} value={f.tech_note} onChange={(e) => set({ tech_note: e.target.value })}
-          placeholder={kind === 'ride_along' ? IMPROVE_HINT : 'What did they do well, and one thing to work on? Keep it constructive.'} />
+        <Q title={kind === 'ride_along' ? 'What to work on' : 'One thing to work on'}>
+          <textarea rows={3} value={f.tech_note} onChange={(e) => set({ tech_note: e.target.value })}
+            placeholder={kind === 'ride_along' ? IMPROVE_HINT : 'One specific thing they can do better next time. Keep it constructive.'} />
+        </Q>
         <div className="rf-told">
           <Toggle checked={f.told_tech} onChange={(on) => set({ told_tech: on })}>
             {kind === 'ride_along'
@@ -274,7 +289,7 @@ export default function ReportForm({ kind, techs, today, myOffice }) {
             : 'Techs who know their work can be checked anytime stay sharp. A quick call or text counts.'}</p>
           {!f.told_tech && <p className="rf-warn">This report counts toward your bonus only once this switch is on.</p>}
         </div>
-      </div></section>
+      </Step>
 
       {problems.length > 0 && <p className="error" role="alert">Still needed: {problems.join(', ')}.</p>}
       {msg && <p className="error" role="alert">{msg}</p>}

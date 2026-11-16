@@ -1,5 +1,8 @@
 import { KINDS, fmt, money2 } from '@/lib/bonus';
 import { shortDate } from '@/lib/labels';
+import { BugTile } from '../Bug';
+
+const BUG = { tech_sales: 'ant', office_sales: 'ant', marketing_sales: 'stinging', reports: 'spider', autopay: 'cricket', ar_past: 'tick', cancel: 'roach', pool: 'termite', cost_per_customer: 'mosquito', logged: 'centipede', project: 'earwig' };
 
 const pctText = (n) => `${Math.round(Number(n || 0))}%`;
 
@@ -13,7 +16,8 @@ export default function GoalCard({ g, quarter, final = false, children }) {
   return (
     <li className={`bn-goal${g.pay >= 100 ? ' bn-hit' : ''}`}>
       <div className="bn-goal-head">
-        <span>
+        <BugTile kind={BUG[g.kind] || 'ant'} tone={g.pay >= 100 ? 'lime' : 'sage'} size={38} />
+        <span className="bn-goal-name">
           <b>{g.label}</b>
           <small>{k.label}{g.kind === 'project' && g.due_date ? ` · due ${shortDate(g.due_date)}` : ''} · {Number(g.weight)}% of the quarter{quarter > 0 ? ` (${money2(worth)})` : ''}</small>
         </span>

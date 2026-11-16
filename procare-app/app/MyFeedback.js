@@ -46,8 +46,10 @@ export default function MyFeedback({ data }) {
               ? `Your service${r.customer ? ` at ${r.customer}` : ''} was checked on ${shortDate(r.day)}`
               : `Ride-along with ${r.from} on ${shortDate(r.day)}`}
           </p>
+          {r.customer_praise && <p className="fb-good"><b>The customer said:</b> “{r.customer_praise}”</p>}
+          {r.praise && <p className="fb-good"><b>What you did well:</b> {r.praise} <small>— {r.from}</small></p>}
           {r.improve?.length > 0 && <p><b>Focus on:</b> {r.improve.map((k) => SKILL_LABEL[k] || k).join(', ')}</p>}
-          {r.note && <p className="fb-note">“{r.note}” <small>— {r.from}</small></p>}
+          {r.note && <p className="fb-note"><b>{r.kind === 'ride_along' ? 'What to work on' : 'One thing to work on'}:</b> {r.note} <small>— {r.from}</small></p>}
           {r.seen || seen[r.id]
             ? <p className="calc-hint">{KIND_LABEL[r.kind]} · you tapped Got it</p>
             : <button type="button" className="btn btn-small" onClick={() => ack(r.id)}>Got it</button>}

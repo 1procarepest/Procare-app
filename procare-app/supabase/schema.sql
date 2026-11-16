@@ -357,6 +357,7 @@ create table public.field_reports (
   customer       text,                         -- "Jane Smith, Marietta"
   answers        jsonb not null default '{}'::jsonb,   -- manager-only answers (lib/reports.js)
   improve        text[] not null default '{}',         -- Where to improve switches (the tech sees these)
+  tech_praise    text,                                 -- change 48: the manager's "What they did well" (the tech sees this)
   tech_note      text,                                 -- the manager's note to the tech (the tech sees this)
   told_tech      boolean not null default false,       -- must be on for the report to count toward a bonus
   tech_seen_at   timestamptz,                          -- the tech tapped Got it
