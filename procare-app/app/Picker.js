@@ -33,9 +33,9 @@ export default function Picker({ value, onChange, options, placeholder = 'Pick o
 
   return (
     <div className={`pk ${className}`.trim()} ref={box}>
-      <button type="button" className={`pk-btn${open ? ' open' : ''}${picked ? '' : ' empty'}`} aria-haspopup="listbox" aria-expanded={open}
+      <button type="button" className={`pk-btn${open ? ' pk-open' : ''}${picked ? '' : ' pk-empty'}`} aria-haspopup="listbox" aria-expanded={open}
         aria-controls={id} aria-label={label} onClick={() => setOpen(!open)}>
-        <span>{picked ? picked.label : placeholder}{picked?.sub ? <small> · {picked.sub}</small> : null}</span>
+        <span>{picked ? picked.label : placeholder}</span>
         <span className="pk-caret" aria-hidden="true">▾</span>
       </button>
       {open && (

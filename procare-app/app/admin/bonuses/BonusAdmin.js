@@ -53,6 +53,9 @@ const blankGoal = (kind = 'tech_sales') => ({ kind, label: KINDS[kind].label, ta
 
 function SetEditor({ initial, people, starts, techCount, onSave, onCancel, busy }) {
   const [d, setD] = useState(initial);
+  const leaders = people.filter((p) => (RANK[p.level] || 0) >= 2);
+  const leaderOf = (n) => leaders.find((p) => fullName(p) === String(n || '').trim());
+  const [custom, setCustom] = useState(() => !!initial.name && !leaderOf(initial.name));
   const set = (patch) => setD((x) => ({ ...x, ...patch }));
   const setGoal = (i, patch) => setD((x) => ({ ...x, goals: x.goals.map((g, j) => (j === i ? { ...g, ...patch } : g)) }));
   const total = d.goals.reduce((t, g) => t + Number(g.weight || 0), 0);
@@ -63,7 +66,18 @@ function SetEditor({ initial, people, starts, techCount, onSave, onCancel, busy 
   return (
     <div className="bn-editor">
       <div className="row">
-        <label className="calc-field">Name<input value={d.name} placeholder="West service" onChange={(e) => set({ name: e.target.value })} /></label>
+        <div className="calc-field"><span className="rf-label">Name</span>
+          <Picker label="Name" value={custom ? '__custom' : (leaderOf(d.name)?.id || '')} placeholder="Pick a leader…"
+            options={[...leaders.map((p) => ({ value: p.id, label: fullName(p), sub: `${roleTitle(p.department, p.level)}${p.office ? `, ${OFFICE_NAME[p.office]}` : ''}` })),
+              { value: '__custom', label: 'Custom name…', sub: 'e.g. West service' }]}
+            onChange={(v) => {
+              if (v === '__custom') { setCustom(true); return; }
+              const p = people.find((x) => x.id === v);
+              setCustom(false);
+              set({ name: fullName(p), members: d.members.includes(v) ? d.members : [v, ...d.members] });
+            }} />
+          {custom && <input value={d.name} placeholder="West service" autoFocus onChange={(e) => set({ name: e.target.value })} />}
+        </div>
         <div className="calc-field"><span className="rf-label">Numbers from</span>
           <Picker label="Numbers from" value={d.office || ''} onChange={(v) => set({ office: v || null })}
             options={[{ value: '', label: 'Company-wide' }, ...OFFICES.map((o) => ({ value: o.key, label: o.name }))]} />
@@ -240,7 +254,7 @@ function Goals({ sets, people, year, quarter, range, today, starts, techCount, s
     return (
       <section className="rc-panel"><div className="rc-panel-body rf-sec">
         <h2>{editing.id ? `Edit ${editing.name}` : `New goals for ${quarterName(year, quarter)}`}</h2>
-        {msg && <p className="error" role="alert">{msg}</p>}
+        {msg && <p className={msg.startsWith('Still') || msg.startsWith('Couldn') ? 'error' : 'ok'} role="alert">{msg}</p>}
         <SetEditor initial={editing} people={people} starts={starts} techCount={techCount} busy={busy} onSave={save} onCancel={() => { setEditing(null); setMsg(''); }} />
       </div></section>
     );
@@ -249,7 +263,7 @@ function Goals({ sets, people, year, quarter, range, today, starts, techCount, s
   return (
     <>
       <div className="panel-buttons bn-actions">
-        <button type="button" className="btn btn-small" onClick={() => setEditing(fresh())}>New goals</button>
+        <button type="button" className="btn btn-small" onClick={() => { setMsg(''); setEditing(fresh()); }}>New goals</button>
       </div>
       {msg && <p className={msg.startsWith('Couldn') ? 'error' : 'ok'} role="status">{msg}</p>}
       {sets.length === 0 && <p className="note">No goals for {quarterName(year, quarter)} yet. Click “New goals”, or go back a quarter and copy last quarter’s.</p>}
@@ -268,7 +282,7 @@ function Goals({ sets, people, year, quarter, range, today, starts, techCount, s
           </ul>
           <ul className="bn-goals">{s.score.goals.map((g) => <GoalCard key={g.id} g={g} quarter={0} final={!!s.score.final} />)}</ul>
           <div className="panel-buttons">
-            {!s.approved_at && <button type="button" className="btn btn-small btn-quiet" onClick={() => setEditing(draftOf(s))}>Edit</button>}
+            {!s.approved_at && <button type="button" className="btn btn-small btn-quiet" onClick={() => { setMsg(''); setEditing(draftOf(s)); }}>Edit</button>}
             <button type="button" className="btn btn-small btn-quiet" disabled={busy} onClick={() => copyNext(s)}>Copy to next quarter</button>
             {!s.approved_at && <button type="button" className="btn btn-small btn-quiet" onClick={() => remove(s)}>Delete</button>}
           </div>
