@@ -56,6 +56,7 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
   const chosen = shown.filter((p) => p.id in inMap && (!handTeams || inMap[p.id]));
   const entrants = entrantCount(chosen.length, teamSize);
   const finalEnd = isBracket ? bracketEnd(seedEnd, Number(roundDays) || 1, entrants) : end;
+  const roundCount = Math.max(1, roundsFor(Math.max(2, entrants)));   // bracket rounds, for the prize per round
   const oldSeat = Object.fromEntries(members.map((m) => [m.employee_id, m]));
 
   const toggleDept = (k) => {
@@ -221,9 +222,9 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
         </p>
         <div className="prize-rows">
           {isBracket ? (
-            Array.from({ length: Math.max(1, roundsFor(Math.max(2, entrants))) }, (_, i, arr) => (
+            Array.from({ length: roundCount }, (_, i) => (
               <div key={i} className="prize-row">
-                <span className="rc-label">{i === arr.length - 1 ? 'Champion (grand prize)' : `Win ${roundName(i, arr.length)}`}</span>
+                <span className="rc-label">{i === roundCount - 1 ? 'Champion (grand prize)' : `Win ${roundName(i, roundCount)}`}</span>
                 <span className="calc-input"><span className="calc-affix">$</span>
                   <input type="number" min="0" step="5" inputMode="decimal" value={rounds[i] ?? ''} placeholder="0" onChange={(e) => setRounds(Object.assign([...rounds], { [i]: e.target.value }))} aria-label={`Round ${i + 1} prize`} />
                 </span>
