@@ -33,9 +33,10 @@ export default async function ReportPage({ params }) {
 
       <section className="rc-panel"><div className="rc-panel-body rf-sec">
         <h2>Answers <small className="note">(managers only)</small></h2>
-        <dl className="rf-answers">
+        {r.answers?.past && <p className="note">Logged after the fact (done before the app had the forms), so there are no answers. It counts toward the reports goal.</p>}
+        {!r.answers?.past && <dl className="rf-answers">
           {answerLines(r.kind, r.answers).map(([q, v]) => <div key={q}><dt>{q}</dt><dd>{v}</dd></div>)}
-        </dl>
+        </dl>}
         {(truck || []).length > 0 && (
           <p className="note">Truck items: {truck.map((t) => `${t.item} (${t.status === 'fixed' ? `fixed ${shortDate(String(t.fixed_at).slice(0, 10))}` : 'open'})`).join(', ')}</p>
         )}

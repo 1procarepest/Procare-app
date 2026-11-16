@@ -34,6 +34,8 @@ Branch `manager-bonuses`. Database change 47. Everything below was agreed with J
 - Each tech, each quarter: **2 ride-alongs + 2 follow-behinds** (follow-behind = quality check). Target = techs at the
   start of the quarter × 4.
 - A report only counts when the manager's **"I told the tech" switch** is on.
+- **Log a past report** (change 49, Reports page): ride-alongs and follow-behinds already done on the old Google Forms count
+  toward the goal (back to the start of the quarter). No answers, no emails, nothing on the tech's home page.
 - Each report emails the report recipients (Ryan Boyd, Operations Manager; set in Settings → Bonuses).
 - Offline: forms save on the phone as they're typed and send when the signal comes back.
 
