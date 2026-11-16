@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import Face from '../Face';
 import Bug, { BugTile } from '../Bug';
 import { OFFICE_NAME, shortDate } from '@/lib/labels';
-import { COMPETE_AS, DEFAULT_POINTS, daysBetween, fmt, kindsFor, prizeLine, scoreGroups, scorePeople, stageOf, usesTiers } from '@/lib/competitions';
+import { COMPETE_AS, DEFAULT_POINTS, daysBetween, fmt, kindsFor, prizeLine, scoreGroups, scorePeople, serviceDeadline, stageOf, usesTiers } from '@/lib/competitions';
 
 const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉' };
 const OFFICE_BUG = { east: 'ant', south: 'stinging', west: 'mosquito' };
@@ -26,6 +26,9 @@ export default function Standings({ comp, board, today, meId, editable }) {
     ...kindsFor(comp.departments).filter((k) => Number(pts[k.key]) > 0),
     ...(tiers.length ? [{ key: 'bonus', label: 'Contract bonus', short: 'Contract bonus' }] : []),
   ];
+  const deadline = serviceDeadline(pts, comp.end_date);   // null when sales don't need to be serviced
+  const waiting = deadline && today > comp.end_date && today <= deadline;
+  const showPending = !!deadline && people.some((p) => p.pending > 0);
   const [open, setOpen] = useState(null);
   const me = people.find((p) => p.id === meId);
   const myGroup = me && groups.find((g) => g.members.some((m) => m.id === meId));
@@ -45,8 +48,9 @@ export default function Standings({ comp, board, today, meId, editable }) {
             {shortDate(comp.start_date)} – {shortDate(comp.end_date)}
             {stage === 'live' && ` · Day ${dayNo} of ${totalDays}`}
             {stage === 'upcoming' && ' · Starts soon'}
-            {stage === 'final' && ' · Final'}
-            {board.through && stage !== 'final' && ` · Points through ${shortDate(board.through)}`}
+            {stage === 'final' && (waiting ? ` · Waiting for services until ${shortDate(deadline)}, then final` : ' · Final')}
+            {board.through && (stage !== 'final' || waiting) && ` · Points through ${shortDate(board.through)}`}
+            {deadline && !waiting && stage !== 'final' && ` · Sales must be serviced by ${shortDate(deadline)}`}
           </p>
         </div>
         {editable && <Link className="btn btn-quiet btn-small" href={`/compete/${comp.id}/edit`}>Edit</Link>}
@@ -136,6 +140,7 @@ export default function Standings({ comp, board, today, meId, editable }) {
                 <th>#</th><th>Name</th>
                 {comp.compete_as === 'teams' ? <th>Team</th> : <th>Office</th>}
                 {kinds.map((k) => <th key={k.key} className="num">{k.short}</th>)}
+                {showPending && <th className="num" title="Sold, but not serviced yet: no points until it is">Pending service</th>}
                 <th className="num">Points</th>
               </tr>
             </thead>
@@ -146,6 +151,7 @@ export default function Standings({ comp, board, today, meId, editable }) {
                   <td><span className="cp-who"><Face person={p} size={30} /> {p.first_name} {p.last_name}{!p.active && <small> (left)</small>}</span></td>
                   <td>{comp.compete_as === 'teams' ? p.team : OFFICE_NAME[p.office] || ''}</td>
                   <Counts row={p} kinds={kinds} />
+                  {showPending && <td className="num cp-pending">{p.pending || ''}</td>}
                   <td className="num"><b>{fmt(p.points)}</b></td>
                 </tr>
               ))}
@@ -153,9 +159,10 @@ export default function Standings({ comp, board, today, meId, editable }) {
           </table>
         </div>
         <p className="calc-hint cp-foot">
-          Sales count when the first service is completed, credited to whoever sold it. Auto-pay counts for the tech who serviced the customer that day,
-          and for the rep when a serviced sale is on auto-pay. Reviews count for the tech on the reviewed visit.
-          {tiers.length > 0 && ' Contract bonus: points for serviced pest-control sales over each contract value tier.'} Points update with each FieldRoutes sync.
+          Sales count only when sold between {shortDate(comp.start_date)} and {shortDate(comp.end_date)}, credited to whoever sold it
+          {deadline ? `, and only once the first service is done by ${shortDate(deadline)} (until then they’re pending; after that they drop off)` : ''}.
+          Auto-pay counts for the tech who serviced the customer that day, and for the rep when a sale is on auto-pay. Reviews count for the tech on the reviewed visit.
+          {tiers.length > 0 && ' Contract bonus: points for pest-control sales over each contract value tier.'} Points update with each FieldRoutes sync.
         </p>
       </section>
     </>

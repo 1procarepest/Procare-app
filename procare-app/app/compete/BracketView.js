@@ -6,7 +6,7 @@ import Face from '../Face';
 import Bug, { BugTile } from '../Bug';
 import { OFFICE_NAME, shortDate } from '@/lib/labels';
 import { DEFAULT_POINTS, fmt, kindsFor, prizeLine, scorePeople, usesTiers } from '@/lib/competitions';
-import { buildBracket, lockedEntrants, makeEntrants, roundName } from '@/lib/bracket';
+import { buildBracket, lockedEntrants, makeEntrants, roundName, seedingFinal } from '@/lib/bracket';
 
 function Side({ e, score, win, lose, meId, decided }) {
   if (!e) return <div className="bk-side bk-empty">{decided ? 'Bye' : 'To be decided'}</div>;
@@ -39,12 +39,16 @@ export default function BracketView({ comp, board, today, meId, editable }) {
   let label = 'Seeding leader';
   let headline = anySeedPoints ? `${seeding[0].first_name} ${seeding[0].last_name}` : today < comp.start_date ? 'Not started yet' : 'No points yet';
   let sub = anySeedPoints ? `${fmt(seeding[0].points)} seeding points` : '';
+  const seedReady = seedingFinal(comp);
   if (bracket.champion) { label = 'Champion'; headline = bracket.champion.name; sub = teams ? bracket.champion.members.map((m) => m.first_name).join(', ') : ''; }
-  else if (!inSeeding) {
+  else if (!inSeeding && today <= seedReady) {
+    label = 'Seeding is over';
+    sub = `Waiting for sales to be serviced until ${shortDate(seedReady)}; then the bracket is set`;
+  } else if (!inSeeding) {
     const r = current || bracket.rounds.find((x) => !x.over);
     label = r ? `${roundName(r.index, bracket.rounds.length)} · ${shortDate(r.start)} – ${shortDate(r.end)}` : 'Bracket';
-    headline = r?.started ? 'Round in progress' : 'Bracket set';
-    sub = r?.started ? '' : `Starts ${shortDate(r?.start)}`;
+    headline = r?.waiting ? 'Waiting for services' : r?.started ? 'Round in progress' : 'Bracket set';
+    sub = r?.waiting ? `Results final after ${shortDate(r.final)}` : r?.started ? '' : `Starts ${shortDate(r?.start)}`;
   }
 
   return (
@@ -95,7 +99,7 @@ export default function BracketView({ comp, board, today, meId, editable }) {
                 <div key={r.index} className="bk-round">
                   <p className="bk-round-head">
                     <b>{roundName(r.index, bracket.rounds.length)}</b>
-                    <span>{shortDate(r.start)} – {shortDate(r.end)}{r.started && !r.over ? ' · live' : ''}</span>
+                    <span>{shortDate(r.start)} – {shortDate(r.end)}{r.waiting ? ` · final ${shortDate(r.final)}` : r.started && !r.over ? ' · live' : ''}</span>
                   </p>
                   <div className="bk-matches">
                     {r.matches.map((m, i) => (

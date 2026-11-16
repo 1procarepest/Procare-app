@@ -3,8 +3,8 @@
 // winners (payouts.rounds, the last being the champion's grand prize). Team and office prizes are split
 // evenly among the members. A tie shares the prizes for the places it covers. Each prize is paid once
 // (award_key), and only after the competition (or round) is over and the data has caught up.
-import { ordinal, scoreGroups, scorePeople } from './competitions';
-import { bracketEnd, buildBracket, lockedEntrants, makeEntrants, roundName } from './bracket';
+import { ordinal, scoreGroups, scorePeople, serviceDeadline } from './competitions';
+import { bracketEnd, buildBracket, lockedEntrants, makeEntrants, roundName, seedingFinal, waitDays } from './bracket';
 import { scoreOffices } from './officeKpis';
 import { OFFICE_NAME } from './labels';
 import { createAdminClient } from './supabase/admin';
@@ -72,8 +72,9 @@ export function awardsFor(comp, ctx, today) {
     });
     return { rows, final: !!br.champion || (br.rounds.length > 0 && br.rounds.every((r) => r.over)) };
   }
-  // leaderboard
-  if (!(today > comp.end_date && board.through && board.through >= comp.end_date)) return { rows: [], final: false };
+  // leaderboard: final once the service window after the end has passed (and the data has caught up)
+  const finalDay = serviceDeadline(comp.points, comp.end_date) || comp.end_date;
+  if (!(today > finalDay && board.through && board.through >= finalDay)) return { rows: [], final: false };
   const people = scorePeople(board, comp.points, comp.departments);
   let entries;
   if (comp.compete_as === 'people') {
@@ -91,7 +92,8 @@ export function awardsFor(comp, ctx, today) {
  * Returns the updated competition, or null if it isn't time yet.
  */
 export async function lockBracket(db, comp, board, today) {
-  if (comp.style !== 'bracket' || comp.locked_at || !(today > comp.seed_end) || !(board?.through && board.through >= comp.seed_end)) return null;
+  const ready = seedingFinal(comp);   // seeding end + the service window
+  if (comp.style !== 'bracket' || comp.locked_at || !(today > ready) || !(board?.through && board.through >= ready)) return null;
   const seeding = scorePeople(board, comp.points, comp.departments, comp.start_date, comp.seed_end);
   const entrants = makeEntrants(seeding, comp.team_size);
   const rows = entrants.flatMap((e) => e.members.map((m) => ({
@@ -100,7 +102,7 @@ export async function lockBracket(db, comp, board, today) {
   const { error } = await db.from('competition_members').upsert(rows);
   if (error) return null;
   const { data } = await db.from('competitions')
-    .update({ locked_at: new Date().toISOString(), end_date: bracketEnd(comp.seed_end, comp.round_days, entrants.length) })
+    .update({ locked_at: new Date().toISOString(), end_date: bracketEnd(comp.seed_end, comp.round_days, entrants.length, waitDays(comp)) })
     .eq('id', comp.id).select('*').single();
   return data || null;
 }

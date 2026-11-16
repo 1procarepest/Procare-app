@@ -1,7 +1,13 @@
-import { scorePeople } from './competitions';
+import { scorePeople, serveDays } from './competitions';
 
 const toDate = (ymd) => new Date(`${String(ymd).slice(0, 10)}T12:00:00Z`);
 export const addDays = (ymd, n) => { const d = toDate(ymd); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+
+/** Days to wait after seeding or a round for sales to be serviced (0 when sales don't need to be serviced). */
+export const waitDays = (comp) => serveDays(comp?.points) ?? 0;
+
+/** The day seeding results are final (seeding end + the service window). */
+export const seedingFinal = (comp) => addDays(comp.seed_end, waitDays(comp));
 
 /** How many rounds a bracket of n entrants needs (2 → 1, 3-4 → 2, 5-8 → 3 …). */
 export const roundsFor = (n) => (n < 2 ? 0 : Math.ceil(Math.log2(n)));
@@ -9,15 +15,20 @@ export const roundsFor = (n) => (n < 2 ? 0 : Math.ceil(Math.log2(n)));
 /** Number of bracket entrants for a head count and team size. Teams: as many full teams as possible. */
 export const entrantCount = (people, teamSize) => (teamSize > 1 ? Math.floor(people / teamSize) : people);
 
-/** Round r (0 = first) start and end dates. */
+/**
+ * Round r (0 = first) start and end dates, and when its results are final (end + the service window).
+ * With a service window, each round (and round 1, after seeding) starts only once the one before is final.
+ */
 export function roundDates(comp, r) {
-  const start = addDays(comp.seed_end, 1 + r * comp.round_days);
-  return { start, end: addDays(start, comp.round_days - 1) };
+  const w = waitDays(comp);
+  const start = addDays(comp.seed_end, 1 + w + r * (comp.round_days + w));
+  const end = addDays(start, comp.round_days - 1);
+  return { start, end, final: addDays(end, w) };
 }
 
-/** End of the last round, for a given number of entrants. */
-export function bracketEnd(seedEnd, roundDays, entrants) {
-  return addDays(seedEnd, Math.max(1, roundsFor(entrants)) * roundDays);
+/** End of the last round, for a given number of entrants (and service window). */
+export function bracketEnd(seedEnd, roundDays, entrants, wait = 0) {
+  return addDays(seedEnd, Math.max(1, roundsFor(entrants)) * (roundDays + wait));
 }
 
 /**
@@ -85,9 +96,9 @@ export function buildBracket(comp, board, entrants, today) {
   let slots = seedOrder(size).map((s) => bySeed[s] || null);
   const out = [];
   for (let r = 0; r < rounds; r += 1) {
-    const { start, end } = roundDates(comp, r);
+    const { start, end, final } = roundDates(comp, r);
     const started = today >= start;
-    const over = today > end && through && through >= end;
+    const over = today > final && through && through >= final;   // decided once the service window has passed
     const scores = started ? scorePeople(board, comp.points, comp.departments, start, end) : [];
     const pts = Object.fromEntries(scores.map((p) => [p.id, p.points]));
     const scoreOf = (e) => (e && started ? e.members.reduce((s, m) => s + (pts[m.id] || 0), 0) / e.members.length : null);
@@ -106,7 +117,7 @@ export function buildBracket(comp, board, entrants, today) {
       matches.push({ a, b, sa, sb, winner, bye, live: started && !over && !bye && !!a && !!b });
       next.push(winner);
     }
-    out.push({ index: r, start, end, started, over: !!over, matches });
+    out.push({ index: r, start, end, final, started, over: !!over, waiting: today > end && !over, matches });
     slots = next;
   }
   const last = out[out.length - 1].matches[0];

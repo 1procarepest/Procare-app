@@ -35,6 +35,9 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
   const [depts, setDepts] = useState(comp?.departments || (allowedDepts.length === 1 ? allowedDepts : ['technician', 'sales']));
   const [points, setPoints] = useState({ ...DEFAULT_POINTS, ...(comp?.points || {}) });
   const [tiers, setTiers] = useState(() => (comp?.points?.tiers || DEFAULT_TIERS).map((t) => ({ ...t })));
+  const savedServe = comp?.points?.serve_days;
+  const [mustServe, setMustServe] = useState(savedServe !== null && savedServe !== undefined && savedServe !== '');
+  const [serveDaysIn, setServeDaysIn] = useState(savedServe ?? 3);
   const setTier = (i, k, v) => setTiers(tiers.map((t, j) => (j === i ? { ...t, [k]: v } : t)));
 
   // Who's in: id → team name ('' = in, no team). Missing = not in.
@@ -55,7 +58,8 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
   const shown = people.filter((p) => depts.includes(p.department));
   const chosen = shown.filter((p) => p.id in inMap && (!handTeams || inMap[p.id]));
   const entrants = entrantCount(chosen.length, teamSize);
-  const finalEnd = isBracket ? bracketEnd(seedEnd, Number(roundDays) || 1, entrants) : end;
+  const wait = mustServe ? Math.max(0, Math.round(Number(serveDaysIn) || 0)) : 0;   // days after a period for sales to be serviced
+  const finalEnd = isBracket ? bracketEnd(seedEnd, Number(roundDays) || 1, entrants, wait) : end;
   const roundCount = Math.max(1, roundsFor(Math.max(2, entrants)));   // bracket rounds, for the prize per round
   const oldSeat = Object.fromEntries(members.map((m) => [m.employee_id, m]));
 
@@ -129,6 +133,7 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
       points: {
         ...Object.fromEntries(KINDS.map((k) => [k.key, Number(points[k.key]) || 0])),
         review_stars: Number(points.review_stars) || 5,
+        serve_days: mustServe && kinds.some((k) => k.key === 'sale' || k.key === 'autopay') ? wait : null,
         tiers: tiers.filter((t) => t.over !== '' && t.over !== null).map((t) => ({ over: Number(t.over) || 0, pts: Number(t.pts) || 0 }))
           .sort((a, b) => a.over - b.over),
         kpis: Object.fromEntries(Object.entries(kpis).map(([k, v]) => [k, { on: !!v.on, mode: v.mode, pts: Number(v.pts) || 0, goal: Number(v.goal) || 0 }])),
@@ -199,7 +204,8 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
               </label>
             </div>
             <p className="calc-hint">
-              Everyone competes on a leaderboard during seeding; the standings set the bracket. Round 1 starts {shortDate(addDays(seedEnd, 1))}.
+              Everyone competes on a leaderboard during seeding; the standings set the bracket. Round 1 starts {shortDate(addDays(seedEnd, 1 + wait))}.
+              {wait > 0 && ` Each round waits ${wait} day${wait === 1 ? '' : 's'} for sales to be serviced before the next one starts.`}
               {entrants >= 2 && ` ${entrants} ${teamSize > 1 ? 'teams' : 'people'} → ${roundsFor(entrants)} rounds → final ends ${shortDate(finalEnd)}.`}
               {locked && ' The bracket is locked, so seeding can’t change.'}
             </p>
@@ -352,6 +358,27 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
           )}
         </div>
         {kinds.length > 0 && <ul className="cp-hints">{kinds.map((k) => <li key={k.key}><b>{k.label}:</b> {k.hint}</li>)}</ul>}
+        {kinds.some((k) => k.key === 'sale') && (
+          <div className="cp-tiers">
+            <Toggle checked={mustServe} onChange={setMustServe}>
+              <span className="cp-person-text"><b>Sales must be serviced to count</b><small>The sale, its auto-pay and its contract bonus count only once the first service is done. Until then they show as pending.</small></span>
+            </Toggle>
+            {mustServe && (
+              <div className="calc-row cp-tier">
+                <span className="calc-input">
+                  <span className="calc-affix">Serviced within</span>
+                  <input type="number" min="0" max="30" step="1" inputMode="numeric" value={serveDaysIn} onChange={(e) => setServeDaysIn(e.target.value)} aria-label="Days after the end to be serviced" />
+                  <span className="calc-affix">days after the end</span>
+                </span>
+                <span className="calc-hint">
+                  {isBracket
+                    ? `Each round (and seeding) waits ${wait} day${wait === 1 ? '' : 's'} for services before the next round starts.`
+                    : `Results are final ${wait ? `${wait} day${wait === 1 ? '' : 's'} after the end (${shortDate(addDays(end, wait))})` : 'at the end'}; sales not serviced by then don’t count.`}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
         {usesTiers(depts) && (
           <div className="cp-tiers">
             <span className="rc-label">Pest contract value bonus</span>

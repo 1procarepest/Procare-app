@@ -2,9 +2,9 @@ import { OFFICE_NAME } from './labels';
 
 /** What earns points. Values are set per competition; these are the starting defaults. */
 export const KINDS = [
-  { key: 'sale', label: 'Sale serviced', short: 'Sales', hint: 'A sale gets its first service done (credited to whoever sold it).', def: 3 },
+  { key: 'sale', label: 'Sale', short: 'Sales', hint: 'A sale made during the competition (credited to whoever sold it). Nothing sold before the start counts.', def: 3 },
   { key: 'service', label: 'Completed service', short: 'Services', hint: 'Each job a tech completes.', def: 1 },
-  { key: 'autopay', label: 'Auto-pay', short: 'Auto-pay', hint: 'Techs: a customer turns on auto-pay the day the tech services them. Reps: a serviced sale on auto-pay.', def: 2 },
+  { key: 'autopay', label: 'Auto-pay', short: 'Auto-pay', hint: 'Techs: a customer turns on auto-pay the day the tech services them. Reps: a sale on auto-pay.', def: 2 },
   { key: 'review', label: 'Review', short: 'Reviews', hint: 'A review with enough stars (credited to the tech on that visit).', def: 1 },
 ];
 export const DEFAULT_TIERS = [{ over: 420, pts: 0.5 }];
@@ -63,22 +63,48 @@ export function canEdit(me, c) {
   return me.rank === 3 && c.created_by === me.id && c.departments.length === 1 && c.departments[0] === me.department;
 }
 
-/** One person's counts and points, adding up events between from and to (inclusive, YYYY-MM-DD). */
+const plusDays = (d, n) => { const x = new Date(`${ymd(d)}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+
+/** Days after the end a sale has to be serviced by, or null when sales don't need to be serviced. */
+export function serveDays(points) {
+  const v = points?.serve_days;
+  return v === null || v === undefined || v === '' || Number.isNaN(Number(v)) ? null : Math.max(0, Math.round(Number(v)));
+}
+
+/** The last day a sale made in a window ending `to` can be serviced and still count. */
+export const serviceDeadline = (points, to) => (serveDays(points) === null ? null : plusDays(to, serveDays(points)));
+
+/**
+ * Each person's counts and points between from and to (inclusive, YYYY-MM-DD; default: the whole competition).
+ * Sales count only when SOLD in the window. With a service window (points.serve_days), a sale, its auto-pay and
+ * its contract-value bonus count only once serviced by the deadline; before that they're "pending", and after
+ * the deadline they drop off.
+ */
 export function scorePeople(board, points, departments, from = null, to = null) {
   const p = { ...DEFAULT_POINTS, ...(points || {}) };
   const live = new Set(kindsFor(departments).map((k) => k.key));
-  const blank = { sale: 0, service: 0, autopay: 0, review: 0, bonus: 0, points: 0 };
+  const blank = { sale: 0, service: 0, autopay: 0, review: 0, bonus: 0, points: 0, pending: 0 };
   const by = new Map((board.members || []).map((m) => [m.id, { ...m, ...blank }]));
-  const inWindow = (d) => !((from && d < from) || (to && d > to));
-  if (usesTiers(departments)) {
-    (board.contracts || []).forEach((c) => {
-      const row = by.get(c.e);
-      if (!row || !inWindow(ymd(c.d))) return;
-      const b = tierPoints(c.v, p.tiers || []);
-      row.bonus += b;
-      row.points += b;
-    });
-  }
+  const lo = from || (board.start ? ymd(board.start) : null);
+  const hi = to || (board.end ? ymd(board.end) : null);
+  const inWindow = (d) => !((lo && d < lo) || (hi && d > hi));
+  const deadline = hi ? serviceDeadline(p, hi) : null;
+  const today = board.today ? ymd(board.today) : null;
+  const tiers = usesTiers(departments) ? p.tiers || [] : [];
+  (board.sales || []).forEach((s) => {
+    const row = by.get(s.e);
+    if (!row || !inWindow(ymd(s.d))) return;
+    if (deadline) {
+      const served = s.s ? ymd(s.s) : null;
+      if (!served || served > deadline) {
+        if (!served && (!today || today <= deadline)) row.pending += 1;
+        return;
+      }
+    }
+    if (live.has('sale')) { row.sale += 1; row.points += Number(p.sale) || 0; }
+    if (s.ap && live.has('autopay')) { row.autopay += 1; row.points += Number(p.autopay) || 0; }
+    if (s.p && tiers.length) { const b = tierPoints(s.v, tiers); row.bonus += b; row.points += b; }
+  });
   (board.events || []).forEach((ev) => {
     if (!inWindow(ymd(ev.d)) || !live.has(ev.k)) return;
     const row = by.get(ev.e);
@@ -96,11 +122,11 @@ export function scoreGroups(people, by) {
     const key = by === 'offices' ? r.office || 'none' : r.team;
     if (!key) return;
     if (!groups.has(key)) {
-      groups.set(key, { key, name: by === 'offices' ? OFFICE_NAME[key] || 'No office' : key, members: [], sale: 0, service: 0, autopay: 0, review: 0, bonus: 0, points: 0 });
+      groups.set(key, { key, name: by === 'offices' ? OFFICE_NAME[key] || 'No office' : key, members: [], sale: 0, service: 0, autopay: 0, review: 0, bonus: 0, points: 0, pending: 0 });
     }
     const g = groups.get(key);
     g.members.push(r);
-    ['sale', 'service', 'autopay', 'review', 'bonus', 'points'].forEach((k) => { g[k] += r[k]; });
+    ['sale', 'service', 'autopay', 'review', 'bonus', 'points', 'pending'].forEach((k) => { g[k] += r[k]; });
   });
   const list = [...groups.values()].map((g) => ({ ...g, avg: g.members.length ? g.points / g.members.length : 0 }));
   return withRanks(list.sort((a, b) => b.avg - a.avg || b.points - a.points || a.name.localeCompare(b.name)), 'avg');

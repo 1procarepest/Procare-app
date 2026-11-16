@@ -528,3 +528,7 @@ grant execute on function public.mark_payout_paid(uuid, text) to authenticated;
 -- result saved in rpc_cache when it is under 5 minutes old (rpc_cache_get / rpc_cache_put). comp_sales saves per
 -- (year, rep or all, manages pay). Triggers clear saved pay on comp_* edits, tech cards on scorecard_rules edits,
 -- and the Sales Leaderboard on sales_board_rules edits. Bodies are in that change file.
+
+-- Change 2026-11-16-46: competition_board_calc counts sales by SOLD date (only sales sold in the competition).
+-- It returns "sales" (rep, sold day, first-service day, auto-pay, contract value, pest) and the app applies the
+-- optional service window (competitions.points.serve_days: serviced within N days after the end, else pending/dropped).
