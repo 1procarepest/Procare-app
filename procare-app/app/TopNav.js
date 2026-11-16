@@ -5,7 +5,7 @@ import { canSeeTeamSchedule } from '@/lib/teamSchedule';
 
 /**
  * The bar at the top of every page: logo, links to each app the person can open, Pay (sales, and
- * people who manage pay), Settings (leads and up), and Sign out. `extra` adds a page's own sub-links.
+ * people who manage pay), Compete (everyone), Settings (leads and up), and Sign out. `extra` adds a page's own sub-links.
  */
 export default async function TopNav({ me, supabase, current, extra = null }) {
   const apps = appsFor(me.department, me.level);
@@ -25,6 +25,7 @@ export default async function TopNav({ me, supabase, current, extra = null }) {
         {apps.map((k) => link(k, APPS[k].href, APPS[k].short))}
         {pay && link('pay', '/pay', 'Pay')}
         {canSeeTeamSchedule(me) && link('team', '/team', 'Schedule')}
+        {link('compete', '/compete', 'Compete')}
         {extra}
         {me.rank >= 2 && link('settings', '/admin', 'Settings')}
         <SignOut />

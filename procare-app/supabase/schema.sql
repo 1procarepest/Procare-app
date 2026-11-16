@@ -187,3 +187,31 @@ create table public.comp_assignments (
   updated_at  timestamptz not null default now(),
   primary key (employee_id, year)
 );
+
+-- ---------- Competitions (change 2026-11-15-39) ----------
+-- Leaderboards and brackets scored with points set per competition. Offices and teams rank by average per member.
+create table public.competitions (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null check (length(trim(name)) > 0),
+  style       text not null default 'leaderboard' check (style in ('leaderboard', 'bracket')),
+  compete_as  text not null default 'people' check (compete_as in ('people', 'offices', 'teams')),
+  departments text[] not null check (cardinality(departments) > 0 and departments <@ array['technician', 'sales', 'administrative']),
+  start_date  date not null,
+  end_date    date not null,
+  round_days  integer check (round_days is null or round_days between 1 and 90),   -- brackets: days per round
+  prize       text,
+  points      jsonb not null default '{"sale": 3, "autopay": 2, "review": 1, "review_stars": 5}'::jsonb,
+  created_by  uuid references public.employees(id) on delete set null,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  check (end_date >= start_date and end_date - start_date <= 400)
+);
+
+create table public.competition_members (
+  competition_id uuid not null references public.competitions(id) on delete cascade,
+  employee_id    uuid not null references public.employees(id) on delete cascade,
+  team           text,      -- custom teams: the team name
+  seed           integer,   -- brackets: seeding order (1 = top seed)
+  primary key (competition_id, employee_id)
+);
+create index competition_members_emp on public.competition_members (employee_id);

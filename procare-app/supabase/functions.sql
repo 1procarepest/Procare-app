@@ -452,3 +452,25 @@ $$;
 revoke all on function public.team_schedule_depts() from public, anon;
 grant execute on function public.team_schedule_depts() to authenticated;
 
+
+-- Competitions (change 2026-11-15-39). competition_board(id) is in that change file: members, and
+-- points events (sale / autopay / review) per member per day from the start date through today or the end date.
+-- May the signed-in person run a competition for these departments?
+create or replace function public.can_run_competition(depts text[])
+returns boolean language sql stable security definer set search_path = public as $$
+  select my_rank() >= 4
+      or (my_rank() = 3 and cardinality(depts) = 1 and depts[1] = my_department()::text)
+$$;
+revoke all on function public.can_run_competition(text[]) from public, anon;
+grant execute on function public.can_run_competition(text[]) to authenticated;
+
+-- May the signed-in person change this competition (and its members)?
+create or replace function public.can_edit_competition(p_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from competitions c
+    where c.id = p_id and can_run_competition(c.departments) and (my_rank() >= 4 or c.created_by = my_id())
+  )
+$$;
+revoke all on function public.can_edit_competition(uuid) from public, anon;
+grant execute on function public.can_edit_competition(uuid) to authenticated;
