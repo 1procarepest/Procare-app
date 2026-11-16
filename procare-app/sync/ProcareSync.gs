@@ -601,7 +601,7 @@ function pullCustomers_(o, params) {
   const custs = frFetch_(o, 'customer', params);
   supaUpsert_('fr_customers', custs.map(c => ({
     customer_id: id_(c.customerID), office: officeOf_(c, o),
-    last_name: str_(c.lname), company_name: str_(c.companyName),          // never first name or street address
+    first_name: str_(c.fname), last_name: str_(c.lname), company_name: str_(c.companyName),   // never street address
     city: str_(c.city), zip: str_(c.zip),                                 // for rep work areas
     status: num_(c.status), autopay: str_(c.aPay), autopay_profile_id: id_(c.autoPayPaymentProfileID),
     balance: num_(c.responsibleBalance !== undefined ? c.responsibleBalance : c.balance),

@@ -61,9 +61,12 @@ function Lines({ rows, cols }) {
   );
 }
 
-const custCol = { k: 'c', h: 'Customer', v: (r) => r.c || `#${r.id}` };
+const custCol = { k: 'c', h: 'Customer', v: (r) => [r.f, r.c].filter(Boolean).join(' ') || `#${r.cid || r.id}` };
 const typeCol = { k: 'g', h: 'Service', v: (r) => GROUP_LABEL[r.g] };
 const servedCol = { k: 's', h: 'Serviced', v: (r) => nice(r.served) };
+
+/** "Jane Smith", or the last/business name, or the customer number if the customer hasn't synced yet. */
+const custName = (r) => [r.f, r.c].filter(Boolean).join(' ') || (r.cid ? 'Name not synced yet' : `#${r.id}`);
 
 const FILTERS = [
   { k: 'all', label: 'All', test: () => true },
@@ -89,26 +92,27 @@ function CustomerList({ st, open, today }) {
       <div className="pay-scroll">
         <table className="ops-table pay-cust">
           <thead>
-            <tr><th scope="col">Customer</th><th scope="col">Service</th><th scope="col">Sold</th><th scope="col">Serviced</th><th scope="col">Status</th><th scope="col">Earns</th><th scope="col">Paid</th><th scope="col">Left to pay</th></tr>
+            <tr><th scope="col">Customer</th><th scope="col">Service</th><th scope="col">Contract value</th><th scope="col">Sold</th><th scope="col">Serviced</th><th scope="col">Status</th><th scope="col">Earns</th><th scope="col">Paid</th><th scope="col">Left to pay</th></tr>
           </thead>
           <tbody>
             {shown.map((r) => (
               <tr key={`${r.kind}-${r.id}`} className={r.tone ? `pay-${r.tone}` : ''}>
-                <th scope="row">{r.c || `#${r.id}`}</th>
-                <td>{GROUP_LABEL[r.g]}{r.g === 'pest' && r.cv ? <small> {money0(r.cv)}{r.rate ? ` · ${r.rate}%${r.bonus ? ' bonus' : ''}` : ''}</small> : null}</td>
+                <th scope="row">{custName(r)}{r.cid && <small>Customer #{r.cid}</small>}</th>
+                <td>{GROUP_LABEL[r.g]}</td>
+                <td>{money0(r.cv)}</td>
                 <td>{nice(r.sold)}</td>
-                <td>{r.served ? nice(r.served) : '—'}</td>
+                <td>{r.served ? nice(r.served) : r.st === 'Pending' ? 'Pending' : r.st === 'No Show' ? 'No-show' : r.kind === 'open' ? 'Canceled' : '—'}</td>
                 <td><span className="pay-status-text">{r.status}</span>{r.note && <small>{r.note}</small>}</td>
-                <td>{money(r.earned)}</td>
+                <td>{money(r.earned)}{r.g === 'pest' && r.rate ? <small>{r.rate}%{r.bonus ? ' bonus' : ''}</small> : null}</td>
                 <td>{money(r.paid)}</td>
                 <td>{r.deduction < 0 && <span className="pay-deduct">{money(r.deduction)} taken back</span>}{r.left < 0 ? <span className="pay-deduct">{money(r.left)} to take back</span> : r.deduction < 0 ? null : money(r.left)}</td>
               </tr>
             ))}
-            {shown.length === 0 && <tr><td colSpan={8} className="pay-muted">Nothing here.</td></tr>}
+            {shown.length === 0 && <tr><td colSpan={9} className="pay-muted">Nothing here.</td></tr>}
           </tbody>
           <tfoot>
-            <tr><th scope="row" colSpan={5}>All {rows.length} customers</th><td>{money(totals.earned)}</td><td>{money(totals.paid)}</td><td>{money(totals.left)}{totals.deduction < 0 && <small className="pay-deduct">{money(totals.deduction)} taken back</small>}</td></tr>
-            <tr><th scope="row" colSpan={6}>Paid so far, after what was taken back</th><td colSpan={2}>{money(totals.paid + totals.deduction)}</td></tr>
+            <tr><th scope="row" colSpan={6}>All {rows.length} customers</th><td>{money(totals.earned)}</td><td>{money(totals.paid)}</td><td>{money(totals.left)}{totals.deduction < 0 && <small className="pay-deduct">{money(totals.deduction)} taken back</small>}</td></tr>
+            <tr><th scope="row" colSpan={7}>Paid so far, after what was taken back</th><td colSpan={2}>{money(totals.paid + totals.deduction)}</td></tr>
           </tfoot>
         </table>
       </div>

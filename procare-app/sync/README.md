@@ -11,7 +11,7 @@ from Supabase instead of calling FieldRoutes itself, so each record is downloade
 | Data | When | How |
 | --- | --- | --- |
 | Subscriptions, appointments, doors | Every 15 minutes, 7 AM–10 PM Eastern | Only records changed since the last run |
-| Customers (last name, auto-pay, balance) | Every 30 minutes | Only changed records; auto-pay changes are logged |
+| Customers (name, auto-pay, balance) | Every 30 minutes | Only changed records; auto-pay changes are logged |
 | Reviews | Every 30 minutes | Last 3 days |
 | Employees, service types, cancel reasons | Every 2 hours | Full lists |
 | Active customers, active services, cards on file | 7 AM and 1 PM | Full refresh |
@@ -29,7 +29,7 @@ from public.fr_sync_runs group by 1 order by 1 desc;
 
 ## Privacy
 
-Customers are stored with last name (or business name) only: no first names, addresses,
+Customers are stored with first and last name (or business name) only: no addresses,
 phone numbers, emails, card or bank details, or note text. Doors keep a location and city
 for rep work areas, and only a yes/no for whether contact info was collected. The `fr_*`
 tables have no read rules yet, so signed-in people can't read them; each app adds its own.
@@ -88,3 +88,6 @@ the FieldRoutes call savings show up.
 - A failed step is retried on the next two runs, and a failed "changes" pull never skips records.
 - `resetQueue` clears stuck steps (stored data is untouched). `syncNow` runs everything that's due right now.
 - `fillMissingInitials` fetches, once, every sale's first appointment the app is missing (cancelled or rescheduled ones, which FieldRoutes' searches leave out). After that the sync checks for new ones every 2 hours with the lists (step `initials`). Needs change 27 in Supabase.
+
+First names (added 2026-11-15, change 36) are shown only to the rep who sold the customer and to
+pay managers, on the pay statement. Tech routes still show last names only.
