@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { todayYmd } from '@/lib/repcards';
@@ -16,6 +16,11 @@ export default async function CompetitionPage({ params }) {
   const today = todayYmd();
   let { data: comp } = await supabase.from('competitions').select('*').eq('id', params.id).maybeSingle();
   if (!comp) notFound();
+  // Other departments' competitions are hidden (C-Suite and the President see all; members and creators always can).
+  if (me.rank < 4 && !comp.departments.includes(me.department) && comp.created_by !== me.id) {
+    const { data: inIt } = await supabase.from('competition_members').select('employee_id').eq('competition_id', comp.id).eq('employee_id', me.id).maybeSingle();
+    if (!inIt) redirect('/compete');
+  }
   if (comp.style === 'kpi') {
     await settleCompetitions(supabase, today);
     const [{ data: kb, error: ke }, { data: mem }] = await Promise.all([

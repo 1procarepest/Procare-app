@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { todayYmd } from '@/lib/repcards';
 import { shortDate } from '@/lib/labels';
-import { COMPETE_AS, DEPTS, canCreate, stageOf } from '@/lib/competitions';
+import { COMPETE_AS, DEPTS, canCreate, prizeLine, stageOf } from '@/lib/competitions';
 import Bug, { BugTile } from '../Bug';
 import { settleCompetitions } from '@/lib/awards';
 
@@ -21,12 +21,17 @@ export default async function CompetePage() {
   const { me } = await getMe(supabase);
   const today = todayYmd();
   await settleCompetitions(supabase, today);
-  const { data, error } = await supabase
-    .from('competitions')
-    .select('id, name, style, compete_as, team_size, departments, start_date, end_date, prize, competition_members(count)')
-    .order('start_date', { ascending: false });
+  const [{ data, error }, { data: mine }] = await Promise.all([
+    supabase.from('competitions')
+      .select('id, name, style, compete_as, team_size, departments, start_date, end_date, prize, payouts, created_by, creator:employees(first_name, last_name), competition_members(count)')
+      .order('start_date', { ascending: false }),
+    supabase.from('competition_members').select('competition_id').eq('employee_id', me.id),
+  ]);
   if (error) return <p className="error">Competitions couldn’t load: {error.message}</p>;
-  const list = data || [];
+  // Everyone sees their own department's competitions, plus any they're in or created.
+  // C-Suite and the President see them all.
+  const inIds = new Set((mine || []).map((m) => m.competition_id));
+  const list = (data || []).filter((c) => me.rank >= 4 || c.departments.includes(me.department) || inIds.has(c.id) || c.created_by === me.id);
 
   return (
     <>
@@ -59,7 +64,8 @@ export default async function CompetePage() {
                   <span className="cp-tag">{s.tag}{c.style === 'bracket' ? ' · Bracket' : c.style === 'kpi' ? ' · Office KPIs' : ''}</span>
                   <span className="cp-card-name">{c.name}</span>
                   <span className="cp-card-meta">{shortDate(c.start_date)} – {shortDate(c.end_date)} · {c.style === 'kpi' ? 'Office KPIs' : c.style === 'bracket' ? (c.team_size > 1 ? `Bracket, teams of ${c.team_size}` : 'Bracket') : COMPETE_AS[c.compete_as]} · {deptNames(c.departments)}</span>
-                  <span className="cp-card-meta">{c.competition_members?.[0]?.count ?? 0} people</span>
+                  <span className="cp-card-meta">{c.competition_members?.[0]?.count ?? 0} people{c.creator ? ` · Created by ${c.creator.first_name} ${c.creator.last_name}`.trimEnd() : ''}</span>
+                  {prizeLine(c) && <span className="cp-prize">💵 {prizeLine(c)}</span>}
                   {c.prize && <span className="cp-prize">🏆 {c.prize}</span>}
                 </Link>
               ))}
