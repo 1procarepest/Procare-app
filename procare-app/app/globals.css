@@ -1051,3 +1051,32 @@ details[open] > summary > .wa-caret { transform: rotate(180deg); }
 .pay-muted th, .pay-muted td { color: var(--muted); }
 .pay-cust tfoot th, .pay-cust tfoot td { font-weight: 700; background: var(--paper); border-top: 1.5px solid var(--line); }
 .pay-noplan { margin-bottom: 14px; }
+
+/* ---------- Team schedule ---------- */
+.ts-days { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; margin-bottom: 18px; }
+.ts-day { font: inherit; color: var(--ink); background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 1px; cursor: pointer; }
+.ts-day strong { font-size: 26px; line-height: 1.1; }
+.ts-dname { font-weight: 600; }
+.ts-ddate, .ts-dsub { font-size: 12px; color: var(--muted); }
+.ts-day.today { border: 2px solid var(--green); }
+.ts-day.on { background: var(--forest); border-color: var(--forest); color: var(--white); }
+.ts-day.on .ts-ddate, .ts-day.on .ts-dsub { color: rgba(255, 255, 255, 0.75); }
+.ts-list h2 { font-size: 20px; font-weight: 600; margin-bottom: 12px; }
+.ts-office { margin-bottom: 18px; }
+.ts-office h3 { margin: 0 0 6px; }
+.ts-office ul { list-style: none; margin: 0; padding: 0; background: var(--white); border: 1px solid var(--line); border-radius: 14px; }
+.ts-office li { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.ts-office li:last-child { border-bottom: 0; }
+.ts-office li.me { background: #f3f9ea; }
+.ts-who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ts-who small, .ts-hours small, .ts-week small { color: var(--muted); font-size: 12px; font-weight: 400; display: block; }
+.ts-hours { text-align: right; font-variant-numeric: tabular-nums; }
+.ts-off { margin-top: 4px; }
+.ts-week td { white-space: nowrap; font-size: 13px; }
+.ts-week th small { display: block; }
+.ts-week thead th.today { color: var(--forest); }
+.ts-week .ts-off, .ts-week .ts-none { color: var(--muted); }
+.ts-week td.ts-off { background: #fbefe9; color: var(--danger); }
+.ts-week tr.me th { color: var(--forest); }
+.ts-week tfoot th, .ts-week tfoot td { font-weight: 700; background: var(--paper); }
+.ts-foot { margin-top: 14px; }

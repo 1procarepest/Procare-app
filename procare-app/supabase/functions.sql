@@ -436,3 +436,19 @@ create or replace function public.can_manage_pay()
 returns boolean language sql stable security definer set search_path = public as $$
   select my_rank() >= 4 or (my_department() = 'sales' and my_rank() >= 3)
 $$;
+
+-- Team schedule (change 2026-11-15-38): sales see the sales team; managers and up in technician/office
+-- see those departments; C-Suite and the President see everyone. team_schedule(from, to) is in that change file.
+-- Which departments the signed-in person may see on the team schedule
+create or replace function public.team_schedule_depts()
+returns text[] language sql stable security definer set search_path = public as $$
+  select case
+    when my_rank() >= 4 then array['sales', 'technician', 'administrative']
+    when my_department() = 'sales' then array['sales']
+    when my_rank() >= 3 then array['technician', 'administrative']
+    else array[]::text[]
+  end
+$$;
+revoke all on function public.team_schedule_depts() from public, anon;
+grant execute on function public.team_schedule_depts() to authenticated;
+

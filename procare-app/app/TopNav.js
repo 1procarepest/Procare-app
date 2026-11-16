@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { APPS, appsFor } from '@/lib/apps';
 import SignOut from './SignOut';
+import { canSeeTeamSchedule } from '@/lib/teamSchedule';
 
 /**
  * The bar at the top of every page: logo, links to each app the person can open, Pay (sales, and
@@ -23,6 +24,7 @@ export default async function TopNav({ me, supabase, current, extra = null }) {
         {link('home', '/', 'My profile')}
         {apps.map((k) => link(k, APPS[k].href, APPS[k].short))}
         {pay && link('pay', '/pay', 'Pay')}
+        {canSeeTeamSchedule(me) && link('team', '/team', 'Schedule')}
         {extra}
         {me.rank >= 2 && link('settings', '/admin', 'Settings')}
         <SignOut />
