@@ -480,3 +480,41 @@ grant execute on function public.can_edit_competition(uuid) to authenticated;
 --   save_office_kpis(): saves today's office numbers (accounts, valid auto-pay, AR, AR 30+, past-due job pool) into office_kpi_days.
 --   snapshot_routes() now also calls save_office_kpis() (errors there never stop the route snapshot).
 --   office_kpi_board(id): per office sales and cancels in the period, accounts at the start, numbers as of the end (rates only, no dollars).
+
+-- Competition prizes (change 2026-11-15-43). Awards are written by the app server (lib/awards.js, admin key).
+-- Who handles prize payouts: the HR approver (Ally), C-Suite and the President.
+create or replace function public.can_manage_payouts()
+returns boolean language sql stable security definer set search_path = public as $$
+  select is_hr_approver() or my_rank() >= 4
+$$;
+revoke all on function public.can_manage_payouts() from public, anon;
+grant execute on function public.can_manage_payouts() to authenticated;
+-- Cash out everything the signed-in person has won and not yet claimed. Returns the request id (null if nothing).
+create or replace function public.request_payout()
+returns uuid language plpgsql security definer set search_path = public as $$
+declare
+  me uuid := my_id();
+  total numeric;
+  rid uuid;
+begin
+  if me is null then return null; end if;
+  select coalesce(sum(amount), 0) into total from competition_awards where employee_id = me and payout_id is null;
+  if total <= 0 then return null; end if;
+  insert into payout_requests (employee_id, amount) values (me, total) returning id into rid;
+  update competition_awards set payout_id = rid where employee_id = me and payout_id is null;
+  return rid;
+end $$;
+revoke all on function public.request_payout() from public, anon;
+grant execute on function public.request_payout() to authenticated;
+
+-- Mark a cash out as paid (submitted to payroll). Returns true when it changed.
+create or replace function public.mark_payout_paid(p_id uuid, p_note text default null)
+returns boolean language plpgsql security definer set search_path = public as $$
+begin
+  if not can_manage_payouts() then return false; end if;
+  update payout_requests set status = 'paid', paid_at = now(), paid_by = my_id(), note = nullif(trim(coalesce(p_note, '')), '')
+  where id = p_id and status = 'requested';
+  return found;
+end $$;
+revoke all on function public.mark_payout_paid(uuid, text) from public, anon;
+grant execute on function public.mark_payout_paid(uuid, text) to authenticated;

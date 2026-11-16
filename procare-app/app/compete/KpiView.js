@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import Bug, { BugTile } from '../Bug';
 import { OFFICE_NAME, shortDate } from '@/lib/labels';
-import { daysBetween, fmt, stageOf } from '@/lib/competitions';
+import { daysBetween, fmt, prizeLine, stageOf } from '@/lib/competitions';
 import { kfmt, scoreOffices } from '@/lib/officeKpis';
 
 const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉' };
@@ -38,6 +38,7 @@ export default function KpiView({ comp, board, members, today, meOffice, editabl
 
       <div className="cp-hero">
         <div className="cp-hero-main">
+          {prizeLine(comp) && <p className="cp-hero-prize">💵 {prizeLine(comp)}</p>}
           {comp.prize && <p className="cp-hero-prize">🏆 {comp.prize}</p>}
           <p className="cp-hero-label">{stage === 'final' ? 'Winner' : 'In the lead'}</p>
           <p className="cp-hero-name">{any ? OFFICE_NAME[leader.office] : stage === 'upcoming' ? 'Not started yet' : 'No points yet'}</p>

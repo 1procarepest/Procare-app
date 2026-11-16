@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import Face from '../Face';
 import Bug, { BugTile } from '../Bug';
 import { OFFICE_NAME, shortDate } from '@/lib/labels';
-import { DEFAULT_POINTS, fmt, kindsFor, scorePeople, usesTiers } from '@/lib/competitions';
+import { DEFAULT_POINTS, fmt, kindsFor, prizeLine, scorePeople, usesTiers } from '@/lib/competitions';
 import { buildBracket, lockedEntrants, makeEntrants, roundName } from '@/lib/bracket';
 
 function Side({ e, score, win, lose, meId, decided }) {
@@ -64,6 +64,7 @@ export default function BracketView({ comp, board, today, meId, editable }) {
 
       <div className="cp-hero">
         <div className="cp-hero-main">
+          {prizeLine(comp) && <p className="cp-hero-prize">💵 {prizeLine(comp)}</p>}
           {comp.prize && <p className="cp-hero-prize">🏆 {comp.prize}</p>}
           <p className="cp-hero-label">{label}</p>
           <p className="cp-hero-name">{headline}</p>

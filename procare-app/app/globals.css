@@ -1,3 +1,4 @@
+/* Competition earnings on the profile (app/Earnings.js) and prize payouts: see the end of this file */
 :root {
   --ink: #062F35;        /* deep teal-navy: text, headlines */
   --forest: #025F49;     /* buttons, active states */
@@ -1298,3 +1299,31 @@ label.cp-person:has(input[type=checkbox]) { justify-content: flex-start; }
 .cp-office-toggle.on input:checked + .toggle-track { background: var(--green); }
 .cp-office-group { margin-top: 10px; }
 .cp-office-label { margin: 0 0 4px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--forest); }
+
+/* Competition earnings on the profile */
+.earn-box { position: relative; overflow: hidden; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; background: linear-gradient(160deg, #0f3a3f 0%, var(--ink) 60%); color: var(--white); border-radius: 20px; padding: 20px 22px; box-shadow: 0 8px 22px rgba(6, 47, 53, 0.18); }
+.earn-box > :not(.earn-bug) { position: relative; }
+.earn-bug { position: absolute; right: 120px; top: -24px; transform: rotate(18deg); color: var(--lime); opacity: 0.12; pointer-events: none; }
+.earn-main { display: flex; flex-direction: column; gap: 2px; }
+.earn-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--lime); }
+.earn-val { font-size: 40px; font-weight: 700; color: var(--green); line-height: 1.05; font-variant-numeric: tabular-nums; }
+.earn-sub { font-size: 13px; color: rgba(255, 255, 255, 0.75); }
+.earn-btn { width: auto; padding: 12px 22px; background: var(--lime); color: var(--ink); }
+.earn-btn:hover { background: var(--green); }
+.earn-btn:disabled { background: rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.6); }
+.earn-wait { background: var(--lime); border-radius: 10px; padding: 8px 12px; font-size: 14px; margin: 10px 0 0; }
+.earn-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 4px; }
+.earn-list li { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+.earn-status { color: var(--muted); font-size: 13px; }
+.earn-list b { font-variant-numeric: tabular-nums; }
+.prize-rows { display: grid; gap: 8px; }
+.prize-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.prize-row .rc-label { min-width: 150px; }
+.prize-row .calc-input input { width: 110px; }
+.payouts-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.payout-card { background: var(--white); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; display: grid; gap: 8px; }
+.payout-card.paid { opacity: 0.8; }
+.payout-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.payout-amt { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.payout-where { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; background: var(--lime); padding: 3px 9px; border-radius: 99px; }
+.payout-items { margin: 0; padding-left: 18px; font-size: 14px; color: var(--muted); }

@@ -117,3 +117,27 @@ function withRanks(list, field) {
 
 /** 12 → "12", 3.456 → "3.5" */
 export const fmt = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+/** 1 → "1st", 2 → "2nd", 11 → "11th" */
+export const ordinal = (n) => `${n}${[, "st", "nd", "rd"][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] || "th"}`;
+
+/** "1st $100 · 2nd $50" or "Round wins $25 → $50 · Champion $500"; '' when there's no prize money. */
+export function prizeText(comp) {
+  const p = comp.payouts || {};
+  const usd = (n) => `$${Number(n).toLocaleString('en-US')}`;
+  if (comp.style === 'bracket') {
+    const r = (p.rounds || []).map(Number);
+    if (!r.some((x) => x > 0)) return '';
+    const champ = r[r.length - 1];
+    const wins = r.slice(0, -1).filter((x) => x > 0);
+    return [wins.length ? `Round wins ${wins.map(usd).join(' → ')}` : '', champ > 0 ? `Champion ${usd(champ)}` : ''].filter(Boolean).join(' · ');
+  }
+  return (p.places || []).map(Number).map((x, i) => (x > 0 ? `${ordinal(i + 1)} ${usd(x)}` : '')).filter(Boolean).join(' · ');
+}
+
+/** Prize money line for the standings header, or null. */
+export function prizeLine(comp) {
+  const t = prizeText(comp);
+  if (!t) return null;
+  return comp.compete_as !== 'people' || comp.team_size > 1 ? `${t} (split evenly per team)` : t;
+}

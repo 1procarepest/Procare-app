@@ -234,3 +234,28 @@ create table public.office_kpi_days (
   saved_at  timestamptz not null default now(),
   primary key (day, office)
 );
+
+-- ---------- Competition prizes and cash outs (change 2026-11-15-43) ----------
+-- competitions also has: payouts jsonb (places / rounds), settled_at timestamptz.
+create table public.payout_requests (
+  id           uuid primary key default gen_random_uuid(),
+  employee_id  uuid not null references public.employees(id) on delete cascade,
+  amount       numeric not null check (amount > 0),
+  status       text not null default 'requested' check (status in ('requested', 'paid')),
+  requested_at timestamptz not null default now(),
+  paid_at      timestamptz,
+  paid_by      uuid references public.employees(id) on delete set null,
+  note         text
+);
+
+create table public.competition_awards (
+  id             uuid primary key default gen_random_uuid(),
+  competition_id uuid references public.competitions(id) on delete set null,   -- earnings stay if a competition is deleted
+  employee_id    uuid not null references public.employees(id) on delete cascade,
+  award_key      text not null,                -- 'place' or 'round-0', 'round-1' …
+  amount         numeric not null check (amount > 0),
+  reason         text not null,                -- "1st place · November Blitz"
+  payout_id      uuid references public.payout_requests(id) on delete set null,
+  created_at     timestamptz not null default now(),
+  unique (competition_id, employee_id, award_key)
+);

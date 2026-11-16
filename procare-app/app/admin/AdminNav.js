@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export default function AdminNav({ showSettings }) {
+export default function AdminNav({ showSettings, showPayouts }) {
   const path = usePathname();
   const tabs = [
     { href: '/admin', label: 'People', match: (p) => p === '/admin' || p.startsWith('/admin/people') },
     { href: '/admin/time-off', label: 'Time off' },
     { href: '/admin/issues', label: 'Schedule issues' },
   ];
+  if (showPayouts) tabs.push({ href: '/admin/payouts', label: 'Prize payouts' });
   if (showSettings) tabs.push({ href: '/admin/notifications', label: 'Email settings' });
 
   return (

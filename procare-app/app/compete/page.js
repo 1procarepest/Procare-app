@@ -5,6 +5,7 @@ import { todayYmd } from '@/lib/repcards';
 import { shortDate } from '@/lib/labels';
 import { COMPETE_AS, DEPTS, canCreate, stageOf } from '@/lib/competitions';
 import Bug, { BugTile } from '../Bug';
+import { settleCompetitions } from '@/lib/awards';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,7 @@ export default async function CompetePage() {
   const supabase = createClient();
   const { me } = await getMe(supabase);
   const today = todayYmd();
+  await settleCompetitions(supabase, today);
   const { data, error } = await supabase
     .from('competitions')
     .select('id, name, style, compete_as, team_size, departments, start_date, end_date, prize, competition_members(count)')

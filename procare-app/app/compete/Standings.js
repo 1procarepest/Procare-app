@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import Face from '../Face';
 import Bug, { BugTile } from '../Bug';
 import { OFFICE_NAME, shortDate } from '@/lib/labels';
-import { COMPETE_AS, DEFAULT_POINTS, daysBetween, fmt, kindsFor, scoreGroups, scorePeople, stageOf, usesTiers } from '@/lib/competitions';
+import { COMPETE_AS, DEFAULT_POINTS, daysBetween, fmt, kindsFor, prizeLine, scoreGroups, scorePeople, stageOf, usesTiers } from '@/lib/competitions';
 
 const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉' };
 const OFFICE_BUG = { east: 'ant', south: 'stinging', west: 'mosquito' };
@@ -54,6 +54,7 @@ export default function Standings({ comp, board, today, meId, editable }) {
 
       <div className="cp-hero">
         <div className="cp-hero-main">
+          {prizeLine(comp) && <p className="cp-hero-prize">💵 {prizeLine(comp)}</p>}
           {comp.prize && <p className="cp-hero-prize">🏆 {comp.prize}</p>}
           <p className="cp-hero-label">{stage === 'final' ? 'Winner' : 'In the lead'}</p>
           <p className="cp-hero-name">

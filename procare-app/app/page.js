@@ -12,6 +12,8 @@ import RepCard from './reps/RepCard';
 import { buildCards, measure, periodRange, todayYmd as atlantaToday } from '@/lib/repcards';
 import SignOut from './SignOut';
 import TopNav from './TopNav';
+import Earnings from './Earnings';
+import { settleCompetitions } from '@/lib/awards';
 import { money, money0, nextMonday, nice, statement } from '@/lib/comp';
 
 export const dynamic = 'force-dynamic';
@@ -40,6 +42,13 @@ export default async function Home({ searchParams }) {
       </main>
     );
   }
+
+  // Competition prizes: pay out anything that just finished, then this person's earnings
+  await settleCompetitions(supabase, atlantaToday());
+  const [{ data: awards }, { data: payouts }] = await Promise.all([
+    supabase.from('competition_awards').select('id, amount, reason, payout_id, created_at').eq('employee_id', me.id).order('created_at', { ascending: false }),
+    supabase.from('payout_requests').select('id, amount, status, requested_at, paid_at').eq('employee_id', me.id).order('requested_at', { ascending: false }),
+  ]);
 
   // Route day: ?day=0 is today, 1 tomorrow, -1 yesterday (7 days either way)
   const askedDay = parseInt(searchParams?.day, 10);
@@ -162,6 +171,8 @@ export default async function Home({ searchParams }) {
             <p>{roleTitle(me.department, me.level)}{officeName ? `, ${officeName}` : ''}</p>
           </div>
         </section>
+
+        {(awards || []).length > 0 && <Earnings awards={awards} requests={payouts || []} />}
 
         {myCard && (
           <section className="section my-card" aria-labelledby="card-heading">

@@ -195,5 +195,45 @@ export async function POST(request) {
     return reply(200, { sent, problem });
   }
 
+  // ---------- Competition prize cash out → HR approver (Ally); paid → the employee ----------
+  if (event === 'payout_request' || event === 'payout_paid') {
+    const { data: r } = await admin.from('payout_requests')
+      .select('id, employee_id, amount, status, requested_at, paid_at, paid_by, note').eq('id', id).maybeSingle();
+    if (!r) return reply(404, { message: 'Payout not found.' });
+    const person = await employee(r.employee_id);
+    if (!person) return reply(404, { message: 'Employee not found.' });
+    const amount = `$${Number(r.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const { data: items } = await admin.from('competition_awards').select('reason, amount').eq('payout_id', r.id);
+    const list = (items || []).map((a) => `${a.reason}: $${Number(a.amount).toFixed(2)}`);
+
+    if (event === 'payout_request') {
+      if (r.employee_id !== me.id || !recent(r.requested_at)) return reply(403, { message: 'Not your recent cash out.' });
+      if (!(await switchedOn('payout_request'))) return reply(200, { sent: false });
+      const to = await others(await hrApprovers(), person.id);
+      const { ok: sent, problem } = await sendEmail({
+        to: to.map((p) => p.email),
+        subject: `Prize cash out: ${name(person)}, ${amount}`,
+        heading: `${name(person)} cashed out ${amount} in competition prizes`,
+        lines: [who(person), ...list,
+          person.department === 'sales' ? 'Sales rep: pay it the way you do today (Everee later).' : 'Enter it in ADP, then mark it paid in the app.'],
+        link: { href: `${origin}/admin/payouts`, label: 'Open prize payouts' },
+      });
+      return reply(200, { sent, problem });
+    }
+
+    // paid
+    if (r.status !== 'paid' || r.paid_by !== me.id || !recent(r.paid_at)) return reply(403, { message: 'Not your recent payment.' });
+    if (r.employee_id === me.id) return reply(200, { sent: false });
+    if (!(await switchedOn('payout_paid'))) return reply(200, { sent: false });
+    const { ok: sent, problem } = await sendEmail({
+      to: [person.email],
+      subject: `Your ${amount} prize payout has been submitted`,
+      heading: `Nice work, ${person.first_name}! Your ${amount} prize is on its way`,
+      lines: ['Your competition prize money was submitted to payroll.', ...list, ...(r.note ? [`Note: ${r.note}`] : [])],
+      link: { href: `${origin}/`, label: 'See your earnings' },
+    });
+    return reply(200, { sent, problem });
+  }
+
   return reply(400, { message: 'Unknown event.' });
 }

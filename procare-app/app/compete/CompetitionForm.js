@@ -7,9 +7,9 @@ import { BugTile } from '../Bug';
 import Toggle from '../Toggle';
 import { OFFICE_KPIS, kpiSettings } from '@/lib/officeKpis';
 import { OFFICES, OFFICE_NAME } from '@/lib/labels';
-import { addDays, bracketEnd, entrantCount, roundsFor } from '@/lib/bracket';
+import { addDays, bracketEnd, entrantCount, roundName, roundsFor } from '@/lib/bracket';
 import { shortDate } from '@/lib/labels';
-import { COMPETE_AS, DEFAULT_POINTS, DEFAULT_TIERS, DEPTS, KINDS, kindsFor, officesOnly, usesTiers } from '@/lib/competitions';
+import { COMPETE_AS, DEFAULT_POINTS, DEFAULT_TIERS, DEPTS, KINDS, kindsFor, officesOnly, ordinal, usesTiers } from '@/lib/competitions';
 
 /** Create or edit a competition. `comp` and `members` are given when editing. */
 export default function CompetitionForm({ me, people, allowedDepts, today, comp = null, members = [] }) {
@@ -22,6 +22,8 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
   const [start, setStart] = useState(comp?.start_date || today);
   const [end, setEnd] = useState(comp?.end_date || today);
   const [prize, setPrize] = useState(comp?.prize || '');
+  const [places, setPlaces] = useState(() => (comp?.payouts?.places?.length ? comp.payouts.places : ['']).map((x) => (Number(x) ? x : '')));
+  const [rounds, setRounds] = useState(() => (comp?.payouts?.rounds || []).map((x) => (Number(x) ? x : '')));
   const [asPick, setAs] = useState(comp?.compete_as || 'people');
   const [style, setStyle] = useState(comp?.style || 'leaderboard');
   const [seedEnd, setSeedEnd] = useState(comp?.seed_end || addDays(comp?.start_date || today, 6));
@@ -120,6 +122,9 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
       name: name.trim(), style: isKpi ? 'kpi' : isBracket ? 'bracket' : 'leaderboard', compete_as: as, departments: depts, start_date: start, end_date: finalEnd,
       seed_end: isBracket ? seedEnd : null, round_days: isBracket ? Number(roundDays) : null, team_size: isBracket ? Number(teamSize) : 1,
       prize: prize.trim() || null, updated_at: new Date().toISOString(),
+      payouts: isBracket
+        ? { places: [], rounds: Array.from({ length: Math.max(1, roundsFor(entrants)) }, (_, i) => Number(rounds[i]) || 0) }
+        : { places: places.map((x) => Number(x) || 0), rounds: [] },
       points: {
         ...Object.fromEntries(KINDS.map((k) => [k.key, Number(points[k.key]) || 0])),
         review_stars: Number(points.review_stars) || 5,
@@ -204,8 +209,43 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
             <label className="calc-field"><span className="rc-label">Ends</span><input type="date" value={end} min={start} onChange={(e) => setEnd(e.target.value)} /></label>
           </div>
         )}
-        <label className="calc-field"><span className="rc-label">Prize (optional)</span>
-          <input value={prize} onChange={(e) => setPrize(e.target.value)} placeholder="$200 gift card for the winner" maxLength={160} />
+      </section>
+
+      <section className="calc-card">
+        <h2 className="calc-h cp-h"><BugTile kind="termite" tone="lime" size={30} /> Prize money</h2>
+        <p className="calc-hint">
+          {isBracket
+            ? 'Paid to each winner of a round, growing up to the grand prize. '
+            : 'Paid by place once it ends. '}
+          Winnings go to each person’s profile to cash out{as !== 'people' || (isBracket && teamSize > 1) ? '; a team or office prize is split evenly among its members' : ''}. Leave $0 for no money.
+        </p>
+        <div className="prize-rows">
+          {isBracket ? (
+            Array.from({ length: Math.max(1, roundsFor(Math.max(2, entrants))) }, (_, i, arr) => (
+              <div key={i} className="prize-row">
+                <span className="rc-label">{i === arr.length - 1 ? 'Champion (grand prize)' : `Win ${roundName(i, arr.length)}`}</span>
+                <span className="calc-input"><span className="calc-affix">$</span>
+                  <input type="number" min="0" step="5" inputMode="decimal" value={rounds[i] ?? ''} placeholder="0" onChange={(e) => setRounds(Object.assign([...rounds], { [i]: e.target.value }))} aria-label={`Round ${i + 1} prize`} />
+                </span>
+              </div>
+            ))
+          ) : (
+            <>
+              {places.map((v, i) => (
+                <div key={i} className="prize-row">
+                  <span className="rc-label">{ordinal(i + 1)} place</span>
+                  <span className="calc-input"><span className="calc-affix">$</span>
+                    <input type="number" min="0" step="5" inputMode="decimal" value={v} placeholder="0" onChange={(e) => setPlaces(places.map((x, j) => (j === i ? e.target.value : x)))} aria-label={`${ordinal(i + 1)} place prize`} />
+                  </span>
+                  {i > 0 && i === places.length - 1 && <button type="button" className="btn-quiet cp-x" onClick={() => setPlaces(places.slice(0, -1))} aria-label="Remove this place">×</button>}
+                </div>
+              ))}
+              <div><button type="button" className="btn btn-quiet btn-small" onClick={() => setPlaces([...places, ''])}>+ Add a place</button></div>
+            </>
+          )}
+        </div>
+        <label className="calc-field"><span className="rc-label">Prize note (optional)</span>
+          <input value={prize} onChange={(e) => setPrize(e.target.value)} placeholder="Plus a trophy and bragging rights" maxLength={160} />
         </label>
       </section>
 
