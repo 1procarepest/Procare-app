@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { VIEWS, todayYmd } from '@/lib/repcards';
 import { buildOps, buildSnapshot, opsRange } from '@/lib/ops';
 import OpsView from './OpsView';
+import CompetitionStrip from '../CompetitionStrip';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,13 +21,16 @@ export default async function OpsPage({ searchParams }) {
   if (error || snapError) return <p className="error">The Operations Suite couldn’t load: {(error || snapError).message}</p>;
 
   return (
-    <OpsView
-      view={view}
-      range={r}
-      today={today}
-      stats={buildOps(suite)}
-      snap={buildSnapshot(snap)}
-      syncedAt={synced || null}
-    />
+    <>
+      <CompetitionStrip />
+      <OpsView
+        view={view}
+        range={r}
+        today={today}
+        stats={buildOps(suite)}
+        snap={buildSnapshot(snap)}
+        syncedAt={synced || null}
+      />
+    </>
   );
 }

@@ -5,10 +5,10 @@ import { shortDate } from '@/lib/labels';
 const BUGS = ['stinging', 'spider', 'ant'];
 
 /** Live competitions the person is in, on the profile. */
-export default function MyCompetitions({ list }) {
+export default function MyCompetitions({ list, compact = false }) {
   if (!list?.length) return null;
   return (
-    <section className="section" aria-labelledby="mc-heading">
+    <section className={`section${compact ? ' mc-compact' : ''}`} aria-labelledby="mc-heading">
       <div className="my-card-head">
         <h2 id="mc-heading">Your competitions</h2>
         <Link href="/compete">All competitions ›</Link>
