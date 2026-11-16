@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { GROUPS, GROUP_LABEL, n } from '@/lib/comp';
+import { BugTile } from '../Bug';
 
 const numOrNull = (v) => (v === '' || v === null || v === undefined ? null : Number(v));
 
@@ -108,7 +109,7 @@ export default function PlanSettings({ data, year, nextPlans }) {
       <section className="rc-panel">
         <div className="rc-panel-body pay-form">
           <div className="pay-form-head">
-            <h2>Each rep’s plan</h2>
+            <h2 className="cp-h"><BugTile kind="spider" tone="ink" size={30} /> Each rep’s plan</h2>
             <div className="rc-seg" role="group" aria-label="Plan year">
               {[year, year + 1].map((y) => <button key={y} type="button" className={planYear === y ? 'on' : ''} onClick={() => setPlanYear(y)}>{y}</button>)}
             </div>
@@ -127,7 +128,7 @@ export default function PlanSettings({ data, year, nextPlans }) {
 
       <section className="rc-panel">
         <div className="rc-panel-body pay-form">
-          <h2>Commission plan</h2>
+          <h2 className="cp-h"><BugTile kind="ant" tone="forest" size={30} /> Commission plan</h2>
           <div className="pay-fields">
             <Field label="Up front per serviced sale" value={s.upfront} onChange={setNum('upfront')} prefix="$" />
             <Field label="Held back in Q1–Q3" value={s.hold_pct} onChange={setNum('hold_pct')} suffix="%" />
@@ -163,7 +164,7 @@ export default function PlanSettings({ data, year, nextPlans }) {
           ))}
           <button type="button" className="btn btn-quiet pay-btn" onClick={() => setS({ ...s, bonus: [...s.bonus, { min: '', rate: '' }] })}>Add a bonus level</button>
 
-          <h2 className="spaced">Flat rate plan</h2>
+          <h2 className="spaced cp-h"><BugTile kind="cricket" tone="lime" size={30} /> Flat rate plan</h2>
           <div className="pay-fields">
             {GROUPS.map((g) => <Field key={g} label={GROUP_LABEL[g]} value={s[`flat_${g}`]} onChange={setNum(`flat_${g}`)} prefix="$" />)}
           </div>
@@ -173,7 +174,7 @@ export default function PlanSettings({ data, year, nextPlans }) {
 
       <section className="rc-panel">
         <div className="rc-panel-body pay-form">
-          <h2>Which services pay</h2>
+          <h2 className="cp-h"><BugTile kind="roach" tone="sage" size={30} /> Which services pay</h2>
           <p className="calc-hint">FieldRoutes service types that count as pest, termite or mosquito sales. Anything not listed doesn’t pay commission or count toward a rate step.</p>
           <ul className="pay-groups">
             {Object.entries(groups).sort().map(([t, g]) => (

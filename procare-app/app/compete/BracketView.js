@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import Face from '../Face';
-import Bug from '../Bug';
+import Bug, { BugTile } from '../Bug';
 import { OFFICE_NAME, shortDate } from '@/lib/labels';
 import { DEFAULT_POINTS, fmt, kindsFor, scorePeople, usesTiers } from '@/lib/competitions';
 import { buildBracket, lockedEntrants, makeEntrants, roundName } from '@/lib/bracket';
@@ -49,7 +49,8 @@ export default function BracketView({ comp, board, today, meId, editable }) {
 
   return (
     <>
-      <div className="rc-top">
+      <div className="rc-top brand-head">
+        <Bug kind="roach" size={150} className="brand-head-bug" />
         <div>
           <p className="rc-kicker"><Link href="/compete">Competitions</Link> · Bracket{teams ? ` · teams of ${comp.team_size}` : ''}</p>
           <h1 className="rc-title">{comp.name}</h1>
@@ -81,7 +82,7 @@ export default function BracketView({ comp, board, today, meId, editable }) {
 
       <section className="rc-block">
         <div className="rc-block-head">
-          <h2>Bracket</h2>
+          <h2><BugTile kind="stinging" tone="ink" size={28} /> Bracket</h2>
           <span className="rc-label">
             {comp.locked_at ? 'Locked after seeding' : 'Projected from seeding so far'} · higher score in the round moves on, a tie goes to the higher seed{teams ? ' · team score = average per person' : ''}
           </span>
@@ -118,7 +119,7 @@ export default function BracketView({ comp, board, today, meId, editable }) {
 
       {teams && (
         <section className="rc-block">
-          <div className="rc-block-head"><h2>Teams</h2><span className="rc-label">{comp.locked_at ? 'Made from seeding' : 'Projected from seeding so far'}</span></div>
+          <div className="rc-block-head"><h2><BugTile kind="spider" tone="forest" size={28} /> Teams</h2><span className="rc-label">{comp.locked_at ? 'Made from seeding' : 'Projected from seeding so far'}</span></div>
           <div className="cp-groups">
             {entrants.map((e) => (
               <div key={e.key} className={`cp-group${e.members.some((m) => m.id === meId) ? ' cp-mine' : ''}`}>
@@ -136,7 +137,7 @@ export default function BracketView({ comp, board, today, meId, editable }) {
       )}
 
       <section className="rc-block">
-        <div className="rc-block-head"><h2>Seeding standings</h2><span className="rc-label">{shortDate(comp.start_date)} – {shortDate(comp.seed_end)}</span></div>
+        <div className="rc-block-head"><h2><BugTile kind="ant" tone="lime" size={28} /> Seeding standings</h2><span className="rc-label">{shortDate(comp.start_date)} – {shortDate(comp.seed_end)}</span></div>
         <div className="board-wrap">
           <table className="board cp-board">
             <thead>

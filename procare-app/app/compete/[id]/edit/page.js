@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { todayYmd } from '@/lib/repcards';
 import { canEdit, deptsFor } from '@/lib/competitions';
+import Bug from '@/app/Bug';
 import CompetitionForm from '../../CompetitionForm';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +25,7 @@ export default async function EditCompetitionPage({ params }) {
   const list = (people || []).filter((p) => p.active || inIds.has(p.id));
   return (
     <>
-      <div className="rc-top"><div>
+      <div className="rc-top brand-head"><Bug kind="cricket" size={150} className="brand-head-bug" /><div>
         <p className="rc-kicker">Edit competition</p>
         <h1 className="rc-title"><em>{comp.name}</em></h1>
       </div></div>

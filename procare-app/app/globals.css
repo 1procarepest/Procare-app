@@ -1169,3 +1169,75 @@ label.cp-person:has(input[type=checkbox]) { justify-content: flex-start; }
 .bk-mine .bk-name { text-decoration: underline; text-decoration-color: var(--green); text-decoration-thickness: 3px; }
 .bk-empty { display: block; color: var(--muted); font-style: italic; }
 .bk-champ .bk-side { grid-template-columns: 1fr; }
+
+/* ---------- Brand sprinkle: Compete and Pay ---------- */
+/* page header on the bug pattern with a big faint bug */
+.brand-head { position: relative; overflow: hidden; background: var(--sage) url(/patterns/bugs-light.svg) repeat; background-size: 600px 200px; border-radius: 22px; padding: 22px 24px; }
+.brand-head > :not(.brand-head-bug) { position: relative; }
+.brand-head-bug { position: absolute; right: -22px; top: -30px; color: var(--forest); opacity: 0.12; transform: rotate(18deg); pointer-events: none; }
+.brand-head .rc-title em { color: var(--forest); }
+.brand-head .rc-kicker { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px; color: var(--forest); }
+.cp-h { display: flex; align-items: center; gap: 10px; }
+.rc-block-head h2 .bug-tile, .cp-h .bug-tile { flex: none; }
+
+/* competition list cards */
+.cp-card { position: relative; overflow: hidden; }
+.cp-card > :not(.cp-card-bug) { position: relative; }
+.cp-card-bug { position: absolute; right: -18px; bottom: -22px; transform: rotate(-15deg); opacity: 0.08; color: var(--ink); pointer-events: none; }
+.cp-tag { align-self: flex-start; font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 9px; border-radius: 99px; background: var(--sage); color: var(--ink); margin-bottom: 4px; }
+.cp-card.cp-live { background: linear-gradient(160deg, #0f3a3f 0%, var(--ink) 60%); color: var(--white); border: 0; border-left: 0; box-shadow: 0 8px 22px rgba(6, 47, 53, 0.18); }
+.cp-card.cp-live .cp-card-meta { color: rgba(255, 255, 255, 0.75); }
+.cp-card.cp-live .cp-prize { color: var(--lime); }
+.cp-card.cp-live .cp-tag { background: var(--green); color: var(--ink); }
+.cp-card.cp-live .cp-card-bug { color: var(--lime); opacity: 0.14; }
+.cp-card.cp-upcoming { background: var(--forest); color: var(--white); border: 0; }
+.cp-card.cp-upcoming .cp-card-meta { color: rgba(255, 255, 255, 0.8); }
+.cp-card.cp-upcoming .cp-tag { background: var(--lime); }
+.cp-card.cp-upcoming .cp-card-bug { color: var(--green); opacity: 0.25; }
+.cp-card.cp-live:hover, .cp-card.cp-upcoming:hover { box-shadow: inset 0 0 0 3px var(--lime); }
+
+/* podium: top three */
+.cp-podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 12px; align-items: end; margin: 18px 0 8px; }
+.cp-pod { position: relative; overflow: hidden; border-radius: 20px; padding: 18px 14px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.cp-pod > :not(.cp-pod-bug) { position: relative; }
+.cp-pod-bug { position: absolute; right: -16px; top: -14px; transform: rotate(18deg); pointer-events: none; }
+.cp-pod-1 { order: 2; background: linear-gradient(160deg, #0f3a3f 0%, var(--ink) 60%); color: var(--white); padding-top: 26px; padding-bottom: 26px; box-shadow: 0 8px 22px rgba(6, 47, 53, 0.2); }
+.cp-pod-1 .cp-pod-bug { color: var(--lime); opacity: 0.15; }
+.cp-pod-1 .cp-pod-pts { color: var(--green); }
+.cp-pod-1 .face { border: 3px solid var(--lime); }
+.cp-pod-2 { order: 1; background: var(--forest); color: var(--white); }
+.cp-pod-2 .cp-pod-bug { color: var(--green); opacity: 0.3; }
+.cp-pod-3 { order: 3; background: var(--lime); color: var(--ink); }
+.cp-pod-3 .cp-pod-bug { color: var(--ink); opacity: 0.1; }
+.cp-pod.cp-mine { box-shadow: 0 0 0 3px var(--green); }
+.cp-pod-medal { font-size: 26px; line-height: 1; }
+.cp-pod-name { font-weight: 700; font-size: 16px; }
+.cp-pod-pts { font-size: 30px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.cp-pod-pts small { font-size: 13px; font-weight: 400; opacity: 0.8; }
+.cp-pod-sub { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75; }
+.cp-group-name { display: inline-flex; align-items: center; gap: 8px; }
+.cp-me { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.bk-round-head b { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--forest); font-weight: 600; }
+.bk-champ .bk-win { background: var(--lime); }
+@media (max-width: 560px) {
+  .cp-podium { grid-template-columns: 1fr; }
+  .cp-pod-1, .cp-pod-2, .cp-pod-3 { order: 0; }
+  .brand-head { padding: 18px; }
+}
+
+/* pay: colored tiles, icon panels, shadow note */
+.pay-tiles { border: 0; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); overflow: visible; }
+.pay-tiles .rc-tile { position: relative; overflow: hidden; margin: 0; border: 0; border-radius: 16px; background: var(--forest); color: var(--white); }
+.pay-tiles .rc-tile:first-child { background: linear-gradient(160deg, #0f3a3f 0%, var(--ink) 60%); }
+.pay-tiles .rc-tile:nth-child(3) { background: var(--lime); color: var(--ink); }
+.pay-tiles .rc-tile > :not(.pay-tile-bug) { position: relative; }
+.pay-tiles .rc-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--lime); }
+.pay-tiles .rc-tile:nth-child(3) .rc-label { color: var(--forest); }
+.pay-tiles .rc-tile-sub { color: inherit; opacity: 0.8; }
+.pay-tile-bug { position: absolute; right: -10px; top: -8px; transform: rotate(15deg); color: var(--green); opacity: 0.3; pointer-events: none; }
+.pay-tiles .rc-tile:nth-child(3) .pay-tile-bug { color: var(--ink); opacity: 0.1; }
+.pay-panel-title { display: inline-flex; align-items: center; gap: 10px; }
+.pay-shadow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; border-left: 5px solid var(--lime); }
+.calc-hero { position: relative; overflow: hidden; }
+.calc-hero > :not(.calc-hero-bug) { position: relative; }
+.calc-hero-bug { position: absolute; right: -18px; top: -20px; transform: rotate(18deg); color: var(--lime); opacity: 0.12; pointer-events: none; }

@@ -4,14 +4,14 @@ import { getMe } from '@/lib/me';
 import { todayYmd } from '@/lib/repcards';
 import { shortDate } from '@/lib/labels';
 import { COMPETE_AS, DEPTS, canCreate, stageOf } from '@/lib/competitions';
-import Bug from '../Bug';
+import Bug, { BugTile } from '../Bug';
 
 export const dynamic = 'force-dynamic';
 
 const STAGES = [
-  { key: 'live', title: 'Happening now', bug: 'ant' },
-  { key: 'upcoming', title: 'Coming up', bug: 'cricket' },
-  { key: 'final', title: 'Finished', bug: 'stinging' },
+  { key: 'live', title: 'Happening now', bug: 'ant', tag: 'Live', tone: 'lime' },
+  { key: 'upcoming', title: 'Coming up', bug: 'cricket', tag: 'Coming up', tone: 'forest' },
+  { key: 'final', title: 'Finished', bug: 'stinging', tag: 'Final', tone: 'sage' },
 ];
 const deptNames = (list) => (list.length === 3 ? 'Company-wide' : list.map((k) => DEPTS.find((d) => d.key === k)?.label || k).join(' + '));
 
@@ -28,7 +28,8 @@ export default async function CompetePage() {
 
   return (
     <>
-      <div className="rc-top">
+      <div className="rc-top brand-head">
+        <Bug kind="stinging" size={150} className="brand-head-bug" />
         <div>
           <p className="rc-kicker">Competitions</p>
           <h1 className="rc-title">Who’s <em>winning</em></h1>
@@ -48,10 +49,12 @@ export default async function CompetePage() {
         if (!items.length) return null;
         return (
           <section key={s.key} className="rc-block">
-            <div className="rc-block-head"><h2><Bug kind={s.bug} size={22} /> {s.title}</h2></div>
+            <div className="rc-block-head"><h2><BugTile kind={s.bug} tone={s.tone} size={30} /> {s.title}</h2></div>
             <div className="cp-list">
-              {items.map((c) => (
+              {items.map((c, i) => (
                 <Link key={c.id} href={`/compete/${c.id}`} className={`cp-card cp-${s.key}`}>
+                  <Bug kind={['ant', 'spider', 'roach', 'termite', 'cricket', 'tick'][i % 6]} size={110} className="cp-card-bug" />
+                  <span className="cp-tag">{s.tag}{c.style === 'bracket' ? ' · Bracket' : ''}</span>
                   <span className="cp-card-name">{c.name}</span>
                   <span className="cp-card-meta">{shortDate(c.start_date)} – {shortDate(c.end_date)} · {c.style === 'bracket' ? (c.team_size > 1 ? `Bracket, teams of ${c.team_size}` : 'Bracket') : COMPETE_AS[c.compete_as]} · {deptNames(c.departments)}</span>
                   <span className="cp-card-meta">{c.competition_members?.[0]?.count ?? 0} people</span>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Bug, { BugTile } from '../Bug';
 import { GROUPS, GROUP_LABEL, PLAN_LABEL, money0, n, perDayFor, planOf, project } from '@/lib/comp';
 
 const MIX_COLOR = { pest: 'var(--forest)', termite: 'var(--ink)', mosquito: 'var(--green)' };
@@ -80,7 +81,7 @@ export default function Calculator({ data, year, rep }) {
     <div className="calc">
       <section className="calc-in rc-panel">
         <div className="rc-panel-body calc-body">
-          <h2 className="calc-h">Your plan</h2>
+          <h2 className="calc-h cp-h"><BugTile kind="spider" tone="ink" size={28} /> Your plan</h2>
           <div className="calc-row">
             {!commissionOnly && (
               <div className="rc-seg" role="group" aria-label="Plan">
@@ -95,7 +96,7 @@ export default function Calculator({ data, year, rep }) {
           </div>
           {mine && <p className="calc-hint">{commissionOnly ? `You’re on the ${PLAN_LABEL.commission.toLowerCase()} for ${year}.` : mine.plan === plan && (plan === 'flat' || mine.scale === scale) ? `This is your ${year} plan.` : `Your ${year} plan is the ${PLAN_LABEL[mine.plan].toLowerCase()}. Plans change only on January 1.`}</p>}
 
-          <h2 className="calc-h">How much you’ll work</h2>
+          <h2 className="calc-h cp-h"><BugTile kind="ant" tone="forest" size={28} /> How much you’ll work</h2>
           <div className="calc-days" role="group" aria-label="Days a week">
             <span className="rc-label">Days a week</span>
             <div className="calc-chips">
@@ -105,7 +106,7 @@ export default function Calculator({ data, year, rep }) {
           <Slider label="Weeks this year" value={n(weeks)} onChange={setWeeks} min={1} max={52} step={1} show={(v) => `${v} weeks · ${days} days`} />
           <Slider label="Serviced sales a day" value={n(perDay)} onChange={setPerDay} min={0} max={8} step={0.25} show={(v) => `${v} a day · ${Math.round(v * n(daysWk) * 10) / 10} a week`} />
 
-          <h2 className="calc-h">What you sell</h2>
+          <h2 className="calc-h cp-h"><BugTile kind="roach" tone="lime" size={28} /> What you sell</h2>
           <div className="calc-mixbar" aria-hidden="true">
             {GROUPS.map((g) => <span key={g} style={{ width: `${mix[g]}%`, background: MIX_COLOR[g] }} />)}
           </div>
@@ -131,6 +132,7 @@ export default function Calculator({ data, year, rep }) {
 
       <section className="calc-out">
         <div className="calc-hero">
+          <Bug kind="stinging" size={120} className="calc-hero-bug" />
           <span className="rc-label">Your year</span>
           <span className="calc-big">{money0(p.year)}</span>
           <span className="calc-hero-sub">{money0(p.year / 12)} a month · {money0(p.year / weeksWorked)} a week worked · {money0(days ? p.year / days : 0)} a day</span>
@@ -145,7 +147,7 @@ export default function Calculator({ data, year, rep }) {
 
         {plan === 'commission' && (
           <div className="calc-card">
-            <h3>How it’s paid</h3>
+            <h3 className="cp-h"><BugTile kind="termite" tone="sage" size={26} /> How it’s paid</h3>
             <ul className="calc-paid">
               <li><span>Every Monday, {money0(n(a.upfront ?? s.upfront))} per sale serviced the week before{n(s.termite_initial_pct ?? 100) > 0 ? `, plus ${n(s.termite_initial_pct ?? 100)}% of each termite initial` : ''}</span><strong>≈ {money0(p.upfront / weeksWorked)} a week</strong></li>
               <li><span>The rest in quarter checks on Apr 20, Jul 20, Oct 20, with {n(s.hold_pct)}% held until Jan 20</span><strong>{money0(Math.max(0, p.backend))} a year</strong></li>
@@ -155,7 +157,7 @@ export default function Calculator({ data, year, rep }) {
 
         {plan === 'commission' && (
           <div className="calc-card">
-            <h3>Your rate climbs every {p.scale.every} sales</h3>
+            <h3 className="cp-h"><BugTile kind="cricket" tone="lime" size={26} /> Your rate climbs every {p.scale.every} sales</h3>
             <p className="calc-hint">Every serviced sale counts toward the next step. The rate goes back to all of the year’s pest sales, and starts over each January.</p>
             <ol className="calc-ladder">
               {p.ladder.map((l) => (

@@ -3,11 +3,14 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import Face from '../Face';
-import Bug from '../Bug';
+import Bug, { BugTile } from '../Bug';
 import { OFFICE_NAME, shortDate } from '@/lib/labels';
 import { COMPETE_AS, DEFAULT_POINTS, daysBetween, fmt, kindsFor, scoreGroups, scorePeople, stageOf, usesTiers } from '@/lib/competitions';
 
 const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉' };
+const OFFICE_BUG = { east: 'ant', south: 'stinging', west: 'mosquito' };
+const TEAM_BUGS = ['roach', 'spider', 'termite', 'cricket', 'tick', 'centipede', 'earwig'];
+const TONES = ['ink', 'forest', 'lime', 'sage'];
 
 function Counts({ row, kinds }) {
   return kinds.map((k) => <td key={k.key} className="num">{fmt(row[k.key] || 0)}</td>);
@@ -33,7 +36,8 @@ export default function Standings({ comp, board, today, meId, editable }) {
 
   return (
     <>
-      <div className="rc-top">
+      <div className="rc-top brand-head">
+        <Bug kind="spider" size={150} className="brand-head-bug" />
         <div>
           <p className="rc-kicker"><Link href="/compete">Competitions</Link> · {COMPETE_AS[comp.compete_as]}</p>
           <h1 className="rc-title">{comp.name}</h1>
@@ -80,13 +84,13 @@ export default function Standings({ comp, board, today, meId, editable }) {
 
       {groups.length > 0 && (
         <section className="rc-block">
-          <div className="rc-block-head"><h2>{comp.compete_as === 'offices' ? 'Offices' : 'Teams'}</h2><span className="rc-label">Ranked by average points per person</span></div>
+          <div className="rc-block-head"><h2><BugTile kind="termite" tone="ink" size={28} /> {comp.compete_as === 'offices' ? 'Offices' : 'Teams'}</h2><span className="rc-label">Ranked by average points per person</span></div>
           <div className="cp-groups">
             {groups.map((g) => (
               <div key={g.key} className={`cp-group${g.rank === 1 && anyPoints ? ' cp-first' : ''}${myGroup?.key === g.key ? ' cp-mine' : ''}`}>
                 <button type="button" className="cp-group-head" onClick={() => setOpen(open === g.key ? null : g.key)} aria-expanded={open === g.key}>
                   <span className="cp-place">{(anyPoints && MEDAL[g.rank]) || `#${g.rank}`}</span>
-                  <span className="cp-group-name">{g.name}</span>
+                  <span className="cp-group-name"><BugTile kind={comp.compete_as === 'offices' ? OFFICE_BUG[g.key] || 'ant' : TEAM_BUGS[groups.indexOf(g) % TEAM_BUGS.length]} tone={TONES[groups.indexOf(g) % TONES.length]} size={26} /> {g.name}</span>
                   <span className="cp-group-avg">{fmt(g.avg)}<small> per person</small></span>
                   <span className="cp-group-sub">{fmt(g.points)} points · {g.members.length} {g.members.length === 1 ? 'person' : 'people'}</span>
                   <span className="cp-group-sub">{kinds.map((k) => `${fmt(g[k.key])} ${k.short.toLowerCase()}`).join(' · ')}</span>
@@ -107,8 +111,23 @@ export default function Standings({ comp, board, today, meId, editable }) {
         </section>
       )}
 
+      {comp.compete_as === 'people' && anyPoints && (
+        <div className="cp-podium" aria-label="Top three">
+          {people.filter((p) => p.points > 0).slice(0, 3).map((p, i) => (
+            <div key={p.id} className={`cp-pod cp-pod-${i + 1}${p.id === meId ? ' cp-mine' : ''}`}>
+              <Bug kind={['stinging', 'spider', 'ant'][i]} size={90} className="cp-pod-bug" />
+              <span className="cp-pod-medal">{MEDAL[p.rank] || `#${p.rank}`}</span>
+              <Face person={p} size={i === 0 ? 64 : 52} />
+              <span className="cp-pod-name">{p.first_name} {p.last_name}</span>
+              <span className="cp-pod-pts">{fmt(p.points)}<small> pts</small></span>
+              <span className="cp-pod-sub">{OFFICE_NAME[p.office] || ''}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <section className="rc-block">
-        <div className="rc-block-head"><h2>{comp.compete_as === 'people' ? 'Standings' : 'Everyone'}</h2></div>
+        <div className="rc-block-head"><h2><BugTile kind="roach" tone="forest" size={28} /> {comp.compete_as === 'people' ? 'Standings' : 'Everyone'}</h2></div>
         <div className="board-wrap">
           <table className="board cp-board">
             <thead>

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { todayYmd } from '@/lib/repcards';
 import { canCreate, deptsFor } from '@/lib/competitions';
+import Bug from '@/app/Bug';
 import CompetitionForm from '../CompetitionForm';
 
 export const dynamic = 'force-dynamic';
@@ -18,7 +19,7 @@ export default async function NewCompetitionPage() {
   if (error) return <p className="error">The team list couldn’t load: {error.message}</p>;
   return (
     <>
-      <div className="rc-top"><div>
+      <div className="rc-top brand-head"><Bug kind="cricket" size={150} className="brand-head-bug" /><div>
         <p className="rc-kicker">Competitions</p>
         <h1 className="rc-title">New <em>competition</em></h1>
       </div></div>

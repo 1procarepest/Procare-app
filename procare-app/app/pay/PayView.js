@@ -5,17 +5,18 @@ import { useMemo, useState } from 'react';
 import {
   GROUP_LABEL, PLAN_LABEL, customers, money, money0, nextMonday, nice, rateAt, statement,
 } from '@/lib/comp';
+import Bug, { BugTile } from '../Bug';
 import Calculator from './Calculator';
 import PlanSettings from './PlanSettings';
 
 const qs = (o) => '?' + Object.entries(o).filter(([, v]) => v !== null && v !== undefined && v !== '').map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
 
-function Panel({ title, summary, children, open: startOpen = false }) {
+function Panel({ title, summary, children, open: startOpen = false, bug = 'ant', tone = 'sage' }) {
   const [open, setOpen] = useState(startOpen);
   return (
     <section className="rc-panel">
       <button type="button" className="rc-panel-head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <h2>{title}</h2>
+        <h2 className="pay-panel-title"><BugTile kind={bug} tone={tone} size={30} /> {title}</h2>
         <span className="rc-panel-sum">{summary} <span className={`rc-caret${open ? ' open' : ''}`} aria-hidden="true">⌄</span></span>
       </button>
       {open && <div className="rc-panel-body">{children}</div>}
@@ -23,9 +24,10 @@ function Panel({ title, summary, children, open: startOpen = false }) {
   );
 }
 
-function Tile({ label, value, sub }) {
+function Tile({ label, value, sub, bug = 'ant' }) {
   return (
     <div className="rc-tile">
+      <Bug kind={bug} size={70} className="pay-tile-bug" />
       <span className="rc-label">{label}</span>
       <span className="rc-tile-val">{value}</span>
       {sub && <span className="rc-tile-sub">{sub}</span>}
@@ -82,7 +84,7 @@ function CustomerList({ st, open, today }) {
   const { rows, totals } = useMemo(() => customers(st, open, today), [st, open, today]);
   const shown = rows.filter(FILTERS.find((x) => x.k === f).test);
   return (
-    <Panel open title="Your customers" summary={`${rows.length} · ${money0(totals.paid)} paid · ${money0(totals.left)} to go`}>
+    <Panel open bug="roach" tone="ink" title="Your customers" summary={`${rows.length} · ${money0(totals.paid)} paid · ${money0(totals.left)} to go`}>
       <div className="calc-chips pay-filter" role="group" aria-label="Show">
         {FILTERS.map((x) => {
           const k = rows.filter(x.test).length;
@@ -141,17 +143,17 @@ function Statement({ st, today, open }) {
   return (
     <>
       <div className="rc-tiles pay-tiles">
-        <Tile label="Plan" value={isFlat ? 'Flat rate' : `${now.rate}%`} sub={isFlat ? 'paid in full up front' : `${st.scale.name} · ${now.count} sales this year${now.nextAt ? ` · ${now.nextRate}% at ${now.nextAt}` : ' · top rate'}`} />
-        <Tile label={`Next Monday, ${nice(next)}`} value={money(nextWeek?.total || 0)} sub={`${nextWeek?.sales.length || 0} serviced last week`} />
-        <Tile label="Up front this year" value={money0(st.upfrontYtd)} sub={`${st.weeks.filter((w) => w.paid).length} paydays`} />
-        {!isFlat && <Tile label={openQ ? `Q${openQ.q} check, ${nice(openQ.payDate)}` : 'Quarter checks'} value={money(openQ ? openQ.paidOut : 0)} sub={openQ && !openQ.done ? 'so far this quarter' : 'estimate'} />}
-        {!isFlat && <Tile label="Held back" value={money0(held)} sub={`paid with the Jan 20 check`} />}
+        <Tile bug="spider" label="Plan" value={isFlat ? 'Flat rate' : `${now.rate}%`} sub={isFlat ? 'paid in full up front' : `${st.scale.name} · ${now.count} sales this year${now.nextAt ? ` · ${now.nextRate}% at ${now.nextAt}` : ' · top rate'}`} />
+        <Tile bug="ant" label={`Next Monday, ${nice(next)}`} value={money(nextWeek?.total || 0)} sub={`${nextWeek?.sales.length || 0} serviced last week`} />
+        <Tile bug="cricket" label="Up front this year" value={money0(st.upfrontYtd)} sub={`${st.weeks.filter((w) => w.paid).length} paydays`} />
+        {!isFlat && <Tile bug="termite" label={openQ ? `Q${openQ.q} check, ${nice(openQ.payDate)}` : 'Quarter checks'} value={money(openQ ? openQ.paidOut : 0)} sub={openQ && !openQ.done ? 'so far this quarter' : 'estimate'} />}
+        {!isFlat && <Tile bug="tick" label="Held back" value={money0(held)} sub={`paid with the Jan 20 check`} />}
       </div>
 
       <CustomerList st={st} open={open} today={today} />
 
       {!isFlat && st.quarters.slice().reverse().map((q) => (
-        <Panel key={q.q} open={q === openQ}
+        <Panel key={q.q} open={q === openQ} bug="termite" tone={q === openQ ? 'lime' : 'sage'}
           title={`Q${q.q} ${q.done ? '' : '(so far) '}· check ${nice(q.payDate)}`}
           summary={`${money(q.paidOut)}${q.check < 0 ? ` · ${money(-q.check)} owed back` : ''}`}>
           <table className="ops-table pay-math">
@@ -186,12 +188,12 @@ function Statement({ st, today, open }) {
       ))}
 
       {st.priorClawbacks.length > 0 && (
-        <Panel title="Last year’s sales canceled this year" summary={`−${money(st.priorClawbacks.reduce((t, x) => t + x.amount, 0))}`}>
+        <Panel bug="tick" tone="sage" title="Last year’s sales canceled this year" summary={`−${money(st.priorClawbacks.reduce((t, x) => t + x.amount, 0))}`}>
           <Lines rows={st.priorClawbacks} cols={[custCol, typeCol, servedCol, { k: 'x', h: 'Canceled', v: (r) => nice(r.can) }, { k: 'a', h: 'Taken back', v: (r) => money(r.amount) }]} />
         </Panel>
       )}
 
-      <Panel title="Weekly up fronts" summary={`${st.weeks.length} weeks · ${money0(st.weeks.reduce((t, w) => t + w.total, 0))}`} open={isFlat}>
+      <Panel bug="ant" tone="forest" title="Weekly up fronts" summary={`${st.weeks.length} weeks · ${money0(st.weeks.reduce((t, w) => t + w.total, 0))}`} open={isFlat}>
         {st.weeks.length === 0 && <p className="note">No serviced sales yet this year.</p>}
         {st.weeks.map((w) => (
           <details key={w.payday} className="pay-week">
@@ -244,7 +246,8 @@ export default function PayView({ data, year, thisYear, today, tab, rep, meId, n
 
   return (
     <>
-      <div className="rc-top">
+      <div className="rc-top brand-head">
+        <Bug kind="ant" size={150} className="brand-head-bug" />
         <div>
           <p className="rc-kicker">Sales pay · {year}</p>
           <h1 className="rc-title">{tab === 'calc' ? <>Pay <em>calculator</em></> : tab === 'plans' ? <>Pay <em>plans</em></> : who && rep !== meId ? <>{who.name.split(' ')[0]}’s <em>pay</em></> : rep ? <>Your <em>pay</em></> : <>Team <em>pay</em></>}</h1>
@@ -272,6 +275,7 @@ export default function PayView({ data, year, thisYear, today, tab, rep, meId, n
 
       {tab === 'statement' && (
         <p className="pay-shadow">
+          <Bug kind="spider" size={22} color="var(--forest)" />
           <strong>Shadow mode.</strong> These are the app’s numbers, to check against Stakt and the real checks. Nothing is paid from here.
           Up fronts are counted as paid on their Monday. Past-due and cancel status is as of today’s FieldRoutes sync.
         </p>

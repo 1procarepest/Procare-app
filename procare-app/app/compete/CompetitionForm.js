@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { BugTile } from '../Bug';
 import { OFFICE_NAME } from '@/lib/labels';
 import { addDays, bracketEnd, entrantCount, roundsFor } from '@/lib/bracket';
 import { shortDate } from '@/lib/labels';
@@ -151,7 +152,7 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
       {status && <p className="pay-status" role="status">{status}</p>}
 
       <section className="calc-card">
-        <h2 className="calc-h">The basics</h2>
+        <h2 className="calc-h cp-h"><BugTile kind="ant" tone="ink" size={30} /> The basics</h2>
         <label className="calc-field"><span className="rc-label">Name</span>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="December Auto-pay Blitz" maxLength={80} />
         </label>
@@ -189,7 +190,7 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
       </section>
 
       <section className="calc-card">
-        <h2 className="calc-h">Who competes</h2>
+        <h2 className="calc-h cp-h"><BugTile kind="spider" tone="forest" size={30} /> Who competes</h2>
         {isBracket ? (
           <div className="calc-chips" role="radiogroup" aria-label="Bracket entrants">
             <button type="button" role="radio" aria-checked={teamSize <= 1} className={`cp-chip${teamSize <= 1 ? ' on' : ''}`} onClick={() => setTeamSize(1)} disabled={locked}>One person each</button>
@@ -228,7 +229,7 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
       </section>
 
       <section className="calc-card">
-        <h2 className="calc-h">Points</h2>
+        <h2 className="calc-h cp-h"><BugTile kind="stinging" tone="lime" size={30} /> Points</h2>
         {kinds.length === 0 && <p className="calc-hint">Office KPI scoring (accounts receivable, job pool, retention) is coming next. For now, pick Technicians or Sales.</p>}
         <div className="calc-row">
           {kinds.map((k) => (
@@ -274,7 +275,7 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
 
       {handTeams && (
         <section className="calc-card">
-          <h2 className="calc-h">Teams</h2>
+          <h2 className="calc-h cp-h"><BugTile kind="roach" tone="sage" size={30} /> Teams</h2>
           <div className="cp-teams">
             {teams.map((t, i) => (
               <span key={i} className="cp-team-edit">
@@ -292,7 +293,7 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
 
       <section className="calc-card">
         <div className="pay-form-head">
-          <h2 className="calc-h">People ({chosen.length})</h2>
+          <h2 className="calc-h cp-h"><BugTile kind="cricket" tone="ink" size={30} /> People ({chosen.length})</h2>
           <span className="calc-row">
             <button type="button" className="btn btn-quiet btn-small" onClick={() => allOn(true)}>Everyone</button>
             <button type="button" className="btn btn-quiet btn-small" onClick={() => allOn(false)}>No one</button>
