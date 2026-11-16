@@ -1291,3 +1291,10 @@ label.cp-person:has(input[type=checkbox]) { justify-content: flex-start; }
 .kpi-on { flex: 1 1 280px; align-items: center; }
 .kpi-text { display: flex; flex-direction: column; }
 .kpi-text small { color: var(--muted); font-size: 12px; }
+.cp-office-toggles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.cp-office-toggle { background: var(--sage); border-radius: 14px; padding: 8px 14px; }
+.cp-office-toggle.on { background: var(--ink); color: var(--white); }
+.cp-office-toggle.on small { color: rgba(255, 255, 255, 0.7); }
+.cp-office-toggle.on input:checked + .toggle-track { background: var(--green); }
+.cp-office-group { margin-top: 10px; }
+.cp-office-label { margin: 0 0 4px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--forest); }

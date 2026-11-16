@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { BugTile } from '../Bug';
 import Toggle from '../Toggle';
 import { OFFICE_KPIS, kpiSettings } from '@/lib/officeKpis';
-import { OFFICE_NAME } from '@/lib/labels';
+import { OFFICES, OFFICE_NAME } from '@/lib/labels';
 import { addDays, bracketEnd, entrantCount, roundsFor } from '@/lib/bracket';
 import { shortDate } from '@/lib/labels';
 import { COMPETE_AS, DEFAULT_POINTS, DEFAULT_TIERS, DEPTS, KINDS, kindsFor, officesOnly, usesTiers } from '@/lib/competitions';
@@ -70,6 +70,13 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
   const setPerson = (id, v) => {
     const m = { ...inMap };
     if (v === null) delete m[id]; else m[id] = v;
+    setInMap(m);
+  };
+  // One office's people (in the picked departments) all on or all off
+  const officeOn = (key) => { const l = shown.filter((p) => p.office === key); return l.length > 0 && l.every((p) => p.id in inMap); };
+  const setOffice = (key, on) => {
+    const m = { ...inMap };
+    shown.filter((p) => p.office === key).forEach((p) => { if (on) m[p.id] = m[p.id] ?? ''; else delete m[p.id]; });
     setInMap(m);
   };
   const allOn = (on) => {
@@ -152,7 +159,13 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
     router.refresh();
   };
 
-  const byDept = DEPTS.filter((d) => depts.includes(d.key)).map((d) => ({ ...d, list: shown.filter((p) => p.department === d.key) }));
+  const byDept = DEPTS.filter((d) => depts.includes(d.key)).map((d) => ({
+    ...d,
+    offices: [...OFFICES, { key: null, name: 'No office' }]
+      .map((o) => ({ ...o, list: shown.filter((p) => p.department === d.key && (p.office || null) === o.key) }))
+      .filter((o) => o.list.length),
+  }));
+  const officeCount = (key) => chosen.filter((p) => p.office === key).length;
 
   return (
     <div className="cp-form">
@@ -347,29 +360,41 @@ export default function CompetitionForm({ me, people, allowedDepts, today, comp 
             <button type="button" className="btn btn-quiet btn-small" onClick={() => allOn(false)}>No one</button>
           </span>
         </div>
+        <div className="cp-office-toggles" role="group" aria-label="Offices">
+          {OFFICES.filter((o) => shown.some((p) => p.office === o.key)).map((o) => (
+            <Toggle key={o.key} className={`cp-office-toggle${officeOn(o.key) ? ' on' : ''}`} checked={officeOn(o.key)} onChange={(v) => setOffice(o.key, v)} label={`${o.name}: everyone on or off`}>
+              <span className="cp-person-text"><b>{o.name.replace('Atlanta ', '')}</b><small>{officeCount(o.key)} of {shown.filter((p) => p.office === o.key).length} in</small></span>
+            </Toggle>
+          ))}
+        </div>
         {byDept.map((d) => (
           <div key={d.key}>
-            <p className="pay-sub">{d.label}</p>
-            <ul className="cp-people">
-              {d.list.map((p) => (
-                <li key={p.id}>
-                  {handTeams ? (
-                    <label className="cp-person">
-                      <span>{p.first_name} {p.last_name} <small>{OFFICE_NAME[p.office] || ''}</small></span>
-                      <select value={p.id in inMap ? inMap[p.id] : '-'} onChange={(e) => setPerson(p.id, e.target.value === '-' ? null : e.target.value)}>
-                        <option value="-">Not playing</option>
-                        <option value="">No team yet</option>
-                        {teams.filter((t) => t.trim()).map((t) => <option key={t} value={t}>{t}</option>)}
-                      </select>
-                    </label>
-                  ) : (
-                    <Toggle small className="cp-person-toggle" checked={p.id in inMap} onChange={(v) => setPerson(p.id, v ? '' : null)}>
-                      <span className="cp-person-text">{p.first_name} {p.last_name}<small>{OFFICE_NAME[p.office] || ''}</small></span>
-                    </Toggle>
-                  )}
-                </li>
-              ))}
-            </ul>
+            {byDept.length > 1 && <p className="pay-sub">{d.label}</p>}
+            {d.offices.map((o) => (
+              <div key={o.key || 'none'} className="cp-office-group">
+                <p className="cp-office-label">{d.label} · {o.name}</p>
+                <ul className="cp-people">
+                  {o.list.map((p) => (
+                    <li key={p.id}>
+                      {handTeams ? (
+                        <label className="cp-person">
+                          <span>{p.first_name} {p.last_name}</span>
+                          <select value={p.id in inMap ? inMap[p.id] : '-'} onChange={(e) => setPerson(p.id, e.target.value === '-' ? null : e.target.value)}>
+                            <option value="-">Not playing</option>
+                            <option value="">No team yet</option>
+                            {teams.filter((t) => t.trim()).map((t) => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                        </label>
+                      ) : (
+                        <Toggle small className="cp-person-toggle" checked={p.id in inMap} onChange={(v) => setPerson(p.id, v ? '' : null)}>
+                          <span className="cp-person-text">{p.first_name} {p.last_name}</span>
+                        </Toggle>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
         ))}
       </section>
