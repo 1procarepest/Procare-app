@@ -1048,12 +1048,26 @@ function ssManageDrivers_(apply) {
   const photoNotes = [];
   plan.photo.forEach(x => {
     try {
-      ssSend_('patch', '/fleet/drivers/' + x.d.id, { profileImageUrl: ssPhotoUrl_(x.t.photo_url) });
+      ssSend_('patch', '/fleet/drivers/' + x.d.id, { profileImageBase64: ssPhotoData_(x.t.photo_url) });
       done.push('Added photo for ' + x.d.name);
     } catch (e) { photoNotes.push('PHOTO NOT ADDED ' + x.d.name + ': ' + e.message); }
   });
   if (failed.length) throw new Error(failed.join(' | ') + (done.length ? ' (also done: ' + done.join('; ') + ')' : ''));
   return done.concat(photoNotes, plan.skip.map(s => 'SKIP ' + s));
+}
+
+/**
+ * The photo itself, base64-encoded. Samsara won't fetch images from FieldRoutes' photo host
+ * ("failed to validate external entity profile image url"), so the sync downloads it and uploads it.
+ */
+function ssPhotoData_(v) {
+  const url = ssPhotoUrl_(v);
+  if (!url) throw new Error('no photo in the app');
+  const r = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  if (r.getResponseCode() >= 300) throw new Error('could not download the photo (HTTP ' + r.getResponseCode() + ')');
+  const blob = r.getBlob();
+  if (!/^image\//i.test(blob.getContentType() || '')) throw new Error('the photo link is not an image (' + blob.getContentType() + ')');
+  return Utilities.base64Encode(blob.getBytes());
 }
 
 /** A full image link from employees.photo_url (a link, or a FieldRoutes file name), or null. Matches lib/photo.js. */
@@ -1090,14 +1104,15 @@ function ssCreateDriver_(x, usernames) {
   };
   if (digits.length === 10) body.phone = digits;
   if (x.frIds.length) body.externalIds = { fieldroutesId: x.frIds[0] };
-  const photo = ssPhotoUrl_(x.t.photo_url);
-  if (photo) body.profileImageUrl = photo;
+  if (ssPhotoUrl_(x.t.photo_url)) {
+    try { body.profileImageBase64 = ssPhotoData_(x.t.photo_url); } catch (e) { /* create them without a photo; a later run adds it */ }
+  }
   // If Samsara refuses the external ID or the photo, drop that part and try again
   let r;
   for (let attempt = 1; ; attempt++) {
     try { r = ssSend_('post', '/fleet/drivers', body); break; } catch (e) {
       if (attempt < 3 && body.externalIds && /external/i.test(e.message)) { delete body.externalIds; continue; }
-      if (attempt < 3 && body.profileImageUrl && /image|photo|profile/i.test(e.message)) { delete body.profileImageUrl; continue; }
+      if (attempt < 3 && body.profileImageBase64 && /image|photo|profile/i.test(e.message)) { delete body.profileImageBase64; continue; }
       throw e;
     }
   }
