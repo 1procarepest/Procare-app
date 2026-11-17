@@ -12,7 +12,8 @@
  *   SOUTH_KEY SOUTH_TOKEN
  *   SUPABASE_URL         https://<project>.supabase.co
  *   SUPABASE_SECRET_KEY  Supabase secret key (Project Settings → API Keys)
- *   SAMSARA_TOKEN        Samsara API token (read: Safety + Vehicles; write: Drivers, for turnOnSamsaraDrivers).
+ *   SAMSARA_TOKEN        Samsara API token (read: Safety + Vehicles; write: Drivers for turnOnSamsaraDrivers,
+ *                        Addresses for turnOnHomeGeofences).
  *                        Optional; without it Samsara is skipped.
  *
  * First time (see sync/README.md):
@@ -822,6 +823,7 @@ function runSamsaraStep_(s) {
   if (s.job === 'ss:vehicles') {
     ssVehicles_(); ssDrivers_();
     if (PROPS.getProperty('SAMSARA_DRIVERS') === 'on') ssManageDrivers_(true);
+    if (PROPS.getProperty('HOME_GEOFENCES') === 'on') ssManageHomes_(true);
     return;
   }
   if (s.job === 'ss:events:recent') {
@@ -1122,17 +1124,17 @@ function ssCreateDriver_(x, usernames) {
 }
 function norm2_(name) { return String(name || '').toLowerCase().replace(/[^a-z]/g, '') || 'tech'; }
 
-/** POST or PATCH to Samsara (needs the token's write permission for Drivers). */
+/** POST, PATCH or DELETE to Samsara (needs the token's write permission for Drivers, or Addresses). */
 function ssSend_(method, path, body) {
   for (let attempt = 1; attempt <= 5; attempt++) {
     SS_CALLS++;
     const r = UrlFetchApp.fetch(SS_BASE + path, {
-      method: method, contentType: 'application/json', payload: JSON.stringify(body),
-      headers: { Authorization: 'Bearer ' + ssToken_() }, muteHttpExceptions: true
+      method: method, headers: { Authorization: 'Bearer ' + ssToken_() }, muteHttpExceptions: true,
+      ...(body === undefined ? {} : { contentType: 'application/json', payload: JSON.stringify(body) })
     });
     const code = r.getResponseCode();
     if (code === 429 || code >= 500) { Utilities.sleep(1000 * attempt); continue; }
-    if (code === 401 || code === 403) throw new Error('Samsara refused (HTTP ' + code + '): the SAMSARA_TOKEN needs write access to Drivers');
+    if (code === 401 || code === 403) throw new Error('Samsara refused (HTTP ' + code + ' on ' + path.split('/').slice(0, 3).join('/') + '): the SAMSARA_TOKEN needs write access for this (Drivers, or Addresses for home geofences)');
     if (code >= 300) throw new Error('Samsara ' + method.toUpperCase() + ' ' + path + ' (HTTP ' + code + '): ' + r.getContentText().slice(0, 200));
     const text = r.getContentText();
     return text ? JSON.parse(text) : null;
@@ -1161,6 +1163,161 @@ function turnOnSamsaraDrivers() {
 function turnOffSamsaraDrivers() {
   PROPS.deleteProperty('SAMSARA_DRIVERS');
   Logger.log('Automatic Samsara drivers are OFF. Nothing else changed.');
+}
+
+/* ---------- Home geofences for techs (2026-11-16) ----------
+ * Each active tech's home (from their FieldRoutes employee record) becomes a Samsara address with a
+ * circle geofence, tagged "Tech homes". Managers set Samsara alerts on that tag: a truck leaving home
+ * in the morning, and a truck not home overnight (sleeping in the truck, staying elsewhere, or moved
+ * without telling us). Runs after the 7 AM and 1 PM driver step while HOME_GEOFENCES is on.
+ *   - CREATE: active tech with a home address and no geofence yet.
+ *   - MOVE: their FieldRoutes address changed (the old geofence is replaced).
+ *   - REMOVE: the tech was deactivated in the app.
+ * Home addresses go straight from FieldRoutes to Samsara; the app never stores them.
+ * Geofences are matched by the tech's FieldRoutes ID saved on them, never by name.
+ */
+const HOME = { tag: 'Tech homes', radiusMeters: 100, limits: { create: 60, remove: 5 } };
+
+/** Works out the home geofence changes; makes them when apply is true. Returns lines of text. */
+function ssManageHomes_(apply) {
+  const clean = x => String(x || '').replace(/\s+/g, ' ').trim();
+
+  // FieldRoutes employees (every office key sees every employee), with their address
+  const fr = frFetch_(SYNC.OFFICES[0], 'employee', { active: { operator: 'IN', value: [0, 1] } });
+  const frById = {};
+  fr.forEach(e => { frById[String(e.employeeID)] = e; });
+
+  // Samsara addresses this sync made (they carry procareHome = the tech's FieldRoutes ID)
+  const homes = [];
+  let after = '';
+  do {
+    const r = ssGet_('/addresses', { limit: 512, after: after });
+    (r.data || []).forEach(a => {
+      const ids = a.externalIds || {};
+      if (ids.procareHome) homes.push({ id: String(a.id), name: a.name, frId: String(ids.procareHome), key: String(ids.procareAddr || '') });
+    });
+    after = r.pagination && r.pagination.hasNextPage ? r.pagination.endCursor : '';
+  } while (after);
+
+  const techs = supaGetAll_('employees?select=id,first_name,last_name,active,fr_ids&department=eq.technician');
+  const plan = { create: [], move: [], remove: [], skip: [] };
+  const fieldNote = {};
+  techs.slice().sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0)).forEach(t => {
+    const name = clean(t.first_name + ' ' + t.last_name);
+    const frIds = Object.keys(t.fr_ids || {}).map(k => String(t.fr_ids[k]));
+    const mine = homes.filter(h => frIds.indexOf(h.frId) >= 0);
+    if (!t.active) {
+      mine.forEach(h => { if (!h.claimed) plan.remove.push({ h: h, why: 'deactivated in the app' }); });
+      return;
+    }
+    mine.forEach(h => { h.claimed = true; });
+    const recs = frIds.map(id => frById[id]).filter(Boolean);
+    const home = recs.map(ssHomeOf_).find(Boolean);
+    if (!home) {
+      plan.skip.push(name + ': no home address in FieldRoutes');
+      recs.forEach(r => Object.keys(r).filter(k => /addr|city|state|zip|lat|lng|street/i.test(k)).forEach(k => { fieldNote[k] = true; }));
+      return;
+    }
+    const frId = String((recs.find(r => ssHomeOf_(r)) || recs[0]).employeeID);
+    const keep = mine.find(h => h.key === home.key);
+    if (keep) { mine.filter(h => h !== keep).forEach(h => plan.remove.push({ h: h, why: 'an extra copy for ' + name })); return; }
+    if (mine.length) plan.move.push({ name: name, frId: frId, home: home, old: mine });
+    else plan.create.push({ name: name, frId: frId, home: home });
+  });
+
+  const lines = [];
+  plan.create.forEach(x => lines.push('CREATE Home - ' + x.name + ' in ' + x.home.area + ' (' + x.home.from + ')'));
+  plan.move.forEach(x => lines.push('MOVE Home - ' + x.name + ' to ' + x.home.area + ' (' + x.home.from + ')'));
+  plan.remove.forEach(x => lines.push('REMOVE ' + x.h.name + ' (' + x.why + ')'));
+  plan.skip.forEach(s => lines.push('SKIP ' + s));
+  if (Object.keys(fieldNote).length) lines.push('(FieldRoutes address fields seen on skipped techs: ' + Object.keys(fieldNote).join(', ') + ')');
+
+  if (plan.create.length > HOME.limits.create) throw new Error('Home geofences: ' + plan.create.length + ' would be created at once, so nothing was changed. Run previewHomeGeofences.');
+  if (plan.remove.length > HOME.limits.remove) throw new Error('Home geofences: ' + plan.remove.length + ' would be removed at once, so nothing was changed. Run previewHomeGeofences.');
+  if (!apply) return lines;
+
+  const tagId = (plan.create.length || plan.move.length) ? ssHomeTag_() : null;
+  const done = [], failed = [];
+  const make = x => ssSend_('post', '/addresses', Object.assign({
+    name: 'Home - ' + x.name, formattedAddress: x.home.text,
+    geofence: { circle: Object.assign({ radiusMeters: HOME.radiusMeters }, x.home.lat ? { latitude: x.home.lat, longitude: x.home.lng } : {}) },
+    externalIds: { procareHome: x.frId, procareAddr: x.home.key },
+    notes: 'Tech home, kept by Procare Sync from FieldRoutes. Change the address in FieldRoutes, not here.'
+  }, x.home.lat ? { latitude: x.home.lat, longitude: x.home.lng } : {}, tagId ? { tagIds: [tagId] } : {}));
+  plan.create.forEach(x => {
+    try { make(x); done.push('Created Home - ' + x.name); } catch (e) { if (/refused/.test(e.message)) throw e; failed.push('NOT CREATED Home - ' + x.name + ': ' + e.message); }
+  });
+  plan.move.forEach(x => {
+    try {
+      make(x);
+      x.old.forEach(h => ssSend_('delete', '/addresses/' + h.id));
+      done.push('Moved Home - ' + x.name + ' to ' + x.home.area);
+    } catch (e) { if (/refused/.test(e.message)) throw e; failed.push('NOT MOVED Home - ' + x.name + ': ' + e.message); }
+  });
+  plan.remove.forEach(x => {
+    try { ssSend_('delete', '/addresses/' + x.h.id); done.push('Removed ' + x.h.name); } catch (e) { failed.push('NOT REMOVED ' + x.h.name + ': ' + e.message); }
+  });
+  if (!tagId && (plan.create.length || plan.move.length)) done.push('Note: no "' + HOME.tag + '" tag could be made, so the geofences are untagged. Add a tag with that name in Samsara and the next run uses it for new ones.');
+  return done.concat(failed, plan.skip.map(s => 'SKIP ' + s));
+}
+
+/**
+ * A tech's home from a FieldRoutes employee record: their address, else their route start address.
+ * key is a short fingerprint of the address, so a change is noticed without storing the address.
+ */
+function ssHomeOf_(e) {
+  const pick = (prefix) => {
+    const g = k => String(e[prefix ? prefix + k[0].toUpperCase() + k.slice(1) : k] || '').trim();
+    const street = g('address') || g('address1') || g('street');
+    const city = g('city'), state = g('state'), zip = g('zip') || g('postalCode');
+    if (!street || !(zip || (city && state))) return null;
+    const lat = Number(g('lat') || g('latitude')), lng = Number(g('lng') || g('longitude'));
+    const text = [street, city, [state, zip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    const norm = text.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, norm);
+    const key = digest.slice(0, 6).map(b => ('0' + (b & 255).toString(16)).slice(-2)).join('');
+    // area = city and ZIP only, for logs (full home addresses stay out of logs)
+    return { text: text, area: [city, [state, zip].filter(Boolean).join(' ')].filter(Boolean).join(', '), key: key, lat: lat && lng ? lat : null, lng: lat && lng ? lng : null,
+      from: prefix ? 'FieldRoutes route start address' : 'FieldRoutes home address' };
+  };
+  return pick('') || pick('start');
+}
+
+/** The "Tech homes" tag's ID, made if it doesn't exist. Null if the token can't make tags. */
+function ssHomeTag_() {
+  let after = '';
+  do {
+    const r = ssGet_('/tags', { limit: 512, after: after });
+    const t = (r.data || []).find(x => String(x.name).toLowerCase() === HOME.tag.toLowerCase());
+    if (t) return String(t.id);
+    after = r.pagination && r.pagination.hasNextPage ? r.pagination.endCursor : '';
+  } while (after);
+  try {
+    const r = ssSend_('post', '/tags', { name: HOME.tag });
+    const t = r && r.data ? r.data : r;
+    return t && t.id ? String(t.id) : null;
+  } catch (e) { return null; }
+}
+
+/** Shows what keeping home geofences in step would change. Changes nothing in Samsara. */
+function previewHomeGeofences() {
+  if (!ssToken_()) { Logger.log('Add SAMSARA_TOKEN to Script Properties first.'); return; }
+  const lines = ssManageHomes_(false);
+  Logger.log(lines.length ? lines.join('\n') : 'Nothing to change: every tech with a home address has a geofence.');
+  Logger.log('Automatic home geofences are ' + (PROPS.getProperty('HOME_GEOFENCES') === 'on' ? 'ON' : 'OFF (run turnOnHomeGeofences to start)') + '.');
+}
+
+/** Makes the changes previewHomeGeofences shows, then keeps doing it at 7 AM and 1 PM. */
+function turnOnHomeGeofences() {
+  if (!ssToken_()) { Logger.log('Add SAMSARA_TOKEN to Script Properties first.'); return; }
+  const lines = ssManageHomes_(true);
+  PROPS.setProperty('HOME_GEOFENCES', 'on');
+  Logger.log((lines.length ? 'Done:\n' + lines.join('\n') : 'Nothing to change right now.') + '\nAutomatic home geofences are ON.');
+}
+
+function turnOffHomeGeofences() {
+  PROPS.deleteProperty('HOME_GEOFENCES');
+  Logger.log('Automatic home geofences are OFF. Geofences already in Samsara stay.');
 }
 
 /** Safety events between two times (ms), 31 days per request window. */

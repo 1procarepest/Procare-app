@@ -75,6 +75,15 @@ tables have no read rules yet, so signed-in people can't read them; each app add
    The first run is the backfill. `turnOffSamsaraDrivers` stops it. Only technicians' drivers are ever
    changed. It stops without changing anything if more than 60 creates or 5 deactivations come up at once.
    Past safety events stay unassigned in Samsara; new ones land on the driver.
+10. **Home geofences** (needs the Samsara token's read and write access to Addresses): run `previewHomeGeofences`.
+   Each active tech's home from FieldRoutes (their address, else their route start address) becomes a Samsara
+   address "Home - First Last" with a 100 m circle, tagged **Tech homes**. The log shows city and ZIP only.
+   - CREATE / MOVE (their FieldRoutes address changed) / REMOVE (deactivated in the app) / SKIP (no address in FieldRoutes).
+   If it looks right, run `turnOnHomeGeofences`; it repeats at 7 AM and 1 PM. `turnOffHomeGeofences` stops it.
+   Change a tech's address in FieldRoutes, not in Samsara: the next run moves the geofence. Home addresses are never
+   stored in the app. Only addresses this sync made (they carry the tech's FieldRoutes ID) are ever changed.
+   Then in Samsara → Alerts, set alerts on the Tech homes tag: geofence exit in the morning ("left home") and
+   "not inside geofence" overnight ("never went home").
 
 ## Team list (new hires and people who leave)
 
