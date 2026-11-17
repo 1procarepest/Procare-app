@@ -78,6 +78,8 @@ tables have no read rules yet, so signed-in people can't read them; each app add
 10. **Home geofences** (needs the Samsara token's read and write access to Addresses): run `previewHomeGeofences`.
    Each active tech's home from FieldRoutes (their address, else their route start, else route end address) becomes a Samsara
    address "Home - First Last" with a 100 m circle, tagged **Tech homes**. The log shows city and ZIP only.
+   The token can't create tags: make a tag named **Tech homes** once in Samsara (Settings → Tags), and the next run
+   tags every home geofence (TAG lines).
    - CREATE / MOVE (their FieldRoutes address changed) / REMOVE (deactivated in the app) / SKIP (no address in FieldRoutes).
    - ⚠ SAME ADDRESS: two techs have the exact same address. Often an office used as a route start; fix it in FieldRoutes
      before turning this on, or the geofence will sit on the office.

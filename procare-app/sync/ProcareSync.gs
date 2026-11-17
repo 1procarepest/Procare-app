@@ -1173,6 +1173,7 @@ function turnOffSamsaraDrivers() {
  *   - CREATE: active tech with a home address and no geofence yet.
  *   - MOVE: their FieldRoutes address changed (the old geofence is replaced).
  *   - REMOVE: the tech was deactivated in the app.
+ *   - TAG: a home geofence without the "Tech homes" tag gets it (once the tag exists in Samsara).
  * Home addresses go straight from FieldRoutes to Samsara; the app never stores them.
  * Geofences are matched by the tech's FieldRoutes ID saved on them, never by name.
  */
@@ -1194,13 +1195,16 @@ function ssManageHomes_(apply) {
     const r = ssGet_('/addresses', { limit: 512, after: after });
     (r.data || []).forEach(a => {
       const ids = a.externalIds || {};
-      if (ids.procareHome) homes.push({ id: String(a.id), name: a.name, frId: String(ids.procareHome), key: String(ids.procareAddr || '') });
+      // procareAddr = 12-character address fingerprint, then "f" + FieldRoutes ID (Samsara needs each value unique)
+      if (ids.procareHome) homes.push({ id: String(a.id), name: a.name, frId: String(ids.procareHome), key: String(ids.procareAddr || '').slice(0, 12),
+        tags: (a.tags || []).map(t => String(t.id)) });
     });
     after = r.pagination && r.pagination.hasNextPage ? r.pagination.endCursor : '';
   } while (after);
 
   const techs = supaGetAll_('employees?select=id,first_name,last_name,active,fr_ids&department=eq.technician');
-  const plan = { create: [], move: [], remove: [], skip: [] };
+  const plan = { create: [], move: [], remove: [], tag: [], skip: [] };
+  const tagId = ssFindTag_(HOME.tag);
   const fieldNote = {};
   const byKey = {};   // address fingerprint → techs at it
   const nice = n => n === n.toLowerCase() || n === n.toUpperCase()
@@ -1224,7 +1228,11 @@ function ssManageHomes_(apply) {
     (byKey[home.key] = byKey[home.key] || []).push(name);
     const frId = String((recs.find(r => ssHomeOf_(r)) || recs[0]).employeeID);
     const keep = mine.find(h => h.key === home.key);
-    if (keep) { mine.filter(h => h !== keep).forEach(h => plan.remove.push({ h: h, why: 'an extra copy for ' + name })); return; }
+    if (keep) {
+      mine.filter(h => h !== keep).forEach(h => plan.remove.push({ h: h, why: 'an extra copy for ' + name }));
+      if (tagId && keep.tags.indexOf(tagId) < 0) plan.tag.push({ h: keep });
+      return;
+    }
     if (mine.length) plan.move.push({ name: name, frId: frId, home: home, old: mine });
     else plan.create.push({ name: name, frId: frId, home: home });
   });
@@ -1235,6 +1243,8 @@ function ssManageHomes_(apply) {
   plan.create.forEach(x => lines.push('CREATE Home - ' + x.name + ' in ' + x.home.area + ' (' + x.home.from + ')' + shared(x)));
   plan.move.forEach(x => lines.push('MOVE Home - ' + x.name + ' to ' + x.home.area + ' (' + x.home.from + ')' + shared(x)));
   plan.remove.forEach(x => lines.push('REMOVE ' + x.h.name + ' (' + x.why + ')'));
+  plan.tag.forEach(x => lines.push('TAG ' + x.h.name + ' (adds the ' + HOME.tag + ' tag)'));
+  if (!tagId) lines.push('NO TAG YET: create a tag named "' + HOME.tag + '" in Samsara (Settings → Tags); the next run tags every home geofence.');
   plan.skip.forEach(s => lines.push('SKIP ' + s));
   if (Object.keys(fieldNote).length) lines.push('(FieldRoutes address fields seen on skipped techs: ' + Object.keys(fieldNote).join(', ') + ')');
 
@@ -1242,12 +1252,11 @@ function ssManageHomes_(apply) {
   if (plan.remove.length > HOME.limits.remove) throw new Error('Home geofences: ' + plan.remove.length + ' would be removed at once, so nothing was changed. Run previewHomeGeofences.');
   if (!apply) return lines;
 
-  const tagId = (plan.create.length || plan.move.length) ? ssHomeTag_() : null;
   const done = [], failed = [];
   const make = x => ssSend_('post', '/addresses', Object.assign({
     name: 'Home - ' + x.name, formattedAddress: x.home.text,
     geofence: { circle: Object.assign({ radiusMeters: HOME.radiusMeters }, x.home.lat ? { latitude: x.home.lat, longitude: x.home.lng } : {}) },
-    externalIds: { procareHome: x.frId, procareAddr: x.home.key },
+    externalIds: { procareHome: x.frId, procareAddr: x.home.key + 'f' + x.frId },
     notes: 'Tech home, kept by Procare Sync from FieldRoutes. Change the address in FieldRoutes, not here.'
   }, x.home.lat ? { latitude: x.home.lat, longitude: x.home.lng } : {}, tagId ? { tagIds: [tagId] } : {}));
   plan.create.forEach(x => {
@@ -1263,7 +1272,11 @@ function ssManageHomes_(apply) {
   plan.remove.forEach(x => {
     try { ssSend_('delete', '/addresses/' + x.h.id); done.push('Removed ' + x.h.name); } catch (e) { failed.push('NOT REMOVED ' + x.h.name + ': ' + e.message); }
   });
-  if (!tagId && (plan.create.length || plan.move.length)) done.push('Note: no "' + HOME.tag + '" tag could be made, so the geofences are untagged. Add a tag with that name in Samsara and the next run uses it for new ones.');
+  plan.tag.forEach(x => {
+    try { ssSend_('patch', '/addresses/' + x.h.id, { tagIds: x.h.tags.concat([tagId]) }); done.push('Tagged ' + x.h.name); }
+    catch (e) { failed.push('NOT TAGGED ' + x.h.name + ': ' + e.message); }
+  });
+  if (!tagId) done.push('NO TAG YET: create a tag named "' + HOME.tag + '" in Samsara (Settings → Tags); the next run tags every home geofence.');
   return done.concat(failed, plan.skip.map(s => 'SKIP ' + s));
 }
 
@@ -1290,20 +1303,16 @@ function ssHomeOf_(e) {
   return pick('') || pick('start') || pick('end');
 }
 
-/** The "Tech homes" tag's ID, made if it doesn't exist. Null if the token can't make tags. */
-function ssHomeTag_() {
+/** A Samsara tag's ID by name (any case), or null. The token can't create tags, so a person makes it once. */
+function ssFindTag_(name) {
   let after = '';
   do {
     const r = ssGet_('/tags', { limit: 512, after: after });
-    const t = (r.data || []).find(x => String(x.name).toLowerCase() === HOME.tag.toLowerCase());
+    const t = (r.data || []).find(x => String(x.name).trim().toLowerCase() === name.toLowerCase());
     if (t) return String(t.id);
     after = r.pagination && r.pagination.hasNextPage ? r.pagination.endCursor : '';
   } while (after);
-  try {
-    const r = ssSend_('post', '/tags', { name: HOME.tag });
-    const t = r && r.data ? r.data : r;
-    return t && t.id ? String(t.id) : null;
-  } catch (e) { return null; }
+  return null;
 }
 
 /** Shows what keeping home geofences in step would change. Changes nothing in Samsara. */
