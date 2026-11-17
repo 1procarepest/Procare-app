@@ -1202,8 +1202,11 @@ function ssManageHomes_(apply) {
   const techs = supaGetAll_('employees?select=id,first_name,last_name,active,fr_ids&department=eq.technician');
   const plan = { create: [], move: [], remove: [], skip: [] };
   const fieldNote = {};
+  const byKey = {};   // address fingerprint → techs at it
+  const nice = n => n === n.toLowerCase() || n === n.toUpperCase()
+    ? n.toLowerCase().replace(/(^|[\s'-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : n;
   techs.slice().sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0)).forEach(t => {
-    const name = clean(t.first_name + ' ' + t.last_name);
+    const name = nice(clean(t.first_name + ' ' + t.last_name));
     const frIds = Object.keys(t.fr_ids || {}).map(k => String(t.fr_ids[k]));
     const mine = homes.filter(h => frIds.indexOf(h.frId) >= 0);
     if (!t.active) {
@@ -1218,6 +1221,7 @@ function ssManageHomes_(apply) {
       recs.forEach(r => Object.keys(r).filter(k => /addr|city|state|zip|lat|lng|street/i.test(k)).forEach(k => { fieldNote[k] = true; }));
       return;
     }
+    (byKey[home.key] = byKey[home.key] || []).push(name);
     const frId = String((recs.find(r => ssHomeOf_(r)) || recs[0]).employeeID);
     const keep = mine.find(h => h.key === home.key);
     if (keep) { mine.filter(h => h !== keep).forEach(h => plan.remove.push({ h: h, why: 'an extra copy for ' + name })); return; }
@@ -1225,9 +1229,11 @@ function ssManageHomes_(apply) {
     else plan.create.push({ name: name, frId: frId, home: home });
   });
 
+  // The exact same address for two techs may be an office used as a route start, not a home
+  const shared = x => byKey[x.home.key].length > 1 ? ' ⚠ SAME ADDRESS as ' + byKey[x.home.key].filter(n => n !== x.name).join(', ') : '';
   const lines = [];
-  plan.create.forEach(x => lines.push('CREATE Home - ' + x.name + ' in ' + x.home.area + ' (' + x.home.from + ')'));
-  plan.move.forEach(x => lines.push('MOVE Home - ' + x.name + ' to ' + x.home.area + ' (' + x.home.from + ')'));
+  plan.create.forEach(x => lines.push('CREATE Home - ' + x.name + ' in ' + x.home.area + ' (' + x.home.from + ')' + shared(x)));
+  plan.move.forEach(x => lines.push('MOVE Home - ' + x.name + ' to ' + x.home.area + ' (' + x.home.from + ')' + shared(x)));
   plan.remove.forEach(x => lines.push('REMOVE ' + x.h.name + ' (' + x.why + ')'));
   plan.skip.forEach(s => lines.push('SKIP ' + s));
   if (Object.keys(fieldNote).length) lines.push('(FieldRoutes address fields seen on skipped techs: ' + Object.keys(fieldNote).join(', ') + ')');
@@ -1262,7 +1268,8 @@ function ssManageHomes_(apply) {
 }
 
 /**
- * A tech's home from a FieldRoutes employee record: their address, else their route start address.
+ * A tech's home from a FieldRoutes employee record: their address, else their route start address,
+ * else their route end address. (FieldRoutes employees usually only have route start/end.)
  * key is a short fingerprint of the address, so a change is noticed without storing the address.
  */
 function ssHomeOf_(e) {
@@ -1278,9 +1285,9 @@ function ssHomeOf_(e) {
     const key = digest.slice(0, 6).map(b => ('0' + (b & 255).toString(16)).slice(-2)).join('');
     // area = city and ZIP only, for logs (full home addresses stay out of logs)
     return { text: text, area: [city, [state, zip].filter(Boolean).join(' ')].filter(Boolean).join(', '), key: key, lat: lat && lng ? lat : null, lng: lat && lng ? lng : null,
-      from: prefix ? 'FieldRoutes route start address' : 'FieldRoutes home address' };
+      from: { '': 'FieldRoutes home address', start: 'FieldRoutes route start address', end: 'FieldRoutes route end address' }[prefix] };
   };
-  return pick('') || pick('start');
+  return pick('') || pick('start') || pick('end');
 }
 
 /** The "Tech homes" tag's ID, made if it doesn't exist. Null if the token can't make tags. */
