@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { contactsById } from '@/lib/contacts';
 import PersonEditor from './PersonEditor';
+import CompetitionFollows from './CompetitionFollows';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,7 @@ export default async function PersonPage({ params }) {
   // Today in Atlanta as YYYY-MM-DD, so requests still in progress count as upcoming.
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
 
-  const [{ data: schedule }, { data: canManage }, { data: canEditSchedule }, { data: upcoming }] = await Promise.all([
+  const [{ data: schedule }, { data: canManage }, { data: canEditSchedule }, { data: upcoming }, { data: follows }] = await Promise.all([
     supabase.from('schedules').select('weekday, start_time, end_time').eq('employee_id', person.id),
     supabase.rpc('can_manage', { target: person.id }),
     supabase.rpc('can_edit_schedule', { target: person.id }),
@@ -36,6 +37,7 @@ export default async function PersonPage({ params }) {
       .in('status', ['approved', 'pending'])
       .gte('end_date', today)
       .order('start_date', { ascending: true }),
+    supabase.from('competition_follows').select('department, office').eq('employee_id', person.id),
   ]);
 
   return (
@@ -49,6 +51,7 @@ export default async function PersonPage({ params }) {
         canManage={!!canManage}
         canEditSchedule={!!canEditSchedule}
       />
+      {me.rank >= 4 && person.active && <CompetitionFollows person={person} follows={follows || []} />}
     </section>
   );
 }

@@ -4,7 +4,7 @@ import { shortDate } from '@/lib/labels';
 
 const BUGS = ['stinging', 'spider', 'ant'];
 
-/** Live competitions the person is in, on the profile. */
+/** Live competitions the person is in (and, for leaders, the ones they watch), on the profile. */
 export default function MyCompetitions({ list, compact = false }) {
   if (!list?.length) return null;
   return (
@@ -14,10 +14,10 @@ export default function MyCompetitions({ list, compact = false }) {
         <Link href="/compete">All competitions ›</Link>
       </div>
       <div className="mc-list">
-        {list.map(({ comp, prize, standing }, i) => (
+        {list.map(({ comp, prize, standing, watching }, i) => (
           <Link key={comp.id} href={`/compete/${comp.id}`} className="mc-card">
             <Bug kind={BUGS[i % BUGS.length]} size={90} className="mc-bug" />
-            <span className="cp-tag">Live · ends {shortDate(comp.end_date)}</span>
+            <span className="cp-tag">{watching ? 'Watching' : 'Live'} · ends {shortDate(comp.end_date)}</span>
             <span className="mc-name">{comp.name}</span>
             {standing && <span className="mc-standing">{standing}</span>}
             {prize && <span className="mc-prize">💵 {prize}</span>}
