@@ -27,6 +27,9 @@ export const dynamic = 'force-dynamic';
 // How far the schedule arrows can go, in weeks from this week
 const WEEKS_BACK = 4;
 const WEEKS_AHEAD = 8;
+// ...and in months, when showing the whole month
+const MONTHS_BACK = 1;
+const MONTHS_AHEAD = 2;
 // How far the route arrows can go, in days from today
 const ROUTE_DAYS = 7;
 
@@ -115,14 +118,17 @@ export default async function Home({ searchParams }) {
   // Which week to show: ?week=0 is this week, 1 is next week, -1 is last week
   const asked = parseInt(searchParams?.week, 10);
   const week = Number.isNaN(asked) ? 0 : Math.min(WEEKS_AHEAD, Math.max(-WEEKS_BACK, asked));
-  const weekHref = (n) => {
-    const q = [n ? `week=${n}` : '', dayOffset ? `day=${dayOffset}` : ''].filter(Boolean).join('&');
+  // Week is the default (best on a phone); ?sched=month shows the whole month, ?month=1 is next month
+  const monthView = searchParams?.sched === 'month';
+  const askedMonth = parseInt(searchParams?.month, 10);
+  const schedMonth = Number.isNaN(askedMonth) ? 0 : Math.min(MONTHS_AHEAD, Math.max(-MONTHS_BACK, askedMonth));
+  const homeHref = ({ view = monthView, w = week, m = schedMonth, day = dayOffset } = {}) => {
+    const q = [view ? 'sched=month' : '', view && m ? `month=${m}` : '', !view && w ? `week=${w}` : '', day ? `day=${day}` : ''].filter(Boolean).join('&');
     return q ? `/?${q}` : '/';
   };
-  const dayHref = (n) => {
-    const q = [week ? `week=${week}` : '', n ? `day=${n}` : ''].filter(Boolean).join('&');
-    return q ? `/?${q}` : '/';
-  };
+  const weekHref = (n) => homeHref({ view: false, w: n });
+  const monthHref = (n) => homeHref({ view: true, m: n });
+  const dayHref = (n) => homeHref({ day: n });
 
   // That week's dates (Monday first, Atlanta time) and any time off in them
   const todayYmd = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
@@ -134,13 +140,25 @@ export default async function Home({ searchParams }) {
     dt.setUTCDate(base.getUTCDate() - back + i);
     dates[d] = dt.toISOString().slice(0, 10);
   });
+  // The rows to show: that week, or every day of the chosen month
+  const rows = [];
+  let monthLabel = '';
+  if (monthView) {
+    const first = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + schedMonth, 1, 12));
+    monthLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(first);
+    for (const dt = new Date(first); dt.getUTCMonth() === first.getUTCMonth(); dt.setUTCDate(dt.getUTCDate() + 1)) {
+      rows.push({ d: dt.getUTCDay(), ymd: dt.toISOString().slice(0, 10) });
+    }
+  } else {
+    WEEK_ORDER.forEach((d) => rows.push({ d, ymd: dates[d] }));
+  }
   const { data: timeOff } = await supabase
     .from('time_off_requests')
     .select('start_date, end_date, start_time, end_time, status')
     .eq('employee_id', me.id)
     .in('status', ['pending', 'approved'])
-    .lte('start_date', dates[0])
-    .gte('end_date', dates[1]);
+    .lte('start_date', rows[rows.length - 1].ymd)
+    .gte('end_date', rows[0].ymd);
   // What a day's row says. Approved time off is taken out of the scheduled hours
   // ("9 AM – 5 PM" when someone leaves at 5); requested time off is shown alongside.
   function dayInfo(d, ymd) {
@@ -229,24 +247,43 @@ export default async function Home({ searchParams }) {
         <section className="section" aria-labelledby="week-heading">
           <div className="week-head">
             <h2 id="week-heading">Your schedule</h2>
-            <nav className="week-nav" aria-label="Choose a week">
-              {week > -WEEKS_BACK
-                ? <Link className="week-arrow" href={weekHref(week - 1)} aria-label="Previous week" scroll={false}>‹</Link>
-                : <span className="week-arrow" aria-hidden="true">‹</span>}
-              {week === 0
-                ? <span className="week-label">This week</span>
-                : <Link className="week-label" href="/" scroll={false}>Week of {shortDate(dates[1])}</Link>}
-              {week < WEEKS_AHEAD
-                ? <Link className="week-arrow" href={weekHref(week + 1)} aria-label="Next week" scroll={false}>›</Link>
-                : <span className="week-arrow" aria-hidden="true">›</span>}
-            </nav>
+            <div className="rc-seg week-seg" role="group" aria-label="Show">
+              <Link className={monthView ? '' : 'on'} href={weekHref(0)} scroll={false}>Week</Link>
+              <Link className={monthView ? 'on' : ''} href={monthHref(0)} scroll={false}>Month</Link>
+            </div>
+            {monthView ? (
+              <nav className="week-nav" aria-label="Choose a month">
+                {schedMonth > -MONTHS_BACK
+                  ? <Link className="week-arrow" href={monthHref(schedMonth - 1)} aria-label="Previous month" scroll={false}>‹</Link>
+                  : <span className="week-arrow" aria-hidden="true">‹</span>}
+                {schedMonth === 0
+                  ? <span className="week-label">This month</span>
+                  : <Link className="week-label" href={monthHref(0)} scroll={false}>{monthLabel}</Link>}
+                {schedMonth < MONTHS_AHEAD
+                  ? <Link className="week-arrow" href={monthHref(schedMonth + 1)} aria-label="Next month" scroll={false}>›</Link>
+                  : <span className="week-arrow" aria-hidden="true">›</span>}
+              </nav>
+            ) : (
+              <nav className="week-nav" aria-label="Choose a week">
+                {week > -WEEKS_BACK
+                  ? <Link className="week-arrow" href={weekHref(week - 1)} aria-label="Previous week" scroll={false}>‹</Link>
+                  : <span className="week-arrow" aria-hidden="true">‹</span>}
+                {week === 0
+                  ? <span className="week-label">This week</span>
+                  : <Link className="week-label" href={weekHref(0)} scroll={false}>Week of {shortDate(dates[1])}</Link>}
+                {week < WEEKS_AHEAD
+                  ? <Link className="week-arrow" href={weekHref(week + 1)} aria-label="Next week" scroll={false}>›</Link>
+                  : <span className="week-arrow" aria-hidden="true">›</span>}
+              </nav>
+            )}
           </div>
+          {monthView && schedMonth === 0 && <p className="calc-hint week-month-name">{monthLabel}</p>}
           <ul className="week">
-            {WEEK_ORDER.map((d) => {
-              const { text, working } = dayInfo(d, dates[d]);
+            {rows.map(({ d, ymd }, i) => {
+              const { text, working } = dayInfo(d, ymd);
               return (
-                <li key={d} className={`day${working ? '' : ' off'}${week === 0 && d === today ? ' today' : ''}`}>
-                  <span className="day-name">{DAY_NAMES[d]}, {shortDate(dates[d])}</span>
+                <li key={ymd} className={`day${working ? '' : ' off'}${ymd === todayYmd ? ' today' : ''}${monthView && d === 1 && i > 0 ? ' week-break' : ''}`}>
+                  <span className="day-name">{DAY_NAMES[d]}, {shortDate(ymd)}</span>
                   <span className="day-hours">{text}</span>
                 </li>
               );

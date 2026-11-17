@@ -183,6 +183,17 @@ a.week-arrow:hover { background: var(--sage); }
 span.week-arrow { color: var(--line); }
 .week-label { font-size: 14px; font-weight: 500; color: var(--ink); min-width: 104px; text-align: center; }
 a.week-label { text-decoration: underline; }
+/* Week / Month switch: on a phone it and the arrows share a line under the heading */
+.week-seg { margin-left: auto; }
+.week-month-name { margin: -4px 0 8px; }
+.day.week-break { border-top: 1.5px solid var(--ink); }
+@media (max-width: 560px) {
+  .week-head h2 { flex-basis: 100%; }
+  .week-seg { margin-left: 0; }
+  .week-head .week-nav { margin-left: auto; }
+  .week-head .week-arrow { width: 36px; height: 36px; }
+  .week-head .week-label { min-width: 84px; }
+}
 
 .actions { display: grid; gap: 10px; grid-template-columns: repeat(3, 1fr); }
 .actions > .panel { grid-column: 1 / -1; }
@@ -1081,6 +1092,29 @@ details[open] > summary > .wa-caret { transform: rotate(180deg); }
 .ts-week tr.me th { color: var(--forest); }
 .ts-week tfoot th, .ts-week tfoot td { font-weight: 700; background: var(--paper); }
 .ts-foot { margin-top: 14px; }
+/* Team schedule: month calendar */
+.ts-month h2 { font-size: 20px; font-weight: 600; margin-bottom: 12px; }
+.ts-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.ts-cal.no-sun { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.ts-cal-head { font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); text-align: center; padding-bottom: 2px; }
+.ts-cal-day { display: flex; flex-direction: column; gap: 3px; min-height: 92px; padding: 8px; background: var(--white); border: 1px solid var(--line); border-radius: 14px; color: var(--ink); text-decoration: none; min-width: 0; }
+a.ts-cal-day:hover { border-color: var(--forest); }
+.ts-cal-day.today { border: 2px solid var(--green); }
+.ts-cal-date { font-weight: 600; }
+.ts-cal-count { font-size: 12px; color: var(--muted); }
+.ts-cal-count strong { color: var(--ink); font-size: 15px; }
+.ts-cal-off { display: block; font-size: 12px; line-height: 1.3; padding: 1px 6px; border-radius: 999px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ts-cal-full { background: #fbefe9; color: var(--danger); }
+.ts-cal-part { background: #fdf6dc; color: #7a5b00; }
+.ts-cal-ask { background: var(--paper); color: var(--muted); border: 1px dashed var(--line); }
+.ts-cal-key { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
+@media (max-width: 640px) {
+  .ts-cal { gap: 3px; }
+  .ts-cal-day { min-height: 64px; padding: 5px 4px; border-radius: 10px; }
+  .ts-cal-count { font-size: 0; }
+  .ts-cal-count strong { font-size: 13px; }
+  .ts-cal-off { font-size: 10px; padding: 0 3px; }
+}
 
 /* Competitions (/compete) */
 .compete { max-width: 1100px; }

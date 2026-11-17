@@ -11,12 +11,20 @@ const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 const dow = (ymd) => new Date(`${ymd}T12:00:00Z`).getUTCDay();
 const DEPT_TITLE = { sales: 'Sales', technician: 'Technicians', administrative: 'Office' };
 
-export default function TeamSchedule({ data, days, today, week, weeksBack, weeksAhead, meId, myOffice }) {
+// Whole weeks from this week's Monday to the week holding ymd (for the month calendar's links)
+function weeksFrom(today, ymd) {
+  const monday = (x) => { const d = new Date(`${x}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d; };
+  return Math.round((monday(ymd) - monday(today)) / (7 * 86400000));
+}
+const shortName = (p) => `${p.first_name} ${p.last_name?.[0] || ''}`.trim();
+
+export default function TeamSchedule({ data, days, today, week, weeksBack, weeksAhead, month, monthsBack, monthsAhead, pick, meId, myOffice }) {
+  const isMonth = month !== undefined;
   const depts = data.depts || [];
   const [dept, setDept] = useState(depts.length === 1 ? depts[0] : depts.includes('technician') ? 'technician' : depts[0]);
   const [office, setOffice] = useState('all');
   const thisWeek = days.includes(today);
-  const [day, setDay] = useState(thisWeek ? today : days[0]);
+  const [day, setDay] = useState(pick || (thisWeek ? today : days[0]));
   const [view, setView] = useState('day');
 
   // Everyone's week, worked out once
@@ -28,7 +36,7 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
     const off = {};
     (data.off || []).forEach((r) => (off[r.e] ||= []).push(r));
     return (data.people || []).map((p) => ({
-      p, byDay: Object.fromEntries(days.map((d) => [d, dayFor(shifts[p.id]?.[dow(d)], off[p.id] || [], d)])),
+      p, sched: shifts[p.id] || {}, byDay: Object.fromEntries(days.map((d) => [d, dayFor(shifts[p.id]?.[dow(d)], off[p.id] || [], d)])),
     }));
   }, [data, days]);
 
@@ -41,6 +49,22 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
   const byOffice = OFFICES.map((o) => ({ ...o, list: working.filter((r) => r.p.office === o.key) })).filter((o) => o.list.length);
   const verb = dept === 'sales' ? 'selling' : 'working';
   const href = (n) => (n ? `/team?week=${n}` : '/team');
+  const monthHref = (n) => (n ? `/team?span=month&month=${n}` : '/team?span=month');
+  const monthLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${days[0]}T12:00:00Z`));
+
+  // Month calendar: Monday-first weeks, blanks before the 1st; Sunday only if someone works one
+  const monthSunday = isMonth && days.some((d) => dow(d) === 0 && count(d) > 0);
+  const calWeeks = [];
+  if (isMonth) {
+    let row = Array((dow(days[0]) + 6) % 7).fill(null);
+    days.forEach((d) => {
+      row.push(d);
+      if (row.length === 7) { calWeeks.push(row); row = []; }
+    });
+    if (row.length) calWeeks.push([...row, ...Array(7 - row.length).fill(null)]);
+  }
+  // Only people who'd normally work that day (time off on a day they're already off isn't news)
+  const offOn = (d) => shown.filter((r) => r.sched[dow(d)] && (['off', 'part'].includes(r.byDay[d].kind) || r.byDay[d].requested));
 
   return (
     <>
@@ -49,11 +73,19 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
           <p className="rc-kicker">Team schedule</p>
           <h1 className="rc-title">Who’s <em>{verb}</em></h1>
         </div>
+        {isMonth ? (
+          <nav className="rc-step" aria-label="Choose a month">
+            {month > -monthsBack ? <Link className="rc-arrow" href={monthHref(month - 1)} aria-label="Previous month" scroll={false}>‹</Link> : <span className="rc-arrow off">‹</span>}
+            {month === 0 ? <span className="rc-range">This month</span> : <Link className="rc-range" href={monthHref(0)} scroll={false}>{monthLabel}</Link>}
+            {month < monthsAhead ? <Link className="rc-arrow" href={monthHref(month + 1)} aria-label="Next month" scroll={false}>›</Link> : <span className="rc-arrow off">›</span>}
+          </nav>
+        ) : (
         <nav className="rc-step" aria-label="Choose a week">
           {week > -weeksBack ? <Link className="rc-arrow" href={href(week - 1)} aria-label="Previous week" scroll={false}>‹</Link> : <span className="rc-arrow off">‹</span>}
           {week === 0 ? <span className="rc-range">This week</span> : <Link className="rc-range" href="/team" scroll={false}>Week of {shortDate(days[0])}</Link>}
           {week < weeksAhead ? <Link className="rc-arrow" href={href(week + 1)} aria-label="Next week" scroll={false}>›</Link> : <span className="rc-arrow off">›</span>}
         </nav>
+        )}
       </div>
 
       <div className="rc-controls">
@@ -63,10 +95,19 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
               {depts.map((d) => <button key={d} type="button" className={dept === d ? 'on' : ''} onClick={() => setDept(d)}>{DEPT_TITLE[d]}</button>)}
             </div>
           )}
-          <div className="rc-seg" role="group" aria-label="View">
-            <button type="button" className={view === 'day' ? 'on' : ''} onClick={() => setView('day')}>By day</button>
-            <button type="button" className={view === 'week' ? 'on' : ''} onClick={() => setView('week')}>Week</button>
-          </div>
+          {isMonth ? (
+            <div className="rc-seg" role="group" aria-label="View">
+              <Link href="/team" scroll={false}>By day</Link>
+              <Link href="/team" scroll={false}>Week</Link>
+              <Link className="on" href={monthHref(month)} scroll={false}>Month</Link>
+            </div>
+          ) : (
+            <div className="rc-seg" role="group" aria-label="View">
+              <button type="button" className={view === 'day' ? 'on' : ''} onClick={() => setView('day')}>By day</button>
+              <button type="button" className={view === 'week' ? 'on' : ''} onClick={() => setView('week')}>Week</button>
+              <Link href={monthHref(0)} scroll={false}>Month</Link>
+            </div>
+          )}
         </div>
         <select className="rc-office-pick" aria-label="Office" value={office} onChange={(e) => setOffice(e.target.value)}>
           <option value="all">All offices</option>
@@ -74,6 +115,38 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
         </select>
       </div>
 
+      {isMonth && (
+        <section className="ts-month" aria-label={monthLabel}>
+          {month === 0 && <h2>{monthLabel}</h2>}
+          <div className={`ts-cal${monthSunday ? '' : ' no-sun'}`}>
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].slice(0, monthSunday ? 7 : 6).map((n) => <span key={n} className="ts-cal-head">{n}</span>)}
+            {calWeeks.flatMap((wk) => wk.slice(0, monthSunday ? 7 : 6)).map((d, i) => {
+              if (!d) return <span key={`b${i}`} className="ts-cal-blank" />;
+              const w = weeksFrom(today, d);
+              const offs = offOn(d);
+              const inner = (
+                <>
+                  <span className="ts-cal-date">{Number(d.slice(8))}</span>
+                  <span className="ts-cal-count"><strong>{count(d)}</strong> {verb}</span>
+                  {offs.map(({ p, byDay }) => (
+                    <span key={p.id} className={`ts-cal-off ts-cal-${byDay[d].kind === 'off' ? 'full' : byDay[d].kind === 'part' ? 'part' : 'ask'}`}
+                      title={byDay[d].kind === 'off' ? 'Time off' : byDay[d].kind === 'part' ? 'Part day off' : byDay[d].requested}>
+                      {shortName(p)}
+                    </span>
+                  ))}
+                </>
+              );
+              const cls = `ts-cal-day${d === today ? ' today' : ''}${dow(d) === 0 ? ' sun' : ''}`;
+              return w >= -weeksBack && w <= weeksAhead
+                ? <Link key={d} className={cls} href={`/team?${w ? `week=${w}&` : ''}day=${d}`} aria-label={`${DAY_LONG[dow(d)]}, ${shortDate(d)}`}>{inner}</Link>
+                : <div key={d} className={cls}>{inner}</div>;
+            })}
+          </div>
+          <p className="ts-cal-key"><span className="ts-cal-off ts-cal-full">Time off</span><span className="ts-cal-off ts-cal-part">Part day off</span><span className="ts-cal-off ts-cal-ask">Asked, not approved yet</span></p>
+        </section>
+      )}
+
+      {!isMonth && (
       <div className="ts-days" role="group" aria-label="Day">
         {cols.map((d) => (
           <button key={d} type="button" className={`ts-day${view === 'day' && day === d ? ' on' : ''}${d === today ? ' today' : ''}`}
@@ -85,8 +158,9 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
           </button>
         ))}
       </div>
+      )}
 
-      {view === 'day' && (
+      {!isMonth && view === 'day' && (
         <section className="ts-list" aria-label={`${DAY_LONG[dow(day)]}, ${shortDate(day)}`}>
           <h2>{DAY_LONG[dow(day)]}, {shortDate(day)}: {working.length} {verb}</h2>
           {byOffice.length === 0 && <p className="note">Nobody is scheduled.</p>}
@@ -110,7 +184,7 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
         </section>
       )}
 
-      {view === 'week' && (
+      {!isMonth && view === 'week' && (
         <div className="pay-scroll">
           <table className="ops-table ts-week">
             <thead>
@@ -133,7 +207,7 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
           </table>
         </div>
       )}
-      <p className="calc-hint ts-foot">Usual hours from each person’s schedule, minus approved time off. Requests not approved yet are noted.</p>
+      <p className="calc-hint ts-foot">{isMonth ? 'Each day shows how many are scheduled, minus approved time off, and who is off. Tap a day to see everyone.' : 'Usual hours from each person’s schedule, minus approved time off. Requests not approved yet are noted.'}</p>
     </>
   );
 }
