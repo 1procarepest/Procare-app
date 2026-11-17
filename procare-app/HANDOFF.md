@@ -25,13 +25,28 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - **Speed (2026-11-16)**: the team's first morning overloaded Supabase. `competition_board` keeps results 5 minutes (`competition_board_cache`). `rep_cards`, `tech_scorecard`, `sales_leaderboard` and `comp_sales` do the same through `rpc_cache` (change 45); the calculations are `<name>_calc`. Edits to pay plans, tech rules or excluded service types clear the saved copy.
 - Sign-out only signs out the current device. Sign-in ignores a trailing space in the passcode.
 
-- **Manager bonuses, ride-alongs and follow-behinds** (changes 47-49, branch `manager-bonuses`, NOT merged or live yet): see `BONUSES.md` for everything John agreed. `/bonus` progress, `/reports` and the two forms, Settings → Bonuses, tech feedback on the home page (`app/MyFeedback.js`). John wants to review exactly what techs see before it goes live. No photos yet (no Supabase Storage set up); customers have no street address in the app (privacy), so follow-behinds show name + city.
+- **Manager bonuses, ride-alongs and follow-behinds** (changes 47-49, live on `main` since 2026-11-16): see `BONUSES.md` for everything John agreed. `/bonus` progress, `/reports` and the two forms, Settings → Bonuses, tech feedback on the home page (`app/MyFeedback.js`). John wants to review exactly what techs see before it goes live. No photos yet (no Supabase Storage set up); customers have no street address in the app (privacy), so follow-behinds show name + city.
 
 ## Next up (John's list)
 1. ~~Manager bonuses~~: live since 2026-11-16 (changes 47–49). Setup left for Ally: Ryan as report recipient, yearly amounts, Q4 goals, past reports.
 2. Inventory section (with manager bonuses), after the rest works.
 3. Tech bonus payouts on the Technician Performance Card (waiting on bonus amounts and whether to use a driving-score gate; could share the Earnings box and Cash out).
 4. Podium reviews credited to techs; sales pay through Everee (API enabled; token goes straight into Vercel/Supabase secrets, never into chat).
+5. **Wildlife section** (John, 2026-11-17). The wildlife team (today Samuel Scott and Bryan Koons) is split out from regular
+   team members.
+   - **Access:** two new roles, wildlife manager and wildlife team leader. Both see everything a team member sees, plus a
+     Wildlife section. Today both men would be wildlife managers; the two roles matter as the team grows. Likely an extra
+     "wildlife" access marker on the person (department or flag) rather than a whole new department, so they keep their
+     technician pages, scorecard and Samsara setup.
+   - **Wildlife P&L:** revenue and direct costs from QuickBooks, plus the overhead that belongs to the wildlife department.
+     Needs a QuickBooks Online connection (OAuth; tokens go straight into secrets, never into chat). Easiest if wildlife is
+     its own Class or Location in QuickBooks. Overhead split is the tricky part: agree with John how shared costs are
+     divided (e.g. by revenue share, headcount or a fixed %).
+   - **Wildlife inventory:** they keep a separate inventory system; give them a page in the Wildlife section to update it.
+     Plan alongside item 2 (general inventory) so the two share one design.
+   - Wildlife icons already exist in `public/icons/wildlife` (reserved for these pages).
+   - Open questions: how QuickBooks tracks wildlife today (Class, Location, separate accounts?), what the wildlife
+     inventory holds and where it lives now, and who else may see the Wildlife P&L (C-Suite, President, Ally?).
 
 ## Good to know
 - FieldRoutes data syncs into Supabase through the Apps Script "Procare Sync" (`sync/ProcareSync.gs`). It saves the morning route snapshot and, since change 42, a daily copy of each office's numbers (`office_kpi_days`).
