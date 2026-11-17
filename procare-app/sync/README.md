@@ -76,7 +76,8 @@ tables have no read rules yet, so signed-in people can't read them; each app add
    changed. It stops without changing anything if more than 60 creates or 5 deactivations come up at once.
    Past safety events stay unassigned in Samsara; new ones land on the driver.
 10. **Home geofences** (needs the Samsara token's read and write access to Addresses): run `previewHomeGeofences`.
-   Each active tech's home from FieldRoutes (their address, else their route start, else route end address) becomes a Samsara
+   Each active tech's home from FieldRoutes (their address, else their route start, else route end address; linked profiles
+   and profiles with the same email count as theirs) becomes a Samsara
    address "Home - First Last" with a 100 m circle, tagged **Tech homes**. The log shows city and ZIP only.
    The token can't create tags: make a tag named **Tech homes** once in Samsara (Settings → Tags), and the next run
    tags every home geofence (TAG lines).

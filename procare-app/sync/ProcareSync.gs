@@ -1166,7 +1166,7 @@ function turnOffSamsaraDrivers() {
 }
 
 /* ---------- Home geofences for techs (2026-11-16) ----------
- * Each active tech's home (from their FieldRoutes employee record) becomes a Samsara address with a
+ * Each active tech's home (from their FieldRoutes employee record, or a linked profile) becomes a Samsara address with a
  * circle geofence, tagged "Tech homes". Managers set Samsara alerts on that tag: a truck leaving home
  * in the morning, and a truck not home overnight (sleeping in the truck, staying elsewhere, or moved
  * without telling us). Runs after the 7 AM and 1 PM driver step while HOME_GEOFENCES is on.
@@ -1187,6 +1187,23 @@ function ssManageHomes_(apply) {
   const fr = frFetch_(SYNC.OFFICES[0], 'employee', { active: { operator: 'IN', value: [0, 1] } });
   const frById = {};
   fr.forEach(e => { frById[String(e.employeeID)] = e; });
+  // One person can have several linked FieldRoutes profiles (and the address may be on only one):
+  // group them by linked IDs and by email, like the team sync does
+  const parent = {};
+  const find = x => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+  const join = (a, b) => { [a, b].forEach(x => { if (parent[x] === undefined) parent[x] = x; }); parent[find(a)] = find(b); };
+  const byEmail = {};
+  fr.forEach(e => {
+    const id = String(e.employeeID);
+    join(id, id);
+    (idList_(e.linkedEmployeeIDs) || []).forEach(l => join(id, String(l)));
+    const m = String(e.email || '').trim().toLowerCase();
+    if (m) { if (byEmail[m]) join(id, byEmail[m]); else byEmail[m] = id; }
+  });
+  const profiles = (ids) => {
+    const roots = ids.filter(id => parent[id] !== undefined).map(find);
+    return Object.keys(parent).filter(id => roots.indexOf(find(id)) >= 0);
+  };
 
   // Samsara addresses this sync made (they carry procareHome = the tech's FieldRoutes ID)
   const homes = [];
@@ -1211,7 +1228,8 @@ function ssManageHomes_(apply) {
     ? n.toLowerCase().replace(/(^|[\s'-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : n;
   techs.slice().sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0)).forEach(t => {
     const name = nice(clean(t.first_name + ' ' + t.last_name));
-    const frIds = Object.keys(t.fr_ids || {}).map(k => String(t.fr_ids[k]));
+    const own = Object.keys(t.fr_ids || {}).map(k => String(t.fr_ids[k]));
+    const frIds = own.concat(profiles(own).filter(id => own.indexOf(id) < 0));   // their own profiles first, then linked ones
     const mine = homes.filter(h => frIds.indexOf(h.frId) >= 0);
     if (!t.active) {
       mine.forEach(h => { if (!h.claimed) plan.remove.push({ h: h, why: 'deactivated in the app' }); });
