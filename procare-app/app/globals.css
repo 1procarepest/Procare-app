@@ -1173,7 +1173,10 @@ label.cp-person:has(input[type=checkbox]) { justify-content: flex-start; }
 
 /* ---------- Brand sprinkle: Compete and Pay ---------- */
 /* page header on the bug pattern with a big faint bug */
-.brand-head { position: relative; overflow: hidden; background: var(--sage) url(/patterns/bugs-light.svg) repeat; background-size: 600px 200px; border-radius: 22px; padding: 22px 24px; }
+.brand-head { position: relative; overflow: hidden; background: var(--sage); border-radius: 22px; padding: 22px 24px; }
+/* the pattern fades out in the top-right corner so the small bugs don't show through the big one */
+.brand-head::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: url(/patterns/bugs-light.svg) repeat; background-size: 600px 200px;
+  -webkit-mask-image: radial-gradient(circle at calc(100% - 50px) 45px, transparent 120px, #000 175px); mask-image: radial-gradient(circle at calc(100% - 50px) 45px, transparent 120px, #000 175px); }
 .brand-head > :not(.brand-head-bug) { position: relative; }
 .brand-head-bug { position: absolute; right: -22px; top: -30px; color: var(--forest); opacity: 0.12; transform: rotate(18deg); pointer-events: none; }
 .brand-head .rc-title em { color: var(--forest); }
@@ -1468,7 +1471,8 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 
 /* ---------- Brand pass on reports and bonuses (John, 2026-11-16) ---------- */
 /* Dark patterned header: ink with the lime bug pattern */
-.brand-head.brand-hero { background: var(--ink) url(/patterns/bugs-dark.svg) repeat; background-size: 600px 200px; color: var(--white); padding: 26px 26px 24px; box-shadow: 0 8px 22px rgba(6, 47, 53, 0.18); }
+.brand-head.brand-hero { background: var(--ink); color: var(--white); padding: 26px 26px 24px; box-shadow: 0 8px 22px rgba(6, 47, 53, 0.18); }
+.brand-hero::before { background-image: url(/patterns/bugs-dark.svg); }
 .brand-hero .brand-head-bug { color: var(--lime); opacity: 0.14; }
 .brand-hero .rc-kicker, .brand-hero .rc-kicker a { color: var(--lime); }
 .brand-hero .rc-title { color: var(--white); }
