@@ -1183,8 +1183,8 @@ const HOME = { tag: 'Tech homes', radiusMeters: 100, limits: { create: 60, remov
 function ssManageHomes_(apply) {
   const clean = x => String(x || '').replace(/\s+/g, ' ').trim();
 
-  // FieldRoutes employees (every office key sees every employee), with their address
-  const fr = frFetch_(SYNC.OFFICES[0], 'employee', { active: { operator: 'IN', value: [0, 1] } });
+  // FieldRoutes employees from every office, with their address
+  const fr = ssAllEmployees_();
   const frById = {};
   fr.forEach(e => { frById[String(e.employeeID)] = e; });
   // One person can have several linked FieldRoutes profiles (and the address may be on only one):
@@ -1299,6 +1299,21 @@ function ssManageHomes_(apply) {
 }
 
 /**
+ * Every FieldRoutes employee profile, read with each office's key and merged. One key doesn't see
+ * every office's profiles, so reading only East missed West and South techs.
+ */
+function ssAllEmployees_() {
+  const byId = {};
+  SYNC.OFFICES.forEach(o => {
+    frFetch_(o, 'employee', { active: { operator: 'IN', value: [0, 1] } }).forEach(e => {
+      const id = String(e.employeeID);
+      if (!byId[id] || (!ssHomeOf_(byId[id]) && ssHomeOf_(e))) byId[id] = e;
+    });
+  });
+  return Object.keys(byId).map(k => byId[k]);
+}
+
+/**
  * A tech's home from a FieldRoutes employee record: their address, else their route start address,
  * else their route end address. (FieldRoutes employees usually only have route start/end.)
  * key is a short fingerprint of the address, so a change is noticed without storing the address.
@@ -1339,7 +1354,7 @@ function ssFindTag_(name) {
  * Read-only.
  */
 function inspectHomeAddresses() {
-  const fr = frFetch_(SYNC.OFFICES[0], 'employee', { active: { operator: 'IN', value: [0, 1] } });
+  const fr = ssAllEmployees_();
   const norm = x => String(x || '').toLowerCase().replace(/[^a-z]/g, '');
   const techs = supaGetAll_('employees?select=id,first_name,last_name,email,fr_ids&department=eq.technician&active=is.true');
   let shown = 0;
