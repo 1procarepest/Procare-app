@@ -28,7 +28,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - **Manager bonuses, ride-alongs and follow-behinds** (changes 47-49, branch `manager-bonuses`, NOT merged or live yet): see `BONUSES.md` for everything John agreed. `/bonus` progress, `/reports` and the two forms, Settings → Bonuses, tech feedback on the home page (`app/MyFeedback.js`). John wants to review exactly what techs see before it goes live. No photos yet (no Supabase Storage set up); customers have no street address in the app (privacy), so follow-behinds show name + city.
 
 ## Next up (John's list)
-1. Finish and launch manager bonuses (above): run change 47, test on the Vercel preview, review tech feedback with John, merge.
+1. ~~Manager bonuses~~: live since 2026-11-16 (changes 47–49). Setup left for Ally: Ryan as report recipient, yearly amounts, Q4 goals, past reports.
 2. Inventory section (with manager bonuses), after the rest works.
 3. Tech bonus payouts on the Technician Performance Card (waiting on bonus amounts and whether to use a driving-score gate; could share the Earnings box and Cash out).
 4. Podium reviews credited to techs; sales pay through Everee (API enabled; token goes straight into Vercel/Supabase secrets, never into chat).
@@ -36,4 +36,8 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 ## Good to know
 - FieldRoutes data syncs into Supabase through the Apps Script "Procare Sync" (`sync/ProcareSync.gs`). It saves the morning route snapshot and, since change 42, a daily copy of each office's numbers (`office_kpi_days`).
 - appointment.employeeID is who BOOKED the job, never the tech. A person's FieldRoutes IDs come from `tech_fr_ids()`.
+- Samsara automation (2026-11-16, in Procare Sync, see `sync/README.md` steps 9–10): each active tech gets a Samsara driver
+  pinned to their truck with their FieldRoutes photo, and a "Home - Name" geofence (tag Tech Homes) from their FieldRoutes
+  route start address; kept in step at 7 AM and 1 PM. Managers' alerts on the Tech Homes tag (left home, not home overnight)
+  are set up in Samsara. John deploys sync changes by pasting the whole file into the Apps Script project.
 - To debug load problems, check Supabase logs (edge_logs 500s, postgres_logs "statement timeout").
