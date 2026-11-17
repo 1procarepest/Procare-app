@@ -68,6 +68,8 @@ tables have no read rules yet, so signed-in people can't read them; each app add
    - REACTIVATE: their Samsara driver was deactivated (a rehire).
    - MOVE TRUCK: their driver is pinned to a different truck than the app has for them.
    - DEACTIVATE: the tech was deactivated in the app.
+   - PHOTO: their driver has no photo in Samsara, so it gets the app's (FieldRoutes) photo. New drivers get it when created.
+     A photo already in Samsara is never replaced. If Samsara won't take a photo, the run lists it and carries on.
    - SKIP: no truck name starts with their name. Rename the truck in Samsara (e.g. "First Last - 214") or set it on their record.
    If it looks right, run `turnOnSamsaraDrivers`: it makes those changes, then repeats at 7 AM and 1 PM.
    The first run is the backfill. `turnOffSamsaraDrivers` stops it. Only technicians' drivers are ever

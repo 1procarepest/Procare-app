@@ -927,6 +927,8 @@ function ssDrivers_() {
  *   - REACTIVATE: same, but a deactivated driver with their name exists (a rehire).
  *   - MOVE TRUCK: their driver's pinned truck isn't the truck the app has for them.
  *   - DEACTIVATE: the tech is deactivated in the app and their driver is still active.
+ *   - PHOTO: their driver has no photo in Samsara and the app has one (from FieldRoutes). A photo
+ *     already in Samsara is never replaced. New drivers get the photo when they're created.
  * Only drivers tied to a technician are ever changed; office staff and managers are left alone.
  * New drivers get a random password nobody knows (pinning a truck needs no login); a manager can
  * reset it in Samsara if a tech ever needs the Samsara Driver app.
@@ -946,7 +948,7 @@ function ssManageDrivers_(apply) {
       const r = ssGet_('/fleet/drivers', { driverActivationStatus: status, limit: 512, after: after });
       (r.data || []).forEach(d => drivers.push({
         id: String(d.id), name: clean(d.name), username: String(d.username || '').toLowerCase(),
-        externalIds: d.externalIds || {}, active: status === 'active',
+        externalIds: d.externalIds || {}, active: status === 'active', hasPhoto: !!d.profileImageUrl,
         vehicleId: d.staticAssignedVehicle && d.staticAssignedVehicle.id ? String(d.staticAssignedVehicle.id) : null
       }));
       after = r.pagination && r.pagination.hasNextPage ? r.pagination.endCursor : '';
@@ -957,11 +959,11 @@ function ssManageDrivers_(apply) {
   const usernames = {};
   drivers.forEach(d => { if (d.username) usernames[d.username] = true; });
 
-  const techs = supaGetAll_('employees?select=id,email,first_name,last_name,phone,active,fr_ids,samsara_driver_id&department=eq.technician');
+  const techs = supaGetAll_('employees?select=id,email,first_name,last_name,phone,photo_url,active,fr_ids,samsara_driver_id&department=eq.technician');
   const links = {};
   supaGetAll_('tech_vehicles?select=employee_id,vehicle_id,vehicle_name,driver_id').forEach(r => { links[r.employee_id] = r; });
 
-  const plan = { create: [], reactivate: [], move: [], deactivate: [], skip: [] };
+  const plan = { create: [], reactivate: [], move: [], deactivate: [], photo: [], skip: [] };
   techs.forEach(t => {
     const name = clean(t.first_name + ' ' + t.last_name);
     const tv = links[t.id] || {};
@@ -981,6 +983,7 @@ function ssManageDrivers_(apply) {
       return;
     }
     if (linked) {
+      if (!linked.hasPhoto && ssPhotoUrl_(t.photo_url)) plan.photo.push({ t: t, name: name, d: linked });
       if (tv.vehicle_id && linked.vehicleId !== String(tv.vehicle_id)) plan.move.push({ t: t, name: name, d: linked, tv: tv });
       return;
     }
@@ -995,6 +998,7 @@ function ssManageDrivers_(apply) {
   plan.reactivate.forEach(x => lines.push('REACTIVATE ' + x.d.name + ' → ' + x.tv.vehicle_name + ' (their Samsara driver is deactivated)'));
   plan.move.forEach(x => lines.push('MOVE TRUCK ' + x.d.name + ': ' + ((byVehicleName_(x.d.vehicleId)) || 'no truck') + ' → ' + x.tv.vehicle_name));
   plan.deactivate.forEach(x => lines.push('DEACTIVATE ' + x.d.name + ' (deactivated in the app)'));
+  plan.photo.forEach(x => lines.push('PHOTO ' + x.d.name + ' (their photo from the app)'));
   plan.skip.forEach(s => lines.push('SKIP ' + s));
 
   // Safety: a bad pull shouldn't flood or empty Samsara
@@ -1034,8 +1038,23 @@ function ssManageDrivers_(apply) {
       done.push('Deactivated ' + x.d.name);
     } catch (e) { failed.push('Could not deactivate ' + x.d.name + ': ' + e.message); }
   });
+  // A photo Samsara won't take isn't worth failing the run over; it's listed instead
+  const photoNotes = [];
+  plan.photo.forEach(x => {
+    try {
+      ssSend_('patch', '/fleet/drivers/' + x.d.id, { profileImageUrl: ssPhotoUrl_(x.t.photo_url) });
+      done.push('Added photo for ' + x.d.name);
+    } catch (e) { photoNotes.push('PHOTO NOT ADDED ' + x.d.name + ': ' + e.message); }
+  });
   if (failed.length) throw new Error(failed.join(' | ') + (done.length ? ' (also done: ' + done.join('; ') + ')' : ''));
-  return done.concat(plan.skip.map(s => 'SKIP ' + s));
+  return done.concat(photoNotes, plan.skip.map(s => 'SKIP ' + s));
+}
+
+/** A full image link from employees.photo_url (a link, or a FieldRoutes file name), or null. Matches lib/photo.js. */
+function ssPhotoUrl_(v) {
+  const s = String(v || '').trim();
+  if (!s) return null;
+  return /^https?:\/\//i.test(s) ? s : SYNC.PHOTO_BASE + encodeURIComponent(s);
 }
 
 /** Truck name for a Samsara vehicle ID, from the copy the sync keeps (for the preview text). */
@@ -1046,9 +1065,9 @@ function byVehicleName_(vehicleId) {
 }
 
 /**
- * Creates one driver pinned to the tech's truck. Username = the part of their email before the @
- * (made unique if taken). If Samsara refuses the FieldRoutes external ID, tries again without it
- * (the sync then links the driver by exact name).
+ * Creates one driver pinned to the tech's truck, with their photo when the app has one. Username = the
+ * part of their email before the @ (made unique if taken). If Samsara refuses the FieldRoutes external
+ * ID, tries again without it (the sync then links the driver by exact name).
  */
 function ssCreateDriver_(x, usernames) {
   const local = String(x.t.email || '').split('@')[0].toLowerCase().replace(/[^a-z0-9._-]/g, '') || norm2_(x.name);
@@ -1065,13 +1084,16 @@ function ssCreateDriver_(x, usernames) {
   };
   if (digits.length === 10) body.phone = digits;
   if (x.frIds.length) body.externalIds = { fieldroutesId: x.frIds[0] };
+  const photo = ssPhotoUrl_(x.t.photo_url);
+  if (photo) body.profileImageUrl = photo;
+  // If Samsara refuses the external ID or the photo, drop that part and try again
   let r;
-  try {
-    r = ssSend_('post', '/fleet/drivers', body);
-  } catch (e) {
-    if (!body.externalIds || !/external/i.test(e.message)) throw e;
-    delete body.externalIds;
-    r = ssSend_('post', '/fleet/drivers', body);
+  for (let attempt = 1; ; attempt++) {
+    try { r = ssSend_('post', '/fleet/drivers', body); break; } catch (e) {
+      if (attempt < 3 && body.externalIds && /external/i.test(e.message)) { delete body.externalIds; continue; }
+      if (attempt < 3 && body.profileImageUrl && /image|photo|profile/i.test(e.message)) { delete body.profileImageUrl; continue; }
+      throw e;
+    }
   }
   const d = r && r.data ? r.data : r;
   if (!d || !d.id) throw new Error('Samsara did not return the new driver');
