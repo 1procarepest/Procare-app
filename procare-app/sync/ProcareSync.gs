@@ -1056,8 +1056,11 @@ function ssCreateDriver_(x, usernames) {
   for (let n = 2; usernames[username]; n++) username = local + n;
   usernames[username] = true;
   const digits = String(x.t.phone || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
+  // "oscar ayala" or "ROBERT KING" in the app → "Oscar Ayala" in Samsara; mixed case is kept as typed
+  const name = x.name === x.name.toLowerCase() || x.name === x.name.toUpperCase()
+    ? x.name.toLowerCase().replace(/(^|[\s'-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : x.name;
   const body = {
-    name: x.name, username: username, password: Utilities.getUuid().replace(/-/g, '') + 'Aa1!',
+    name: name, username: username, password: Utilities.getUuid().replace(/-/g, '') + 'Aa1!',
     staticAssignedVehicleId: String(x.tv.vehicle_id), timezone: 'America/New_York'
   };
   if (digits.length === 10) body.phone = digits;
@@ -1072,7 +1075,7 @@ function ssCreateDriver_(x, usernames) {
   }
   const d = r && r.data ? r.data : r;
   if (!d || !d.id) throw new Error('Samsara did not return the new driver');
-  return { id: String(d.id), name: x.name, username: username };
+  return { id: String(d.id), name: name, username: username };
 }
 function norm2_(name) { return String(name || '').toLowerCase().replace(/[^a-z]/g, '') || 'tech'; }
 
