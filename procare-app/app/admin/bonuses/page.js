@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { todayYmd } from '@/lib/repcards';
-import { autoStart, officeNumbers, quarterName, quarterOf, quarterRange } from '@/lib/bonus';
+import { autoStart, officeNumbers, pastValue, quarterName, quarterOf, quarterRange } from '@/lib/bonus';
 import { loadQuarter } from '@/lib/bonusData';
 import BonusAdmin from './BonusAdmin';
 
@@ -42,7 +42,17 @@ export default async function BonusesPage({ searchParams }) {
   // Starting numbers the app would record, per office (and company-wide), for the goal editor's hints
   const p = at.quarter === 1 ? { year: at.year - 1, quarter: 4 } : { year: at.year, quarter: at.quarter - 1 };
   const pr = quarterRange(p.year, p.quarter);
-  const { data: prevNums } = await supabase.rpc('bonus_numbers', { p_from: pr.from, p_to: pr.to });
+  const ly = quarterRange(at.year - 1, at.quarter);
+  const [{ data: prevNums }, { data: lyNums }] = await Promise.all([
+    supabase.rpc('bonus_numbers', { p_from: pr.from, p_to: pr.to }),
+    supabase.rpc('bonus_numbers', { p_from: ly.from, p_to: ly.to }),
+  ]);
+  // Last quarter and the same quarter last year, per office, to help set goals
+  const history = { prevName: quarterName(p.year, p.quarter), lyName: quarterName(at.year - 1, at.quarter) };
+  [null, 'east', 'west', 'south'].forEach((office) => {
+    history[office || 'all'] = Object.fromEntries(['tech_sales', 'office_sales', 'marketing_sales', 'cancel', 'autopay', 'ar_past', 'pool']
+      .map((k) => [k, { prev: pastValue(k, prevNums, office, pr), ly: pastValue(k, lyNums, office, ly) }]));
+  });
   const starts = {};
   [null, 'east', 'west', 'south'].forEach((office) => {
     const o = officeNumbers(data.nums, office);
@@ -75,7 +85,7 @@ export default async function BonusesPage({ searchParams }) {
       <BonusAdmin
         tab={tab} me={me} today={today} year={at.year} quarter={at.quarter} range={quarterRange(at.year, at.quarter)}
         sets={data.sets} settings={data.settings} sources={[...(data.nums?.sources || []), ...(prevNums?.sources || [])]}
-        people={people || []} plans={plans || []} pending={pending || []} starts={starts} techCount={techCount}
+        people={people || []} plans={plans || []} pending={pending || []} starts={starts} techCount={techCount} history={history}
       />
     </>
   );

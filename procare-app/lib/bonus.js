@@ -71,6 +71,31 @@ export function autoStart(kind, o, prev) {
   return null;
 }
 
+/**
+ * What a goal's number was over a past quarter (for setting goals: last quarter, and the same quarter last year).
+ * null when the app doesn't have it: sales history comes from FieldRoutes, but auto-pay, AR and the job pool are only
+ * known from the daily office copies, which started 2026-11-15. A cancellation rate before then is approximate
+ * (today's customer count), flagged with approx.
+ */
+export function pastValue(kind, nums, office, range) {
+  if (!nums || !range) return null;
+  const o = officeNumbers(nums, office);
+  const all = officeNumbers(nums, null);
+  const hasSales = Number(all.sales || 0) > 0;
+  const endOk = nums.end_day && nums.end_day > range.to && nums.end_day <= plusDays(range.to, 3);
+  const startOk = nums.start_day && nums.start_day <= plusDays(range.from, 3);
+  switch (kind) {
+    case 'tech_sales': return hasSales ? { v: o.tech_sales } : null;
+    case 'office_sales': return hasSales ? { v: o.sales } : null;
+    case 'marketing_sales': return hasSales ? { v: o.marketing } : null;
+    case 'cancel': return hasSales && (o.accounts_start || o.accounts) ? { v: pct(o.cancels, o.accounts_start || o.accounts), approx: !startOk } : null;
+    case 'autopay': return endOk ? { v: pct(o.ap_valid, o.accounts) } : null;
+    case 'ar_past': return endOk ? { v: o.ar_past } : null;
+    case 'pool': return endOk ? { v: pct(o.pool_past, o.accounts) } : null;
+    default: return null;
+  }
+}
+
 /** Where a goal stands right now. ctx: { o, prev, entries (approved, this goal), reportCount }. */
 export function actualOf(goal, ctx) {
   const { o } = ctx;

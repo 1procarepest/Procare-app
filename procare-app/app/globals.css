@@ -1534,3 +1534,8 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .rf-past-wrap { margin: 0 0 14px; }
 .rf-past { display: grid; gap: 12px; background: var(--white); border: 1px solid var(--line); border-radius: 20px; padding: 16px 18px; }
 .rf-past-log { list-style: none; margin: 0; padding: 0; color: var(--forest); font-size: 14px; font-weight: 500; }
+.bn-past { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0; font-size: 13px; }
+.bn-past small { color: var(--muted); }
+.bn-past-btn { font: inherit; font-size: 13px; color: var(--ink); background: var(--white); border: 1px solid var(--line); border-radius: 99px; padding: 4px 12px; cursor: pointer; }
+.bn-past-btn:hover { border-color: var(--forest); background: var(--sage); }
+.bn-past-none { color: var(--muted); font-size: 13px; padding: 4px 4px; }

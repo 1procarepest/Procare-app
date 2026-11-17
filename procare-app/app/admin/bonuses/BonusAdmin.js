@@ -51,7 +51,7 @@ function Amounts({ people, plans, year, sb, router }) {
 // ---------- Goal set editor ----------
 const blankGoal = (kind = 'tech_sales') => ({ kind, label: KINDS[kind].label, target: '', start_value: '', weight: 20, due_date: '' });
 
-function SetEditor({ initial, people, starts, techCount, onSave, onCancel, busy }) {
+function SetEditor({ initial, people, starts, techCount, history = {}, onSave, onCancel, busy }) {
   const [d, setD] = useState(initial);
   const leaders = people.filter((p) => (RANK[p.level] || 0) >= 2);
   const leaderOf = (n) => leaders.find((p) => fullName(p) === String(n || '').trim());
@@ -137,6 +137,15 @@ function SetEditor({ initial, people, starts, techCount, onSave, onCancel, busy 
                   </label>
                   <button type="button" className="cp-x" aria-label="Remove goal" onClick={() => set({ goals: d.goals.filter((_, j) => j !== i) })}>×</button>
                 </div>
+                {(() => {
+                  const h = (history[d.office || 'all'] || {})[g.kind];
+                  if (!h) return null;
+                  const one = (name, x) => (x && x.v !== null && x.v !== undefined
+                    ? <button type="button" className="bn-past-btn" title="Use as the goal" onClick={() => setGoal(i, { target: String(k.unit === '%' ? Math.round(x.v * 10) / 10 : Math.round(x.v)) })}>
+                        {name}: <b>{x.approx ? '≈ ' : ''}{fmt(g.kind, x.v)}</b></button>
+                    : <span className="bn-past-none">{name}: not in the app</span>);
+                  return <p className="bn-past">{one(history.prevName, h.prev)}{one(history.lyName, h.ly)}<small>Tap a number to use it as the goal.</small></p>;
+                })()}
                 <p className="calc-hint">{k.hint}{k.type === 'improve' ? ' Leave the starting number blank to record it automatically on day 1.' : ''}
                   {g.kind === 'reports' && techs > 0 && <> <button type="button" className="link" onClick={() => setGoal(i, { target: String(techs * 4) })}>Use {techs} techs × 4 = {techs * 4}</button></>}
                 </p>
@@ -159,7 +168,7 @@ function SetEditor({ initial, people, starts, techCount, onSave, onCancel, busy 
   );
 }
 
-function Goals({ sets, people, year, quarter, range, today, starts, techCount, sb, router }) {
+function Goals({ sets, people, year, quarter, range, today, starts, techCount, history, sb, router }) {
   const [editing, setEditing] = useState(null);   // a draft, or null
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
@@ -255,7 +264,7 @@ function Goals({ sets, people, year, quarter, range, today, starts, techCount, s
       <section className="rc-panel"><div className="rc-panel-body rf-sec">
         <h2>{editing.id ? `Edit ${editing.name}` : `New goals for ${quarterName(year, quarter)}`}</h2>
         {msg && <p className={msg.startsWith('Still') || msg.startsWith('Couldn') ? 'error' : 'ok'} role="alert">{msg}</p>}
-        <SetEditor initial={editing} people={people} starts={starts} techCount={techCount} busy={busy} onSave={save} onCancel={() => { setEditing(null); setMsg(''); }} />
+        <SetEditor initial={editing} people={people} starts={starts} techCount={techCount} history={history} busy={busy} onSave={save} onCancel={() => { setEditing(null); setMsg(''); }} />
       </div></section>
     );
   }
@@ -462,5 +471,5 @@ export default function BonusAdmin(props) {
   if (props.tab === 'approve') return <Approve {...common} pending={props.pending} sets={props.sets} range={props.range} today={props.today} />;
   if (props.tab === 'settings') return <SettingsTab {...common} settings={props.settings} sources={props.sources} people={props.people} />;
   return <Goals {...common} sets={props.sets} people={props.people} year={props.year} quarter={props.quarter} range={props.range}
-    today={props.today} starts={props.starts} techCount={props.techCount} />;
+    today={props.today} starts={props.starts} techCount={props.techCount} history={props.history} />;
 }
