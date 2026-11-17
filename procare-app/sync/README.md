@@ -61,6 +61,18 @@ tables have no read rules yet, so signed-in people can't read them; each app add
    full name, or by the driver ID on their person record (that one always wins). Once linked, the tech's
    score is their driver score (`tech_safety_scores`), which follows them across trucks. Techs with no
    driver yet keep their truck's score. `supabase/checks/samsara-drivers.sql` shows who is on which.
+9. **Create Samsara drivers automatically** (needs the Samsara token's write access to Drivers): run
+   `previewSamsaraDrivers`. It lists every change and makes none in Samsara:
+   - CREATE: an active tech with a truck but no Samsara driver gets one, pinned to their truck
+     (username = their email before the @; a random password nobody knows; their FieldRoutes ID saved on the driver).
+   - REACTIVATE: their Samsara driver was deactivated (a rehire).
+   - MOVE TRUCK: their driver is pinned to a different truck than the app has for them.
+   - DEACTIVATE: the tech was deactivated in the app.
+   - SKIP: no truck name starts with their name. Rename the truck in Samsara (e.g. "First Last - 214") or set it on their record.
+   If it looks right, run `turnOnSamsaraDrivers`: it makes those changes, then repeats at 7 AM and 1 PM.
+   The first run is the backfill. `turnOffSamsaraDrivers` stops it. Only technicians' drivers are ever
+   changed. It stops without changing anything if more than 60 creates or 5 deactivations come up at once.
+   Past safety events stay unassigned in Samsara; new ones land on the driver.
 
 ## Team list (new hires and people who leave)
 

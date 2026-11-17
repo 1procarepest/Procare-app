@@ -12,7 +12,8 @@
  *   SOUTH_KEY SOUTH_TOKEN
  *   SUPABASE_URL         https://<project>.supabase.co
  *   SUPABASE_SECRET_KEY  Supabase secret key (Project Settings → API Keys)
- *   SAMSARA_TOKEN        Samsara API token (read: Safety + Vehicles). Optional; without it Samsara is skipped.
+ *   SAMSARA_TOKEN        Samsara API token (read: Safety + Vehicles; write: Drivers, for turnOnSamsaraDrivers).
+ *                        Optional; without it Samsara is skipped.
  *
  * First time (see sync/README.md):
  *   1. testConnections   checks every key, FieldRoutes and Supabase
@@ -818,7 +819,11 @@ function runSamsaraBackfill() {
 
 function runSamsaraStep_(s) {
   if (!ssToken_()) throw new Error('SAMSARA_TOKEN is not set');
-  if (s.job === 'ss:vehicles') { ssVehicles_(); return ssDrivers_(); }
+  if (s.job === 'ss:vehicles') {
+    ssVehicles_(); ssDrivers_();
+    if (PROPS.getProperty('SAMSARA_DRIVERS') === 'on') ssManageDrivers_(true);
+    return;
+  }
   if (s.job === 'ss:events:recent') {
     const now = Date.now();
     return ssEvents_(now - 3 * 86400000, now);
@@ -912,6 +917,204 @@ function ssDrivers_() {
     rows.push({ employee_id: t.id, driver_id: d ? d.driver_id : null, driver_name: d ? d.name : null, driver_set_by: 'auto' });
   });
   supaUpsert_('tech_vehicles', rows, ['employee_id']);
+}
+
+/* ---------- Samsara drivers kept in step with the app (2026-11-16) ----------
+ * Every active tech with a truck gets a Samsara driver pinned to that truck, so safety events
+ * land on the person instead of the truck. Runs after the 7 AM and 1 PM truck/driver refresh
+ * while SAMSARA_DRIVERS is on (turnOnSamsaraDrivers). previewSamsaraDrivers shows the list first.
+ *   - CREATE: active tech, truck found, no Samsara driver with their FieldRoutes ID or name.
+ *   - REACTIVATE: same, but a deactivated driver with their name exists (a rehire).
+ *   - MOVE TRUCK: their driver's pinned truck isn't the truck the app has for them.
+ *   - DEACTIVATE: the tech is deactivated in the app and their driver is still active.
+ * Only drivers tied to a technician are ever changed; office staff and managers are left alone.
+ * New drivers get a random password nobody knows (pinning a truck needs no login); a manager can
+ * reset it in Samsara if a tech ever needs the Samsara Driver app.
+ */
+const SS_DRIVER_LIMITS = { create: 60, deactivate: 5 };
+
+/** Works out the driver changes; makes them in Samsara when apply is true. Returns lines of text. */
+function ssManageDrivers_(apply) {
+  const norm = x => String(x || '').toLowerCase().replace(/[^a-z]/g, '');
+  const clean = x => String(x || '').replace(/\s+/g, ' ').trim();
+
+  // Samsara's drivers as they are right now (with the truck each is pinned to)
+  const drivers = [];
+  ['active', 'deactivated'].forEach(status => {
+    let after = '';
+    do {
+      const r = ssGet_('/fleet/drivers', { driverActivationStatus: status, limit: 512, after: after });
+      (r.data || []).forEach(d => drivers.push({
+        id: String(d.id), name: clean(d.name), username: String(d.username || '').toLowerCase(),
+        externalIds: d.externalIds || {}, active: status === 'active',
+        vehicleId: d.staticAssignedVehicle && d.staticAssignedVehicle.id ? String(d.staticAssignedVehicle.id) : null
+      }));
+      after = r.pagination && r.pagination.hasNextPage ? r.pagination.endCursor : '';
+    } while (after);
+  });
+  const byId = {};
+  drivers.forEach(d => { byId[d.id] = d; });
+  const usernames = {};
+  drivers.forEach(d => { if (d.username) usernames[d.username] = true; });
+
+  const techs = supaGetAll_('employees?select=id,email,first_name,last_name,phone,active,fr_ids,samsara_driver_id&department=eq.technician');
+  const links = {};
+  supaGetAll_('tech_vehicles?select=employee_id,vehicle_id,vehicle_name,driver_id').forEach(r => { links[r.employee_id] = r; });
+
+  const plan = { create: [], reactivate: [], move: [], deactivate: [], skip: [] };
+  techs.forEach(t => {
+    const name = clean(t.first_name + ' ' + t.last_name);
+    const tv = links[t.id] || {};
+    const frIds = Object.keys(t.fr_ids || {}).map(k => String(t.fr_ids[k]));
+    const mine = d => Object.keys(d.externalIds).some(k => frIds.indexOf(String(d.externalIds[k]).trim()) >= 0);
+    // Their driver: set by hand, else the sync's link, else their FieldRoutes ID, else their exact name
+    const linked = byId[String(t.samsara_driver_id || '').trim()] || byId[tv.driver_id || ''] ||
+      drivers.find(d => d.active && mine(d)) || drivers.find(d => d.active && norm(d.name) === norm(name)) || null;
+
+    if (!t.active) {
+      if (linked && linked.active) plan.deactivate.push({ t: t, name: name, d: linked });
+      return;
+    }
+    if (linked && !linked.active) {
+      if (tv.vehicle_id) plan.reactivate.push({ t: t, name: name, d: linked, tv: tv });
+      else plan.skip.push(name + ': their Samsara driver is deactivated and no truck name starts with "' + name + '"');
+      return;
+    }
+    if (linked) {
+      if (tv.vehicle_id && linked.vehicleId !== String(tv.vehicle_id)) plan.move.push({ t: t, name: name, d: linked, tv: tv });
+      return;
+    }
+    if (!tv.vehicle_id) { plan.skip.push(name + ': no Samsara truck name starts with "' + name + '"'); return; }
+    const old = drivers.find(d => !d.active && (mine(d) || norm(d.name) === norm(name)));
+    if (old) { plan.reactivate.push({ t: t, name: name, d: old, tv: tv }); return; }
+    plan.create.push({ t: t, name: name, tv: tv, frIds: frIds });
+  });
+
+  const lines = [];
+  plan.create.forEach(x => lines.push('CREATE ' + x.name + ' → ' + x.tv.vehicle_name));
+  plan.reactivate.forEach(x => lines.push('REACTIVATE ' + x.d.name + ' → ' + x.tv.vehicle_name + ' (their Samsara driver is deactivated)'));
+  plan.move.forEach(x => lines.push('MOVE TRUCK ' + x.d.name + ': ' + ((byVehicleName_(x.d.vehicleId)) || 'no truck') + ' → ' + x.tv.vehicle_name));
+  plan.deactivate.forEach(x => lines.push('DEACTIVATE ' + x.d.name + ' (deactivated in the app)'));
+  plan.skip.forEach(s => lines.push('SKIP ' + s));
+
+  // Safety: a bad pull shouldn't flood or empty Samsara
+  if (plan.create.length > SS_DRIVER_LIMITS.create) {
+    throw new Error('Samsara drivers: ' + plan.create.length + ' would be created at once, so nothing was changed. Run previewSamsaraDrivers.');
+  }
+  if (plan.deactivate.length > SS_DRIVER_LIMITS.deactivate) {
+    throw new Error('Samsara drivers: ' + plan.deactivate.length + ' would be deactivated at once, so nothing was changed. Run previewSamsaraDrivers.');
+  }
+  if (!apply) return lines;
+
+  const done = [], failed = [];
+  const link = (t, d) => supaUpsert_('tech_vehicles', [{ employee_id: t.id, driver_id: d.id, driver_name: d.name, driver_set_by: 'auto' }], ['employee_id']);
+  plan.create.forEach(x => {
+    try {
+      const d = ssCreateDriver_(x, usernames);
+      link(x.t, d);
+      done.push('Created ' + x.name + ' (username ' + d.username + ') → ' + x.tv.vehicle_name);
+    } catch (e) { failed.push('Could not create ' + x.name + ': ' + e.message); }
+  });
+  plan.reactivate.forEach(x => {
+    try {
+      ssSend_('patch', '/fleet/drivers/' + x.d.id, { driverActivationStatus: 'active', staticAssignedVehicleId: String(x.tv.vehicle_id) });
+      link(x.t, x.d);
+      done.push('Reactivated ' + x.d.name + ' → ' + x.tv.vehicle_name);
+    } catch (e) { failed.push('Could not reactivate ' + x.d.name + ': ' + e.message); }
+  });
+  plan.move.forEach(x => {
+    try {
+      ssSend_('patch', '/fleet/drivers/' + x.d.id, { staticAssignedVehicleId: String(x.tv.vehicle_id) });
+      done.push('Moved ' + x.d.name + ' → ' + x.tv.vehicle_name);
+    } catch (e) { failed.push('Could not move ' + x.d.name + ': ' + e.message); }
+  });
+  plan.deactivate.forEach(x => {
+    try {
+      ssSend_('patch', '/fleet/drivers/' + x.d.id, { driverActivationStatus: 'deactivated' });
+      done.push('Deactivated ' + x.d.name);
+    } catch (e) { failed.push('Could not deactivate ' + x.d.name + ': ' + e.message); }
+  });
+  if (failed.length) throw new Error(failed.join(' | ') + (done.length ? ' (also done: ' + done.join('; ') + ')' : ''));
+  return done.concat(plan.skip.map(s => 'SKIP ' + s));
+}
+
+/** Truck name for a Samsara vehicle ID, from the copy the sync keeps (for the preview text). */
+function byVehicleName_(vehicleId) {
+  if (!vehicleId) return null;
+  const r = supaGet_('samsara_vehicles?select=name&vehicle_id=eq.' + encodeURIComponent(vehicleId));
+  return r.length ? r[0].name : 'truck ' + vehicleId;
+}
+
+/**
+ * Creates one driver pinned to the tech's truck. Username = the part of their email before the @
+ * (made unique if taken). If Samsara refuses the FieldRoutes external ID, tries again without it
+ * (the sync then links the driver by exact name).
+ */
+function ssCreateDriver_(x, usernames) {
+  const local = String(x.t.email || '').split('@')[0].toLowerCase().replace(/[^a-z0-9._-]/g, '') || norm2_(x.name);
+  let username = local;
+  for (let n = 2; usernames[username]; n++) username = local + n;
+  usernames[username] = true;
+  const digits = String(x.t.phone || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
+  const body = {
+    name: x.name, username: username, password: Utilities.getUuid().replace(/-/g, '') + 'Aa1!',
+    staticAssignedVehicleId: String(x.tv.vehicle_id), timezone: 'America/New_York'
+  };
+  if (digits.length === 10) body.phone = digits;
+  if (x.frIds.length) body.externalIds = { fieldroutesId: x.frIds[0] };
+  let r;
+  try {
+    r = ssSend_('post', '/fleet/drivers', body);
+  } catch (e) {
+    if (!body.externalIds || !/external/i.test(e.message)) throw e;
+    delete body.externalIds;
+    r = ssSend_('post', '/fleet/drivers', body);
+  }
+  const d = r && r.data ? r.data : r;
+  if (!d || !d.id) throw new Error('Samsara did not return the new driver');
+  return { id: String(d.id), name: x.name, username: username };
+}
+function norm2_(name) { return String(name || '').toLowerCase().replace(/[^a-z]/g, '') || 'tech'; }
+
+/** POST or PATCH to Samsara (needs the token's write permission for Drivers). */
+function ssSend_(method, path, body) {
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    SS_CALLS++;
+    const r = UrlFetchApp.fetch(SS_BASE + path, {
+      method: method, contentType: 'application/json', payload: JSON.stringify(body),
+      headers: { Authorization: 'Bearer ' + ssToken_() }, muteHttpExceptions: true
+    });
+    const code = r.getResponseCode();
+    if (code === 429 || code >= 500) { Utilities.sleep(1000 * attempt); continue; }
+    if (code === 401 || code === 403) throw new Error('Samsara refused (HTTP ' + code + '): the SAMSARA_TOKEN needs write access to Drivers');
+    if (code >= 300) throw new Error('Samsara ' + method.toUpperCase() + ' ' + path + ' (HTTP ' + code + '): ' + r.getContentText().slice(0, 200));
+    const text = r.getContentText();
+    return text ? JSON.parse(text) : null;
+  }
+  throw new Error('Samsara kept rate-limiting ' + path);
+}
+
+/** Shows what keeping Samsara drivers in step would change. Changes nothing in Samsara. */
+function previewSamsaraDrivers() {
+  if (!ssToken_()) { Logger.log('Add SAMSARA_TOKEN to Script Properties first.'); return; }
+  ssVehicles_(); ssDrivers_();                      // fresh truck and driver links first
+  const lines = ssManageDrivers_(false);
+  Logger.log(lines.length ? lines.join('\n') : 'Nothing to change: every tech with a truck has a Samsara driver.');
+  Logger.log('Automatic Samsara drivers are ' + (PROPS.getProperty('SAMSARA_DRIVERS') === 'on' ? 'ON' : 'OFF (run turnOnSamsaraDrivers to start)') + '.');
+}
+
+/** Makes the changes previewSamsaraDrivers shows, then keeps doing it at 7 AM and 1 PM. */
+function turnOnSamsaraDrivers() {
+  if (!ssToken_()) { Logger.log('Add SAMSARA_TOKEN to Script Properties first.'); return; }
+  ssVehicles_(); ssDrivers_();
+  const lines = ssManageDrivers_(true);
+  PROPS.setProperty('SAMSARA_DRIVERS', 'on');
+  Logger.log((lines.length ? 'Done:\n' + lines.join('\n') : 'Nothing to change right now.') + '\nAutomatic Samsara drivers are ON.');
+}
+
+function turnOffSamsaraDrivers() {
+  PROPS.deleteProperty('SAMSARA_DRIVERS');
+  Logger.log('Automatic Samsara drivers are OFF. Nothing else changed.');
 }
 
 /** Safety events between two times (ms), 31 days per request window. */
