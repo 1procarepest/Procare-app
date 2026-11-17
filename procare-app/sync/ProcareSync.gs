@@ -407,7 +407,7 @@ function syncTeam_(apply) {
 function supaGetAll_(path) {
   const out = [];
   for (let offset = 0; ; offset += 1000) {
-    const rows = supaGet_(path + '&order=' + (path.indexOf('fr_employees') === 0 ? 'employee_id' : 'id') + '&limit=1000&offset=' + offset);
+    const rows = supaGet_(path + '&order=' + (/^(fr_employees|tech_vehicles)\?/.test(path) ? 'employee_id' : 'id') + '&limit=1000&offset=' + offset);
     out.push.apply(out, rows);
     if (rows.length < 1000) return out;
   }
