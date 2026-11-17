@@ -964,19 +964,24 @@ function ssManageDrivers_(apply) {
   supaGetAll_('tech_vehicles?select=employee_id,vehicle_id,vehicle_name,driver_id').forEach(r => { links[r.employee_id] = r; });
 
   const plan = { create: [], reactivate: [], move: [], deactivate: [], photo: [], skip: [] };
-  techs.forEach(t => {
+  // Active techs first, so a driver someone active uses is never deactivated for an old record with the same name
+  const taken = {};
+  techs.slice().sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0)).forEach(t => {
     const name = clean(t.first_name + ' ' + t.last_name);
     const tv = links[t.id] || {};
     const frIds = Object.keys(t.fr_ids || {}).map(k => String(t.fr_ids[k]));
     const mine = d => Object.keys(d.externalIds).some(k => frIds.indexOf(String(d.externalIds[k]).trim()) >= 0);
-    // Their driver: set by hand, else the sync's link, else their FieldRoutes ID, else their exact name
-    const linked = byId[String(t.samsara_driver_id || '').trim()] || byId[tv.driver_id || ''] ||
-      drivers.find(d => d.active && mine(d)) || drivers.find(d => d.active && norm(d.name) === norm(name)) || null;
+    const strong = byId[String(t.samsara_driver_id || '').trim()] || byId[tv.driver_id || ''] || drivers.find(d => d.active && mine(d)) || null;
 
+    // Someone who left: only a driver tied to them for sure (set by hand, the sync's link or their
+    // FieldRoutes ID), never a name match, and never one an active tech is using
     if (!t.active) {
-      if (linked && linked.active) plan.deactivate.push({ t: t, name: name, d: linked });
+      if (strong && strong.active && !taken[strong.id]) plan.deactivate.push({ t: t, name: name, d: strong });
       return;
     }
+    // Their driver: set by hand, else the sync's link, else their FieldRoutes ID, else their exact name
+    const linked = strong || drivers.find(d => d.active && !taken[d.id] && norm(d.name) === norm(name)) || null;
+    if (linked) taken[linked.id] = true;
     if (linked && !linked.active) {
       if (tv.vehicle_id) plan.reactivate.push({ t: t, name: name, d: linked, tv: tv });
       else plan.skip.push(name + ': their Samsara driver is deactivated and no truck name starts with "' + name + '"');
@@ -988,14 +993,15 @@ function ssManageDrivers_(apply) {
       return;
     }
     if (!tv.vehicle_id) { plan.skip.push(name + ': no Samsara truck name starts with "' + name + '"'); return; }
-    const old = drivers.find(d => !d.active && (mine(d) || norm(d.name) === norm(name)));
+    const old = drivers.find(d => !d.active && !taken[d.id] && (mine(d) || norm(d.name) === norm(name)));
+    if (old) taken[old.id] = true;
     if (old) { plan.reactivate.push({ t: t, name: name, d: old, tv: tv }); return; }
     plan.create.push({ t: t, name: name, tv: tv, frIds: frIds });
   });
 
   const lines = [];
   plan.create.forEach(x => lines.push('CREATE ' + x.name + ' → ' + x.tv.vehicle_name));
-  plan.reactivate.forEach(x => lines.push('REACTIVATE ' + x.d.name + ' → ' + x.tv.vehicle_name + ' (their Samsara driver is deactivated)'));
+  plan.reactivate.forEach(x => lines.push('REACTIVATE ' + x.d.name + ' → ' + x.tv.vehicle_name + ' (their Samsara driver is deactivated; driver ' + x.d.id + ', username ' + x.d.username + ')'));
   plan.move.forEach(x => lines.push('MOVE TRUCK ' + x.d.name + ': ' + ((byVehicleName_(x.d.vehicleId)) || 'no truck') + ' → ' + x.tv.vehicle_name));
   plan.deactivate.forEach(x => lines.push('DEACTIVATE ' + x.d.name + ' (deactivated in the app)'));
   plan.photo.forEach(x => lines.push('PHOTO ' + x.d.name + ' (their photo from the app)'));
