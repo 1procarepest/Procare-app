@@ -1333,6 +1333,41 @@ function ssFindTag_(name) {
   return null;
 }
 
+/**
+ * For techs with no home found: every FieldRoutes profile that could be theirs (their own, linked, same
+ * email, or the same name) and which address fields are filled. Field NAMES only, never addresses.
+ * Read-only.
+ */
+function inspectHomeAddresses() {
+  const fr = frFetch_(SYNC.OFFICES[0], 'employee', { active: { operator: 'IN', value: [0, 1] } });
+  const norm = x => String(x || '').toLowerCase().replace(/[^a-z]/g, '');
+  const techs = supaGetAll_('employees?select=id,first_name,last_name,email,fr_ids&department=eq.technician&active=is.true');
+  let shown = 0;
+  techs.forEach(t => {
+    const own = Object.keys(t.fr_ids || {}).map(k => String(t.fr_ids[k]));
+    const ownRecs = fr.filter(e => own.indexOf(String(e.employeeID)) >= 0);
+    if (ownRecs.some(e => ssHomeOf_(e))) return;
+    const linked = {};
+    ownRecs.forEach(e => (idList_(e.linkedEmployeeIDs) || []).forEach(l => { linked[String(l)] = true; }));
+    const mails = ownRecs.map(e => String(e.email || '').trim().toLowerCase()).concat([String(t.email || '').trim().toLowerCase()]).filter(Boolean);
+    const cands = fr.filter(e => {
+      const id = String(e.employeeID);
+      return own.indexOf(id) >= 0 || linked[id] || (idList_(e.linkedEmployeeIDs) || []).some(l => own.indexOf(String(l)) >= 0) ||
+        mails.indexOf(String(e.email || '').trim().toLowerCase()) >= 0 || norm(e.fname + e.lname) === norm(t.first_name + t.last_name);
+    });
+    shown++;
+    Logger.log((t.first_name + ' ' + t.last_name).trim() + ' (on their app record: ' + (own.join(', ') || 'none') + ')');
+    cands.forEach(e => {
+      const id = String(e.employeeID);
+      const why = own.indexOf(id) >= 0 ? 'their own' : linked[id] || (idList_(e.linkedEmployeeIDs) || []).some(l => own.indexOf(String(l)) >= 0) ? 'linked'
+        : mails.indexOf(String(e.email || '').trim().toLowerCase()) >= 0 ? 'same email' : 'same name only';
+      const filled = Object.keys(e).filter(k => /addr|city|state|zip|street|lat|lng/i.test(k) && String(e[k] || '').trim() && String(e[k]) !== '0');
+      Logger.log('   profile ' + id + ' · ' + why + ' · ' + (Number(e.active) ? 'active' : 'inactive') + ' · filled: ' + (filled.join(', ') || 'no address fields'));
+    });
+  });
+  Logger.log(shown ? 'Done. Field names only; no addresses are shown.' : 'Every active tech has a home address in FieldRoutes.');
+}
+
 /** Shows what keeping home geofences in step would change. Changes nothing in Samsara. */
 function previewHomeGeofences() {
   if (!ssToken_()) { Logger.log('Add SAMSARA_TOKEN to Script Properties first.'); return; }
