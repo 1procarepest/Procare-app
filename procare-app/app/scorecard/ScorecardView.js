@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Toggle from '../Toggle';
 import { OFFICES, OFFICE_NAME } from '@/lib/labels';
-import { calcPay, money, money0, num, pct } from '@/lib/scorecard';
+import { calcPay, incentiveOn, money, money0, num, pct } from '@/lib/scorecard';
 import { photoSrc } from '@/lib/photo';
 
 // Leaderboard columns people can switch on and off (saved on this device). Reservice and cancels start off.
@@ -205,9 +205,10 @@ export default function ScorecardView({ techs, R, per, period, meId }) {
                       </td>
                       {bonusesOn && show('incentive') && (
                         <td className="num">
-                          {!t.c.pay.qualified ? <span className="pill">Under {t.c.pay.minServed}</span>
-                            : t.c.pay.gated ? <span className="pill pill-bad">On hold</span>
-                            : <span className="money-good">{money0(t.c.pay.total)}</span>}
+                          {t.c.pay.total > 0 && <span className="money-good">{money0(t.c.pay.total)}</span>}
+                          {t.c.pay.gated ? <span className="pill pill-bad">{t.c.pay.keepsSales ? 'Sales only' : 'On hold'}</span>
+                            : !t.c.pay.qualified ? <span className="pill">Under {t.c.pay.minServed}</span>
+                            : t.c.pay.total > 0 ? null : <span className="money-good">{money0(0)}</span>}
                         </td>
                       )}
                       {show('sold') && (<td className="num">{t.c.sold}{t.c.soldValue > 0 && <span className="cell-sub">{money0(t.c.soldValue)}</span>}</td>)}
@@ -259,7 +260,7 @@ function Breakdown({ t, R, period, per, bonusesOn }) {
         <span className={`pill ${pay.qualified ? 'pill-good' : ''}`}>{pay.qualified ? 'Qualified' : `Under ${pay.minServed} completed`}</span>
         <span className="pill">{OFFICE_NAME[t.office] || 'No office'}</span>
         {t.rank && <span className="pill">Rank #{t.rank}</span>}
-        {bonusesOn && pay.gated && <span className="pill pill-bad">On hold: driving under {R.drive_gate}</span>}
+        {bonusesOn && pay.gated && <span className="pill pill-bad">{pay.keepsSales ? `Sales bonuses only: driving under ${R.drive_gate}` : `On hold: driving under ${R.drive_gate}`}</span>}
       </div>
 
       <div className="bd-lines">
@@ -277,14 +278,17 @@ function Breakdown({ t, R, period, per, bonusesOn }) {
 
       {bonusesOn ? (
         <div className="bd-lines bd-pay">
-          <Line label={`Completion ${fmtPct(c.comp)}`} value={money(pay.completion)} />
-          <Line label={`${c.stars} top reviews × ${money0(R.star_amt)}`} value={money(pay.stars)} />
-          {(num(R.drive_hi_amt) > 0 || num(R.drive_lo_amt) > 0) && (
+          {incentiveOn(R, 'sales') && <Line label={`Sales serviced ${c.salesDone} × ${money0(R.sale_amt)}`} value={money(pay.sales)} />}
+          {incentiveOn(R, 'autopay') && <Line label={`Auto-pay added ${c.autopay} × ${money0(R.autopay_amt)}`} value={money(pay.autopay)} />}
+          {incentiveOn(R, 'completed') && <Line label={`Completed jobs ${c.serv}`} value={money(pay.completed)} />}
+          {incentiveOn(R, 'completion') && <Line label={`Completion ${fmtPct(c.comp)}`} value={money(pay.completion)} />}
+          {incentiveOn(R, 'reservice') && <Line label={`Reservice rate ${fmtPct(c.resv)} (at or under ${num(R.resv_max)}%)`} value={money(pay.reservice)} />}
+          {incentiveOn(R, 'reviews') && <Line label={`${c.stars} top reviews × ${money0(R.star_amt)}`} value={money(pay.stars)} />}
+          {incentiveOn(R, 'safety') && (
             <Line label={`Safe driving${pay.distractedCap ? ` (over ${pay.distractedMax} distracted)` : c.safety !== null ? ` (score ${c.safety})` : ''}`} value={money(pay.driving)} />
           )}
-          <Line label={`Sales serviced ${c.salesDone} × ${money0(R.sale_amt)}`} value={money(pay.sales)} />
           {pay.cancelPenalty > 0 && <Line label={`${c.cxTech} tech-caused cancels`} value={`−${money(pay.cancelPenalty)}`} />}
-          {pay.gated && <Line label="On hold (driving score)" value={`−${money(pay.held)}`} />}
+          {pay.gated && <Line label={pay.keepsSales ? 'Held: driving score (sales still paid)' : 'On hold (driving score)'} value={`−${money(pay.held)}`} />}
           <div className="bd-total"><span>Incentive{per.in_progress ? ' so far' : ''}</span><span className="num">{money(pay.total)}</span></div>
         </div>
       ) : (

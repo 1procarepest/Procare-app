@@ -1602,3 +1602,6 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .sc-cols-row .note { margin: 0; flex: 1 1 280px; }
 .sc-cols { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; padding: 12px 0 4px; }
 .sc-board .board.freeze-first { min-width: max-content; }
+/* Performance Card rules: incentive switches (2026-11-18) */
+.rules .rule-h { display: inline; margin: 0; }
+.rules .rule-off { opacity: 0.75; }
