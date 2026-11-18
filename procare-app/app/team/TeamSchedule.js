@@ -24,7 +24,10 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
   const [dept, setDept] = useState(depts.length === 1 ? depts[0] : depts.includes('technician') ? 'technician' : depts[0]);
   const [office, setOffice] = useState('all');
   const thisWeek = days.includes(today);
-  const [day, setDay] = useState(pick || (thisWeek ? today : days[0]));
+  const [picked, setDay] = useState(pick || (thisWeek ? today : days[0]));
+  // The arrows load another week into this same page, so a day picked earlier may not be in it: fall back
+  // to the tapped day, today, or that week's Monday (the old day left the lists empty and crashed the page).
+  const day = days.includes(picked) ? picked : (days.includes(pick) ? pick : thisWeek ? today : days[0]);
   const [view, setView] = useState('day');
 
   // Everyone's week, worked out once
