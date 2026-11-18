@@ -1605,3 +1605,6 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 /* Performance Card rules: incentive switches (2026-11-18) */
 .rules .rule-h { display: inline; margin: 0; }
 .rules .rule-off { opacity: 0.75; }
+/* Scorecard: room between the office chips and the Columns button; money and pill side by side */
+.sc-cols-row { margin-top: 10px; }
+.board td .money-good + .pill { margin-left: 8px; }

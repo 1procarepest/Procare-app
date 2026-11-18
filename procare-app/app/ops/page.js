@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server';
 import { VIEWS, todayYmd } from '@/lib/repcards';
 import { buildOps, buildSnapshot, opsRange } from '@/lib/ops';
 import OpsView from './OpsView';
-import CompetitionStrip from '../CompetitionStrip';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +21,6 @@ export default async function OpsPage({ searchParams }) {
 
   return (
     <>
-      <CompetitionStrip />
       <OpsView
         view={view}
         range={r}

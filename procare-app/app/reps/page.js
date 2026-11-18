@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { VIEWS, buildCards, buildHistory, periodLabel, periodRange, pinCities, todayYmd } from '@/lib/repcards';
 import RepCardsView from './RepCardsView';
-import CompetitionStrip from '../CompetitionStrip';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +37,6 @@ export default async function RepCardsPage({ searchParams }) {
 
   return (
     <>
-    <CompetitionStrip />
     <RepCardsView
       view={view}
       date={date}
