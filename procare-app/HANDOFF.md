@@ -21,6 +21,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
   - **Sales count only when SOLD in the competition or round.** Optional "must be serviced within N days after the end" (`points.serve_days`): until then sales are pending, after the deadline they drop off. Brackets wait N days after seeding and after each round.
   - Prize money: by place (+ to add a place) or per bracket round up to the champion's grand prize. Team prizes are split evenly. Awards are written automatically once a competition or round is final. The person cashes out, Ally (HR approver) gets an email, she marks it paid in Settings → Prize payouts, and the person gets an email. Techs and office: Ally enters it in ADP. Sales: paid as today, later through Everee.
   - Each person sees only their own department's competitions, plus any they're in or created (C-Suite and the President see all). Cards show "Created by".
+  - Profile "Your competitions" (change 50, 2026-11-17): leaders also see live competitions they aren't in, tagged "Watching": the President all; leads and up their own department in their own office; extras per person in `competition_follows` (Ryan Boyd: technician + office, every office; Shelly: East technician), set on the person page by C-Suite.
   - Managers create competitions for their own department; C-Suite and the President for any.
 - **Speed (2026-11-16)**: the team's first morning overloaded Supabase. `competition_board` keeps results 5 minutes (`competition_board_cache`). `rep_cards`, `tech_scorecard`, `sales_leaderboard` and `comp_sales` do the same through `rpc_cache` (change 45); the calculations are `<name>_calc`. Edits to pay plans, tech rules or excluded service types clear the saved copy.
 - Sign-out only signs out the current device. Sign-in ignores a trailing space in the passcode.
@@ -47,6 +48,15 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
    - Wildlife icons already exist in `public/icons/wildlife` (reserved for these pages).
    - Open questions: how QuickBooks tracks wildlife today (Class, Location, separate accounts?), what the wildlife
      inventory holds and where it lives now, and who else may see the Wildlife P&L (C-Suite, President, Ally?).
+6. **Truck and driver sheet** (John, 2026-11-17): one place in the app to keep vehicle information up to date, so it
+   no longer lives in a separate spreadsheet.
+   - Each truck and who drives it, built on what's already synced: Samsara vehicles, `tech_vehicles` (tech ↔ truck,
+     auto or manual) and the Samsara drivers kept by Procare Sync. A truck change here should flow to Samsara the same
+     way the sync handles it today.
+   - Likely fields: truck name/number, year, make, model, VIN, plate, tag renewal date, insurance, mileage (from Samsara),
+     oil changes and other service, open issues (ties in with the ride-along truck items and warning lights), notes.
+   - Open questions: which columns John keeps today and where (share the current sheet), who can edit (managers,
+     Ryan, C-Suite?), and whether to send reminders (tag renewals, oil changes due by mileage).
 
 ## Good to know
 - FieldRoutes data syncs into Supabase through the Apps Script "Procare Sync" (`sync/ProcareSync.gs`). It saves the morning route snapshot and, since change 42, a daily copy of each office's numbers (`office_kpi_days`).
