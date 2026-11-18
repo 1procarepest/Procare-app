@@ -39,12 +39,7 @@ export default async function Home({ searchParams }) {
   if (!user) redirect('/login');
 
   if (!me) {
-    // Quarterly bonus link for people with goals of their own (managers)
-  const { count: bonusSets } = me.rank >= 2 || me.hr_approver
-    ? await supabase.from('bonus_members').select('set_id', { count: 'exact', head: true }).eq('employee_id', me.id)
-    : { count: 0 };
-
-  return (
+    return (
       <main className="empty">
         <img src="/logo.png" alt="Procare" width="150" />
         <h1>Your account isn’t set up yet</h1>
@@ -194,6 +189,11 @@ export default async function Home({ searchParams }) {
   const initials = `${me.first_name?.[0] || ''}${me.last_name?.[0] || ''}`.toUpperCase();
   const photo = photoSrc(me.photo_url);
   const officeName = me.offices?.name;
+
+  // Quarterly bonus link for people with goals of their own (managers)
+  const { count: bonusSets } = me.rank >= 2 || me.hr_approver
+    ? await supabase.from('bonus_members').select('set_id', { count: 'exact', head: true }).eq('employee_id', me.id)
+    : { count: 0 };
 
   return (
     <>
