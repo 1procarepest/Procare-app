@@ -45,7 +45,7 @@ export default async function BonusPage({ searchParams }) {
         <Bug kind="termite" size={150} className="brand-head-bug" />
         <div>
           <p className="rc-kicker">Quarterly bonus · Extreme ownership</p>
-          <h1 className="rc-title">Your <em>goals</em></h1>
+          <h1 className="rc-title">Your <em>Goals</em></h1>
           <p className="note">{shortDate(from)} to {shortDate(to)}</p>
         </div>
         <nav className="rc-step" aria-label="Choose a quarter">
