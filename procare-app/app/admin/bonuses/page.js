@@ -50,7 +50,7 @@ export default async function BonusesPage({ searchParams }) {
   // Last quarter and the same quarter last year, per office, to help set goals
   const history = { prevName: quarterName(p.year, p.quarter), lyName: quarterName(at.year - 1, at.quarter) };
   [null, 'east', 'west', 'south'].forEach((office) => {
-    history[office || 'all'] = Object.fromEntries(['tech_sales', 'office_sales', 'marketing_sales', 'cancel', 'resv', 'autopay', 'ar_past', 'pool']
+    history[office || 'all'] = Object.fromEntries(['tech_sales', 'office_sales', 'marketing_sales', 'cancel', 'resv', 'resv_count', 'autopay', 'ar_past', 'pool']
       .map((k) => [k, { prev: pastValue(k, prevNums, office, pr), ly: pastValue(k, lyNums, office, ly) }]));
   });
   const starts = {};

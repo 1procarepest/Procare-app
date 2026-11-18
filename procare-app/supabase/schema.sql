@@ -321,7 +321,7 @@ create table public.bonus_goals (
   id          uuid primary key default gen_random_uuid(),
   set_id      uuid not null references public.bonus_sets(id) on delete cascade,
   sort        smallint not null default 0,
-  kind        text not null check (kind in ('tech_sales', 'office_sales', 'marketing_sales', 'autopay', 'ar_past', 'cancel', 'resv',
+  kind        text not null check (kind in ('tech_sales', 'office_sales', 'marketing_sales', 'autopay', 'ar_past', 'cancel', 'resv', 'resv_count',
                                             'pool', 'reports', 'cost_per_customer', 'logged', 'project')),
   label       text not null check (length(trim(label)) > 0),
   target      numeric not null,

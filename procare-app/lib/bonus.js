@@ -5,6 +5,7 @@
  *   count    sales, reports, logged items: John's sliding scale on % of goal, paid along the line
  *            (default 100% → 100%, 90% → 80%, 80% → 60%, 70% → 40%, 60% → 20%, under 60% → nothing)
  *   cost     cost per new customer: lower is better, scored like a count on goal ÷ actual
+ *   cap      a count to stay under (reservices): at or under the goal pays 100%, over it scored on goal ÷ actual
  *   improve  auto-pay, AR, cancellations, job pool: share of the gap from the starting number that was closed;
  *            worse than the start pays nothing
  *   project  done (approved proof) by the due date pays 100%, otherwise nothing
@@ -23,12 +24,13 @@ export const KINDS = {
   ar_past: { label: 'AR 30+ days past due', type: 'improve', unit: '$', better: 'low', hint: 'Dollars 30 or more days past due.' },
   cancel: { label: 'Cancellation rate', type: 'improve', unit: '%', better: 'low', hint: 'Core cancels this quarter ÷ recurring customers at the start, leaving out moving and money reasons (Settings tab). Starts from last quarter’s rate.' },
   resv: { label: 'Reservice rate', type: 'improve', unit: '%', better: 'low', hint: 'Reservices and incompletes ÷ regular completed services in the core lines this quarter. Partial (weather) reservices never count. Starts from last quarter’s rate.' },
+  resv_count: { label: 'Reservices (count)', type: 'cap', unit: 'reservices', better: 'low', hint: 'Stay under this many reservices this quarter. Counts completed reservices and incompletes in every service line. Partial (weather) reservices never count. Over the goal, pay drops on the sliding scale (goal ÷ actual).' },
   pool: { label: 'Job pool past due', type: 'improve', unit: '%', better: 'low', hint: 'Past-due jobs not on the schedule, as a share of recurring customers.' },
   cost_per_customer: { label: 'Cost per new customer', type: 'cost', unit: '$', better: 'low', hint: 'Ad spend logged with proof ÷ marketing sales. Lower is better.' },
   logged: { label: 'Logged with proof', type: 'count', unit: '', logged: true, hint: 'Social posts, Google reviews, website leads… The person logs each one with a link or screenshot; Ally approves.' },
   project: { label: 'Project', type: 'project', logged: true, hint: 'Done by the due date pays 100%. Logged with proof; Ally approves.' },
 };
-export const KIND_ORDER = ['tech_sales', 'autopay', 'ar_past', 'cancel', 'resv', 'reports', 'pool', 'office_sales', 'marketing_sales', 'cost_per_customer', 'logged', 'project'];
+export const KIND_ORDER = ['tech_sales', 'autopay', 'ar_past', 'cancel', 'resv', 'resv_count', 'reports', 'pool', 'office_sales', 'marketing_sales', 'cost_per_customer', 'logged', 'project'];
 /** Goals that take logged entries (what Mark logs): logged items, projects and ad spend. */
 export const takesEntries = (kind) => kind === 'logged' || kind === 'project' || kind === 'cost_per_customer';
 
@@ -54,7 +56,7 @@ export const quarterName = (year, q) => `Q${q} ${year}`;
 /** One office's numbers, or every office added up when office is null (company-wide). */
 export function officeNumbers(nums, office) {
   const list = (nums?.offices || []).filter((o) => !office || o.office === office);
-  const keys = ['sales', 'tech_sales', 'marketing', 'cancels', 'accounts_start', 'ap_start', 'ar_past_start', 'pool_start', 'accounts', 'ap_valid', 'ar_past', 'pool_past', 'resv', 'resv_base'];
+  const keys = ['sales', 'tech_sales', 'marketing', 'cancels', 'accounts_start', 'ap_start', 'ar_past_start', 'pool_start', 'accounts', 'ap_valid', 'ar_past', 'pool_past', 'resv', 'resv_base', 'resv_all'];
   const out = {};
   keys.forEach((k) => {
     const vals = list.map((o) => o[k]).filter((v) => v !== null && v !== undefined);
@@ -92,6 +94,7 @@ export function pastValue(kind, nums, office, range) {
     case 'marketing_sales': return hasSales ? { v: o.marketing } : null;
     case 'cancel': return hasSales && (o.accounts_start || o.accounts) ? { v: pct(o.cancels, o.accounts_start || o.accounts), approx: !startOk } : null;
     case 'resv': return o.resv_base ? { v: pct(o.resv, o.resv_base) } : null;
+    case 'resv_count': return o.resv_base || o.resv_all ? { v: o.resv_all } : null;
     case 'autopay': return endOk ? { v: pct(o.ap_valid, o.accounts) } : null;
     case 'ar_past': return endOk ? { v: o.ar_past } : null;
     case 'pool': return endOk ? { v: pct(o.pool_past, o.accounts) } : null;
@@ -112,6 +115,7 @@ export function actualOf(goal, ctx) {
     case 'pool': return pct(o.pool_past, o.accounts);
     case 'cancel': return pct(o.cancels, o.accounts_start);
     case 'resv': return pct(o.resv, o.resv_base);
+    case 'resv_count': return o.resv_all ?? 0;
     case 'cost_per_customer': {
       const spend = ctx.entries.reduce((t, e) => t + Number(e.qty || 0), 0);
       return o.marketing ? spend / o.marketing : null;
@@ -140,6 +144,7 @@ export function progressOf(goal, actual, start) {
   if (actual === null || actual === undefined) return null;
   if (k.type === 'count') return target > 0 ? (100 * actual) / target : (actual > 0 ? 100 : null);
   if (k.type === 'cost') return actual > 0 ? (100 * target) / actual : null;
+  if (k.type === 'cap') return actual <= target ? 100 : (100 * Math.max(0, target)) / actual;
   if (k.type === 'project') return actual ? 100 : 0;
   if (start === null || start === undefined) return null;
   const gap = target - Number(start);
@@ -150,14 +155,14 @@ export function progressOf(goal, actual, start) {
 export function payOf(goal, progress, scale) {
   const k = KINDS[goal.kind];
   if (progress === null) return 0;
-  if (k.type === 'count' || k.type === 'cost') return scalePay(progress, scale);
+  if (k.type === 'count' || k.type === 'cost' || k.type === 'cap') return scalePay(progress, scale);
   return Math.min(100, progress);   // improve and projects: straight line, never over 100%
 }
 
 /** Where a goal would land at the current pace. Counts and the cancellation rate grow over the quarter. */
 function projectedOf(goal, actual, share) {
   if (actual === null || share <= 0) return actual;
-  if (KINDS[goal.kind].type === 'count' || goal.kind === 'cancel') return actual / share;
+  if (['count', 'cap'].includes(KINDS[goal.kind].type) || goal.kind === 'cancel') return actual / share;
   return actual;
 }
 

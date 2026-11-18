@@ -539,3 +539,5 @@ grant execute on function public.mark_payout_paid(uuid, text) to authenticated;
 -- (cancels_all keeps every one), adds resv / resv_base (reservices + incompletes, regular core services) and
 -- 'cancel_reasons'. New: update_payout(id, amount, note), delete_payout(id, keep_prizes) for can_manage_payouts(),
 -- and time_off_work_day(id, day) for the person's time-off approver (shorten, split or cancel). Bodies in that change file.
+-- Change 2026-11-18-52: bonus_numbers_calc adds resv_all (reservices + incompletes, every line, partials never) for the
+-- 'resv_count' goal (a number to stay under).

@@ -2,7 +2,7 @@ import { KINDS, fmt, money2 } from '@/lib/bonus';
 import { shortDate } from '@/lib/labels';
 import { BugTile } from '../Bug';
 
-const BUG = { tech_sales: 'ant', office_sales: 'ant', marketing_sales: 'stinging', reports: 'spider', autopay: 'cricket', ar_past: 'tick', cancel: 'roach', pool: 'termite', cost_per_customer: 'mosquito', logged: 'centipede', project: 'earwig' };
+const BUG = { tech_sales: 'ant', office_sales: 'ant', marketing_sales: 'stinging', reports: 'spider', autopay: 'cricket', ar_past: 'tick', cancel: 'roach', resv: 'centipede', resv_count: 'centipede', pool: 'termite', cost_per_customer: 'mosquito', logged: 'centipede', project: 'earwig' };
 
 const pctText = (n) => `${Math.round(Number(n || 0))}%`;
 
@@ -35,8 +35,9 @@ export default function GoalCard({ g, quarter, final = false, children }) {
           {k.type === 'improve'
             ? `${pctText(g.progress)} of the way from ${startText} to ${fmt(g.kind, g.target)}.`
             : k.type === 'project' ? (g.actual ? 'Done.' : 'Not done yet. Log it with proof when it’s finished.')
+              : k.type === 'cap' ? `${fmt(g.kind, g.actual)} so far; stay at or under ${fmt(g.kind, g.target)}.`
               : `${pctText(g.progress)} of the goal.`}
-          {(k.type === 'count' || g.kind === 'cancel') && g.projected !== null && g.projected !== undefined
+          {(k.type === 'count' || k.type === 'cap' || g.kind === 'cancel') && g.projected !== null && g.projected !== undefined
             ? ` At this pace: ${fmt(g.kind, g.projected)} by the end of the quarter, paying ${pctText(g.projectedPay)}.` : ''}
           {g.next ? ` ${g.next}.` : ''}
         </p>
