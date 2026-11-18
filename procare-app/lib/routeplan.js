@@ -8,6 +8,7 @@
 //   - Sundays are left out. Initials routes are added later in FieldRoutes, not planned here.
 
 import { clock, OFFICE_NAME, toMinutes } from './labels';
+import { isBWeek } from './schedules';
 
 export const DEFAULT_TEMPLATE = '16 Spot Route';
 export const PLAN_DAYS = [1, 2, 3, 4, 5, 6]; // Monday … Saturday
@@ -105,6 +106,10 @@ export function indexData(data) {
   const byId = Object.fromEntries(techs.map((t) => [t.id, t]));
   const sched = {};
   (d.schedules || []).forEach((s) => { sched[`${s.id}|${s.wd}`] = [toMinutes(s.s), toMinutes(s.e)]; });
+  // Every-other-week hours (change 54): B-week hours by tech and weekday (null = off), and each tech's week A
+  const alt = {};
+  (d.alt || []).forEach((s) => { alt[`${s.id}|${s.wd}`] = s.s && s.e ? [toMinutes(s.s), toMinutes(s.e)] : null; });
+  const rot = Object.fromEntries((d.rot || []).map((r) => [r.id, String(r.a).slice(0, 10)]));
   const usual = {};
   (d.usual || []).forEach((u) => { usual[`${u.id}|${u.wd}`] = u; });
   const days = {};
@@ -114,7 +119,7 @@ export function indexData(data) {
   const templates = {};
   (d.templates || []).forEach((t) => { (templates[t.office] ||= []).push(t); });
   Object.keys(templates).forEach((k) => templates[k].sort((a, b) => b.n - a.n || a.title.localeCompare(b.title)));
-  return { techs, byId, sched, usual, days, timeoff, templates, builds: d.builds || [], changes: d.changes || [] };
+  return { techs, byId, sched, alt, rot, usual, days, timeoff, templates, builds: d.builds || [], changes: d.changes || [] };
 }
 
 /** Template names for an office's pick list: 16 Spot Route first, then what FieldRoutes uses most. */
@@ -147,7 +152,8 @@ export function buildPlan(ix, office, from, to) {
     ix.techs.forEach((t) => {
       const a = assignment(ix, t, day);
       if (a.office !== office) return;
-      const shift = ix.sched[`${t.id}|${wd}`];
+      const altKey = `${t.id}|${wd}`;
+      const shift = isBWeek(ix.rot?.[t.id], day) && ix.alt && altKey in ix.alt ? (ix.alt[altKey] || undefined) : ix.sched[`${t.id}|${wd}`];
       const offs = (ix.timeoff[t.id] || []).filter((o) => o.from <= day && o.to >= day);
       if (!shift && !a.oneDay) return;
       if (offs.some((o) => !o.s)) { off.push(techName(t)); return; }

@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import Face from '../Face';
 import { DEPT_LABEL, OFFICES, OFFICE_NAME, roleTitle, shortDate, toMinutes } from '@/lib/labels';
 import { dayFor } from '@/lib/teamSchedule';
+import { isBWeek, usualShift } from '@/lib/schedules';
 
 const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -36,11 +37,19 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
     (data.schedules || []).forEach((s) => {
       if (s.s && s.x) (shifts[s.e] ||= {})[s.d] = [toMinutes(s.s), toMinutes(s.x)];
     });
+    // Every-other-week hours (change 54): B-week hours for the days that differ, and each person's week A
+    const alt = {};
+    (data.alt || []).forEach((s) => { (alt[s.e] ||= {})[s.d] = s.s && s.x ? [toMinutes(s.s), toMinutes(s.x)] : null; });
+    const rot = Object.fromEntries((data.rot || []).map((r) => [r.e, String(r.a).slice(0, 10)]));
     const off = {};
     (data.off || []).forEach((r) => (off[r.e] ||= []).push(r));
-    return (data.people || []).map((p) => ({
-      p, sched: shifts[p.id] || {}, byDay: Object.fromEntries(days.map((d) => [d, dayFor(shifts[p.id]?.[dow(d)], off[p.id] || [], d)])),
-    }));
+    return (data.people || []).map((p) => {
+      const usual = (d) => usualShift(shifts[p.id], alt[p.id], rot[p.id], d, dow(d));
+      return {
+        p, usual, weekB: (d) => isBWeek(rot[p.id], d),
+        byDay: Object.fromEntries(days.map((d) => [d, dayFor(usual(d), off[p.id] || [], d)])),
+      };
+    });
   }, [data, days]);
 
   const shown = grid.filter(({ p }) => p.department === dept && (office === 'all' || p.office === office));
@@ -67,7 +76,7 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
     if (row.length) calWeeks.push([...row, ...Array(7 - row.length).fill(null)]);
   }
   // Only people who'd normally work that day (time off on a day they're already off isn't news)
-  const offOn = (d) => shown.filter((r) => r.sched[dow(d)] && (['off', 'part'].includes(r.byDay[d].kind) || r.byDay[d].requested));
+  const offOn = (d) => shown.filter((r) => r.usual(d) && (['off', 'part'].includes(r.byDay[d].kind) || r.byDay[d].requested));
 
   return (
     <>

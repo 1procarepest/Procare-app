@@ -544,3 +544,5 @@ grant execute on function public.mark_payout_paid(uuid, text) to authenticated;
 
 -- Change 2026-11-18-53: rep_card_extras(grain, to) / rep_card_extras_calc: Rep Card history by day (7), month or year,
 -- and the cities of each rep's last 5 pins. Saved 5 minutes in rpc_cache. Body in that change file.
+
+-- Change 2026-11-18-54: team_schedule() and route_plan_data() also return 'alt' (week-B hours) and 'rot' (week-A Mondays). Bodies in that change file.

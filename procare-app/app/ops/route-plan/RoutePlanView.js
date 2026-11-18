@@ -225,7 +225,7 @@ function UsualRoutes({ ix, office, save, busy, supabase }) {
                     <th scope="row">{techName(t)}{t.office !== office && <small> ({OFFICE_NAME[t.office]})</small>}</th>
                     {PLAN_DAYS.map((wd) => {
                       const u = ix.usual[`${t.id}|${wd}`];
-                      const works = !!ix.sched[`${t.id}|${wd}`];
+                      const works = !!ix.sched[`${t.id}|${wd}`] || (ix.rot?.[t.id] && !!ix.alt?.[`${t.id}|${wd}`]);   // works this day on either week
                       const here = (u?.office || t.office);
                       return (
                         <td key={`${wd}-${u?.template || ''}-${here}`} className={works ? '' : 'idle'}>

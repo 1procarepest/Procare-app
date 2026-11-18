@@ -21,6 +21,7 @@ import MyCompetitions from './MyCompetitions';
 import MyFeedback from './MyFeedback';
 import Outbox from './reports/Outbox';
 import { money, money0, nextMonday, nice, statement } from '@/lib/comp';
+import { usualShift } from '@/lib/schedules';
 
 export const dynamic = 'force-dynamic';
 
@@ -112,6 +113,14 @@ export default async function Home({ searchParams }) {
   (schedule || []).forEach((d) => {
     if (d.start_time && d.end_time) shifts[d.weekday] = [toMinutes(d.start_time), toMinutes(d.end_time)];
   });
+  // Every-other-week hours (change 54): week-B hours for the days that differ, and which Monday starts a week A
+  const [{ data: altRows }, { data: rotRow }] = await Promise.all([
+    supabase.from('schedule_alt').select('weekday, start_time, end_time').eq('employee_id', me.id),
+    supabase.from('schedule_rotations').select('a_week').eq('employee_id', me.id).maybeSingle(),
+  ]);
+  const altShifts = {};
+  (altRows || []).forEach((d) => { altShifts[d.weekday] = d.start_time && d.end_time ? [toMinutes(d.start_time), toMinutes(d.end_time)] : null; });
+  const aWeek = rotRow?.a_week || null;
 
   const todayName = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'America/New_York' }).format(new Date());
   const today = DAY_NAMES.indexOf(todayName);
@@ -162,7 +171,7 @@ export default async function Home({ searchParams }) {
   // What a day's row says. Approved time off is taken out of the scheduled hours
   // ("9 AM – 5 PM" when someone leaves at 5); requested time off is shown alongside.
   function dayInfo(d, ymd) {
-    const shift = shifts[d];
+    const shift = usualShift(shifts, altShifts, aWeek, ymd, d);
     const hits = (timeOff || []).filter((r) => r.start_date <= ymd && r.end_date >= ymd);
     const approved = hits.filter((r) => r.status === 'approved');
     const pending = hits.filter((r) => r.status === 'pending');

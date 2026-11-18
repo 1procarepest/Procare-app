@@ -376,3 +376,18 @@ create table public.truck_issues (
   fixed_at   timestamptz,
   created_at timestamptz not null default now()
 );
+
+-- ---------- Every-other-week schedules (change 2026-11-18-54) ----------
+create table public.schedule_rotations (
+  employee_id uuid primary key references public.employees(id) on delete cascade,
+  a_week      date not null check (extract(isodow from a_week) = 1),   -- a Monday that starts a week A
+  updated_at  timestamptz not null default now()
+);
+create table public.schedule_alt (                                    -- week-B hours, only the days that differ
+  employee_id uuid not null references public.employees(id) on delete cascade,
+  weekday     smallint not null check (weekday between 0 and 6),
+  start_time  time,                                                  -- both empty = off that day on week B
+  end_time    time,
+  primary key (employee_id, weekday),
+  check ((start_time is null and end_time is null) or (start_time is not null and end_time is not null and start_time < end_time))
+);

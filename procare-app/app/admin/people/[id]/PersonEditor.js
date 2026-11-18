@@ -6,12 +6,13 @@ import { createClient } from '@/lib/supabase/client';
 import { DAY_NAMES, DEPT_LABEL, LEVEL_LABEL, OFFICES, WEEK_ORDER, levelOptions, roleTitle, timeOffWhen } from '@/lib/labels';
 import Face from '../../../Face';
 import Toggle from '../../../Toggle';
+import { isBWeek, mondayOf } from '@/lib/schedules';
 
 function trimTime(t) { return t ? String(t).slice(0, 5) : ''; }
 
 const TIME_OFF_BADGE = { approved: 'Approved', pending: 'Requested' };
 
-export default function PersonEditor({ person, schedule, upcoming = [], me, canManage, canEditSchedule }) {
+export default function PersonEditor({ person, schedule, altSchedule = [], aWeek = null, today, upcoming = [], me, canManage, canEditSchedule }) {
   const router = useRouter();
   const isSelf = person.id === me.id;
 
@@ -60,6 +61,21 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
     if (s.start_time && s.end_time) initial[s.weekday] = { on: true, start: trimTime(s.start_time), end: trimTime(s.end_time) };
   });
   const [days, setDays] = useState(initial);
+
+  // Every other week (change 54): week A is the schedule above; week B changes only the days marked different.
+  const thisMonday = mondayOf(today || new Date().toISOString().slice(0, 10));
+  const lastMonday = (() => { const d = new Date(`${thisMonday}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - 7); return d.toISOString().slice(0, 10); })();
+  const [alternates, setAlternates] = useState(!!aWeek);
+  const [thisWeekIsA, setThisWeekIsA] = useState(aWeek ? !isBWeek(aWeek, thisMonday) : true);
+  const altInitial = {};
+  WEEK_ORDER.forEach((d) => { altInitial[d] = { differ: false, on: false, start: '08:30', end: '17:00' }; });
+  altSchedule.forEach((s) => {
+    altInitial[s.weekday] = s.start_time && s.end_time
+      ? { differ: true, on: true, start: trimTime(s.start_time), end: trimTime(s.end_time) }
+      : { ...altInitial[s.weekday], differ: true, on: false };
+  });
+  const [altDays, setAltDays] = useState(altInitial);
+  function setAltDay(d, patch) { setAltDays((prev) => ({ ...prev, [d]: { ...prev[d], ...patch } })); }
   const [scheduleMsg, setScheduleMsg] = useState({ text: '', bad: false });
   const [savingSchedule, setSavingSchedule] = useState(false);
 
@@ -69,6 +85,8 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
     e.preventDefault();
     const bad = WEEK_ORDER.find((d) => days[d].on && days[d].start >= days[d].end);
     if (bad !== undefined) { setScheduleMsg({ text: `${DAY_NAMES[bad]}: the end time has to be after the start time.`, bad: true }); return; }
+    const badB = alternates && WEEK_ORDER.find((d) => altDays[d].differ && altDays[d].on && altDays[d].start >= altDays[d].end);
+    if (alternates && badB !== undefined) { setScheduleMsg({ text: `Week B ${DAY_NAMES[badB]}: the end time has to be after the start time.`, bad: true }); return; }
     setSavingSchedule(true);
     setScheduleMsg({ text: '', bad: false });
     const supabase = createClient();
@@ -78,6 +96,16 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
     let error = null;
     if (working.length) ({ error } = await supabase.from('schedules').upsert(working, { onConflict: 'employee_id,weekday' }));
     if (!error && off.length) ({ error } = await supabase.from('schedules').delete().eq('employee_id', person.id).in('weekday', off));
+    // Every other week: replace the week-B days and which week is A, or clear them
+    const bRows = alternates ? WEEK_ORDER.filter((d) => altDays[d].differ)
+      .map((d) => ({ employee_id: person.id, weekday: d, start_time: altDays[d].on ? altDays[d].start : null, end_time: altDays[d].on ? altDays[d].end : null })) : [];
+    if (!error) ({ error } = await supabase.from('schedule_alt').delete().eq('employee_id', person.id));
+    if (!error && bRows.length) ({ error } = await supabase.from('schedule_alt').insert(bRows));
+    if (!error) {
+      ({ error } = alternates && bRows.length
+        ? await supabase.from('schedule_rotations').upsert({ employee_id: person.id, a_week: thisWeekIsA ? thisMonday : lastMonday, updated_at: new Date().toISOString() })
+        : await supabase.from('schedule_rotations').delete().eq('employee_id', person.id));
+    }
     setSavingSchedule(false);
     if (error) { setScheduleMsg({ text: error.message, bad: true }); return; }
     setScheduleMsg({ text: 'Schedule saved.', bad: false });
@@ -220,6 +248,41 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
             </li>
           ))}
         </ul>
+
+        <div className="sched-alt">
+          <Toggle checked={alternates} disabled={!canEditSchedule} onChange={setAlternates}>Every other week is different</Toggle>
+          {alternates && (
+            <>
+              <p className="note">The days above are <b>week A</b>. Mark only the days that are different on <b>week B</b>, like every other Saturday or swapping two days.</p>
+              <div className="sched-ab" role="group" aria-label="This week">
+                <span>This week (from {thisMonday.slice(5).replace('-', '/')}) is</span>
+                <button type="button" className={`chip${thisWeekIsA ? ' on' : ''}`} disabled={!canEditSchedule} onClick={() => setThisWeekIsA(true)}>Week A</button>
+                <button type="button" className={`chip${!thisWeekIsA ? ' on' : ''}`} disabled={!canEditSchedule} onClick={() => setThisWeekIsA(false)}>Week B</button>
+              </div>
+              <ul className="sched">
+                {WEEK_ORDER.map((d) => (
+                  <li key={d} className="sched-row">
+                    <Toggle small className="sched-day" checked={altDays[d].differ} disabled={!canEditSchedule} onChange={(v) => setAltDay(d, { differ: v })}>
+                      {DAY_NAMES[d]}
+                    </Toggle>
+                    {!altDays[d].differ ? <span className="note">Same as week A</span> : (
+                      <span className="sched-times">
+                        <Toggle small checked={altDays[d].on} disabled={!canEditSchedule} onChange={(v) => setAltDay(d, { on: v })}>{altDays[d].on ? 'Works' : 'Off'}</Toggle>
+                        {altDays[d].on && (
+                          <>
+                            <input type="time" aria-label={`Week B ${DAY_NAMES[d]} start`} value={altDays[d].start} disabled={!canEditSchedule} onChange={(e) => setAltDay(d, { start: e.target.value })} />
+                            <span aria-hidden="true">to</span>
+                            <input type="time" aria-label={`Week B ${DAY_NAMES[d]} end`} value={altDays[d].end} disabled={!canEditSchedule} onChange={(e) => setAltDay(d, { end: e.target.value })} />
+                          </>
+                        )}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
         {scheduleMsg.text && <p className={scheduleMsg.bad ? 'error' : 'ok'} role="status">{scheduleMsg.text}</p>}
         {canEditSchedule && (
           <div className="panel-buttons">

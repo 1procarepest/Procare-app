@@ -1622,3 +1622,8 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .home-bonus:hover { background: var(--forest); }
 .ops-plan-btn { display: inline-block; margin-top: 12px; background: var(--lime); color: var(--ink); }
 .ops-plan-btn:hover { background: #E8EE7A; color: var(--ink); }
+/* Person page: every other week (change 54) */
+.sched-alt { display: grid; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.sched-alt .note { margin: 0; }
+.sched-ab { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+@media (max-width: 560px) { .sched-row { flex-wrap: wrap; } .sched-times { flex-wrap: wrap; } }

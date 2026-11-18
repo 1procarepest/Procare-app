@@ -26,7 +26,7 @@ export default async function PersonPage({ params }) {
   // Today in Atlanta as YYYY-MM-DD, so requests still in progress count as upcoming.
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
 
-  const [{ data: schedule }, { data: canManage }, { data: canEditSchedule }, { data: upcoming }, { data: follows }] = await Promise.all([
+  const [{ data: schedule }, { data: canManage }, { data: canEditSchedule }, { data: upcoming }, { data: follows }, { data: altRows }, { data: rotation }] = await Promise.all([
     supabase.from('schedules').select('weekday, start_time, end_time').eq('employee_id', person.id),
     supabase.rpc('can_manage', { target: person.id }),
     supabase.rpc('can_edit_schedule', { target: person.id }),
@@ -38,6 +38,9 @@ export default async function PersonPage({ params }) {
       .gte('end_date', today)
       .order('start_date', { ascending: true }),
     supabase.from('competition_follows').select('department, office').eq('employee_id', person.id),
+    // Every-other-week hours (change 54)
+    supabase.from('schedule_alt').select('weekday, start_time, end_time').eq('employee_id', person.id),
+    supabase.from('schedule_rotations').select('a_week').eq('employee_id', person.id).maybeSingle(),
   ]);
 
   return (
@@ -46,6 +49,9 @@ export default async function PersonPage({ params }) {
       <PersonEditor
         person={person}
         schedule={schedule || []}
+        altSchedule={altRows || []}
+        aWeek={rotation?.a_week || null}
+        today={today}
         upcoming={upcoming || []}
         me={{ id: me.id, level: me.level, rank: me.rank, office: me.office, department: me.department }}
         canManage={!!canManage}
