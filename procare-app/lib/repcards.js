@@ -128,6 +128,34 @@ function weekStarts(to) {
 }
 
 /**
+ * The card's history table for the day / month / year views, from rep_card_extras() (change 53).
+ * day: the 7 days ending `to`; month: every month from the rep's first activity through `to`'s month; year: the same by year.
+ * Returns { [employee id]: [{ at, m }] } oldest first, with empty buckets filled in.
+ */
+export function buildHistory(extras, view, to) {
+  const out = {};
+  if (!extras || !['day', 'month', 'year'].includes(view)) return out;
+  const rows = {};
+  (extras.history || []).forEach((h) => { (rows[h.emp] ||= {})[String(h.at).slice(0, 10)] = h; });
+  const next = (at) => (view === 'day' ? addDays(at, 1) : view === 'month'
+    ? toYmd(new Date(Date.UTC(Number(at.slice(0, 4)), Number(at.slice(5, 7)), 1, 12))) : `${Number(at.slice(0, 4)) + 1}-01-01`);
+  const last = view === 'day' ? to : view === 'month' ? `${to.slice(0, 7)}-01` : `${to.slice(0, 4)}-01-01`;
+  Object.entries(rows).forEach(([emp, mine]) => {
+    const keys = Object.keys(mine).sort();
+    let at = view === 'day' ? addDays(to, -6) : keys[0];
+    const list = [];
+    for (let guard = 0; at <= last && guard < 400; guard += 1, at = next(at)) list.push({ at, m: measure(mine[at]) });
+    out[emp] = list;
+  });
+  return out;
+}
+
+/** The cities of each rep's last 5 pins: { [employee id]: ['Decatur', 'Tucker'] } */
+export function pinCities(extras) {
+  return Object.fromEntries((extras?.cities || []).map((c) => [c.emp, c.cities || []]));
+}
+
+/**
  * Turns rep_cards() rows into what the page draws:
  *   reps:    [{ id, name, first_name, last_name, office, photo, m, weeks }] ranked, with rank set
  *   offices: { east: m, west: m, south: m }, team: m (all offices)

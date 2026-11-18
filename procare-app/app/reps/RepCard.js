@@ -83,8 +83,18 @@ export function SalesSide({ m, withDoors }) {
   );
 }
 
-function WeeksTable({ weeks }) {
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const HIST = {
+  week: { title: 'Last 52 weeks', col: 'Week of', label: shortWeek },
+  day: { title: 'Last 7 days', col: 'Day', label: (d) => `${DOW[new Date(`${d}T12:00:00Z`).getUTCDay()]} ${shortWeek(d)}` },
+  month: { title: 'Month by month', col: 'Month', label: (d) => `${MON[Number(d.slice(5, 7)) - 1]} ${d.slice(0, 4)}` },
+  year: { title: 'Year by year', col: 'Year', label: (d) => d.slice(0, 4) },
+};
+
+function WeeksTable({ weeks, view = 'week' }) {
   if (!weeks.length) return null;
+  const H = HIST[view] || HIST.week;
   const tot = weeks.reduce((t, w) => {
     ['hours', 'doors', 'convos', 'services', 'info'].forEach((k) => { t[k] += w.m[k]; });
     return t;
@@ -103,14 +113,14 @@ function WeeksTable({ weeks }) {
   };
   return (
     <div className="rc-weeks">
-      <div className="rc-section"><span>Last 52 weeks</span><span>Scroll ↕</span></div>
+      <div className="rc-section"><span>{H.title}</span>{weeks.length > 6 && <span>Scroll ↕</span>}</div>
       <div className="rc-weeks-scroll" onClick={(e) => e.stopPropagation()}>
         <table>
           <thead>
-            <tr><th>Week of</th><th>Hours</th><th>Doors</th><th>Conv</th><th>Sold</th><th title="Conversations per hour">CPH</th><th title="Customer info per hour">IPH</th><th title="Conversations per sale">C2S</th><th title="Sales per conversation">C2S%</th></tr>
+            <tr><th>{H.col}</th><th>Hours</th><th>Doors</th><th>Conv</th><th>Sold</th><th title="Conversations per hour">CPH</th><th title="Customer info per hour">IPH</th><th title="Conversations per sale">C2S</th><th title="Sales per conversation">C2S%</th></tr>
           </thead>
           <tbody>
-            {[...weeks].reverse().map((w) => <tr key={w.week}>{row(shortWeek(w.week), w.m)}</tr>)}
+            {[...weeks].reverse().map((w) => <tr key={w.week || w.at}>{row(H.label(w.week || w.at), w.m)}</tr>)}
           </tbody>
           <tfoot><tr>{row('Total', tot)}</tr></tfoot>
         </table>
@@ -133,6 +143,7 @@ export default function RepCard({ rep, me, showWeeks = true }) {
       <div className="rc-who">
         <h3>{rep.name}</h3>
         <span className="rc-office">{OFFICE_NAME[rep.office] || 'No office'}</span>
+        {rep.cities?.length > 0 && <span className="rc-cities" title="Cities of their last 5 pins">Last pins: {rep.cities.join(' · ')}</span>}
       </div>
       {rep.rank && <span className="rc-rank">#{rep.rank}</span>}
     </div>
@@ -165,7 +176,7 @@ export default function RepCard({ rep, me, showWeeks = true }) {
             <Stat label="Cust. info" value={m.info} />
             <Stat label="Close rate" value={pct0(m.closeRate)} />
           </div>
-          {showWeeks && <WeeksTable weeks={rep.weeks || []} />}
+          {showWeeks && (rep.history ? <WeeksTable weeks={rep.history} view={rep.historyView} /> : <WeeksTable weeks={rep.weeks || []} />)}
           <div className="rc-foot">
             <span>{plural(m.field_days, 'day')} in the field</span>
             <button type="button" className="rc-flip" tabIndex={flipped ? -1 : 0} onClick={(e) => { e.stopPropagation(); flip(); }}>Tap to flip for sales stats</button>

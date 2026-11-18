@@ -541,3 +541,6 @@ grant execute on function public.mark_payout_paid(uuid, text) to authenticated;
 -- and time_off_work_day(id, day) for the person's time-off approver (shorten, split or cancel). Bodies in that change file.
 -- Change 2026-11-18-52: bonus_numbers_calc adds resv_all (reservices + incompletes, every line, partials never) for the
 -- 'resv_count' goal (a number to stay under).
+
+-- Change 2026-11-18-53: rep_card_extras(grain, to) / rep_card_extras_calc: Rep Card history by day (7), month or year,
+-- and the cities of each rep's last 5 pins. Saved 5 minutes in rpc_cache. Body in that change file.

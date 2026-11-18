@@ -230,7 +230,7 @@ export default function RepCardsView({ view, date, today, label, isCurrent, reps
 
       {tab === 'areas' ? <WorkAreas data={areas} office={office} label={label} isCurrent={isCurrent} meId={meId} /> : tab === 'board' ? <SalesBoard data={board} office={office} label={label} onOffice={setOffice} basis={basis}
         basisLinks={{ sold: href(view, date, 'board', 'sold'), service: href(view, date, 'board', 'service') }} /> : (<>
-      <Panel title={office === 'all' ? 'Team Totals' : `${OFFICE_NAME[office]} Totals`} summary={`${m?.services || 0} services sold · ${money0(m?.far)}`}>
+      <Panel title={office === 'all' ? 'Team Totals' : `${OFFICE_NAME[office]} Totals`} summary={`${m?.services || 0} services sold · ${money0(m?.far)}`} open={false}>
         {m ? <Totals m={m} /> : <p className="note">No doors or sales in this period.</p>}
       </Panel>
 
@@ -239,8 +239,8 @@ export default function RepCardsView({ view, date, today, label, isCurrent, reps
         <OfficeCards offices={offices} officeReps={officeReps} />
       </Panel>
 
-      <section className="rc-block">
-        <div className="rc-block-head"><h2>{isCurrent ? LEADER_TITLE[view] : 'Leaders'}</h2><span className="rc-label">Who’s on top</span></div>
+      <section className="rc-block rc-block-tight">
+        <div className="rc-block-head"><h2>{isCurrent ? LEADER_TITLE[view] : 'Leaders'}</h2><span className="rc-label">Who’s on top · swipe for more</span></div>
         <Leaders list={leaders(shown)} />
       </section>
 
