@@ -1591,3 +1591,9 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 /* Time off: back to work on a day (change 51) */
 .workdays { display: grid; gap: 6px; }
 .workdays .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Scorecard: column picker (2026-11-18) */
+.sc-cols-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.sc-cols-row .note { margin: 0; flex: 1 1 280px; }
+.sc-cols { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; padding: 12px 0 4px; }
+.sc-board .board.freeze-first { min-width: max-content; }

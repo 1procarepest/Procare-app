@@ -1,9 +1,27 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Toggle from '../Toggle';
 import { OFFICES, OFFICE_NAME } from '@/lib/labels';
 import { calcPay, money, money0, num, pct } from '@/lib/scorecard';
 import { photoSrc } from '@/lib/photo';
+
+// Leaderboard columns people can switch on and off (saved on this device). Reservice and cancels start off.
+const COLUMNS = [
+  { key: 'incentive', label: 'Incentive', on: true, bonus: true },
+  { key: 'sold', label: 'Sold', on: true },
+  { key: 'sales', label: 'Serviced', on: true },
+  { key: 'autopay', label: 'Auto-pay', on: true },
+  { key: 'serv', label: 'Completed', on: true },
+  { key: 'comp', label: 'Completion', on: true },
+  { key: 'resv', label: 'Reservice', on: false },
+  { key: 'cxTech', label: 'Cancels tech', on: false },
+  { key: 'cxBilling', label: 'Cancels billing', on: false },
+  { key: 'stars', label: 'Reviews', on: true },
+  { key: 'safety', label: 'Safety', on: true },
+];
+const COLS_KEY = 'scorecard-columns-v1';
+const defaultCols = () => COLUMNS.filter((c) => c.on).map((c) => c.key);
 
 const fmtPct = (v) => (v === null || v === undefined ? '—' : `${v.toFixed(1)}%`);
 const initials = (name) => name.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
@@ -70,6 +88,17 @@ export default function ScorecardView({ techs, R, per, period, meId }) {
   const [office, setOffice] = useState('all');
   const [sort, setSort] = useState({ key: bonusesOn ? 'incentive' : 'rank', dir: -1 });
   const [picked, setPicked] = useState(meId);
+  const [cols, setCols] = useState(defaultCols);
+  const [colsOpen, setColsOpen] = useState(false);
+  useEffect(() => {
+    try { const saved = JSON.parse(localStorage.getItem(COLS_KEY) || 'null'); if (Array.isArray(saved)) setCols(saved); } catch { /* keep defaults */ }
+  }, []);
+  const setCol = (key, on) => setCols((cur) => {
+    const next = on ? [...new Set([...cur, key])] : cur.filter((k) => k !== key);
+    try { localStorage.setItem(COLS_KEY, JSON.stringify(next)); } catch { /* not saved on this device */ }
+    return next;
+  });
+  const show = (key) => cols.includes(key);
 
   const rows = useMemo(() => {
     const list = techs.map((t) => ({ ...t, c: measure(t.cur, R, scale), p: measure(t.prior, R, scale) }))
@@ -129,23 +158,34 @@ export default function ScorecardView({ techs, R, per, period, meId }) {
                 ))}
               </div>
             </div>
-            <p className="note">Click a column to sort and a technician to see their breakdown. Safety arrows compare with {period.prior}.</p>
+            <div className="sc-cols-row">
+              <p className="note">Click a column to sort and a technician to see their breakdown. Safety arrows compare with {period.prior}.</p>
+              <button type="button" className="chip" aria-expanded={colsOpen} onClick={() => setColsOpen((o) => !o)}>Columns ({COLUMNS.filter((c) => (bonusesOn || !c.bonus) && show(c.key)).length}) {colsOpen ? '▴' : '▾'}</button>
+            </div>
+            {colsOpen && (
+              <div className="sc-cols">
+                {COLUMNS.filter((c) => bonusesOn || !c.bonus).map((c) => (
+                  <Toggle key={c.key} checked={show(c.key)} onChange={(on) => setCol(c.key, on)}>{c.label}</Toggle>
+                ))}
+                <button type="button" className="link" onClick={() => { setCols(defaultCols()); try { localStorage.removeItem(COLS_KEY); } catch { /* ignore */ } }}>Reset</button>
+              </div>
+            )}
             <div className="board-wrap">
               <table className="board freeze-first">
                 <thead>
                   <tr>
                     <Th k="name" num={false}>Technician</Th>
-                    {bonusesOn && <Th k="incentive">Incentive</Th>}
-                    <Th k="sold">Sold</Th>
-                    <Th k="sales">Serviced</Th>
-                    <Th k="autopay">Auto-pay</Th>
-                    <Th k="serv">Completed</Th>
-                    <Th k="comp">Completion</Th>
-                    <Th k="resv">Reservice</Th>
-                    <Th k="cxTech">Cancels tech</Th>
-                    <Th k="cxBilling">Cancels billing</Th>
-                    <Th k="stars">Reviews</Th>
-                    <Th k="safety">Safety</Th>
+                    {bonusesOn && show('incentive') && <Th k="incentive">Incentive</Th>}
+                    {show('sold') && <Th k="sold">Sold</Th>}
+                    {show('sales') && <Th k="sales">Serviced</Th>}
+                    {show('autopay') && <Th k="autopay">Auto-pay</Th>}
+                    {show('serv') && <Th k="serv">Completed</Th>}
+                    {show('comp') && <Th k="comp">Completion</Th>}
+                    {show('resv') && <Th k="resv">Reservice</Th>}
+                    {show('cxTech') && <Th k="cxTech">Cancels tech</Th>}
+                    {show('cxBilling') && <Th k="cxBilling">Cancels billing</Th>}
+                    {show('stars') && <Th k="stars">Reviews</Th>}
+                    {show('safety') && <Th k="safety">Safety</Th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -163,23 +203,23 @@ export default function ScorecardView({ techs, R, per, period, meId }) {
                           </span>
                         </button>
                       </td>
-                      {bonusesOn && (
+                      {bonusesOn && show('incentive') && (
                         <td className="num">
                           {!t.c.pay.qualified ? <span className="pill">Under {t.c.pay.minServed}</span>
                             : t.c.pay.gated ? <span className="pill pill-bad">On hold</span>
                             : <span className="money-good">{money0(t.c.pay.total)}</span>}
                         </td>
                       )}
-                      <td className="num">{t.c.sold}{t.c.soldValue > 0 && <span className="cell-sub">{money0(t.c.soldValue)}</span>}</td>
-                      <td className="num"><strong>{t.c.salesDone}</strong>{t.c.salesDoneValue > 0 && <span className="cell-sub">{money0(t.c.salesDoneValue)}</span>}</td>
-                      <td className="num">{t.c.autopay}</td>
-                      <td className="num">{t.c.serv}</td>
-                      <td className="num">{fmtPct(t.c.comp)}</td>
-                      <td className="num">{fmtPct(t.c.resv)}</td>
-                      <td className="num">{t.c.cxTech ? <span className="ring">{t.c.cxTech}</span> : 0}</td>
-                      <td className="num">{t.c.cxBilling}</td>
-                      <td className="num">{t.c.stars}{t.c.rating !== null && <span className="cell-sub">{t.c.rating}★ avg</span>}</td>
-                      <td className="num">{t.c.safety ?? '—'} <Arrow cur={t.c.safety} prior={t.p?.safety} /></td>
+                      {show('sold') && (<td className="num">{t.c.sold}{t.c.soldValue > 0 && <span className="cell-sub">{money0(t.c.soldValue)}</span>}</td>)}
+                      {show('sales') && (<td className="num"><strong>{t.c.salesDone}</strong>{t.c.salesDoneValue > 0 && <span className="cell-sub">{money0(t.c.salesDoneValue)}</span>}</td>)}
+                      {show('autopay') && (<td className="num">{t.c.autopay}</td>)}
+                      {show('serv') && (<td className="num">{t.c.serv}</td>)}
+                      {show('comp') && (<td className="num">{fmtPct(t.c.comp)}</td>)}
+                      {show('resv') && (<td className="num">{fmtPct(t.c.resv)}</td>)}
+                      {show('cxTech') && (<td className="num">{t.c.cxTech ? <span className="ring">{t.c.cxTech}</span> : 0}</td>)}
+                      {show('cxBilling') && (<td className="num">{t.c.cxBilling}</td>)}
+                      {show('stars') && (<td className="num">{t.c.stars}{t.c.rating !== null && <span className="cell-sub">{t.c.rating}★ avg</span>}</td>)}
+                      {show('safety') && (<td className="num">{t.c.safety ?? '—'} <Arrow cur={t.c.safety} prior={t.p?.safety} /></td>)}
                     </tr>
                   ))}
                 </tbody>
