@@ -12,24 +12,24 @@ import GoalCard from '../../bonus/GoalCard';
 const fullName = (p) => `${p?.first_name || ''} ${p?.last_name || ''}`.trim();
 const num = (v) => (v === '' || v === null || v === undefined ? null : Number(v));
 
-// ---------- Yearly bonuses ----------
+// ---------- Quarterly bonuses (stored as the yearly amount in bonus_plans; entered and shown per quarter) ----------
 function Amounts({ people, plans, year, sb, router }) {
   const [showAll, setShowAll] = useState(false);
-  const saved = Object.fromEntries(plans.map((p) => [p.employee_id, Number(p.amount)]));
+  const saved = Object.fromEntries(plans.map((p) => [p.employee_id, Number(p.amount) / 4]));
   const [vals, setVals] = useState(() => Object.fromEntries(Object.entries(saved).map(([k, v]) => [k, String(v)])));
   const [msg, setMsg] = useState('');
   const list = people.filter((p) => showAll || (RANK[p.level] || 0) >= 2 || saved[p.id] > 0);
   const save = async (p) => {
-    const amount = Number(vals[p.id] || 0);
-    if (!(amount >= 0)) return;
-    const { error } = await sb.from('bonus_plans').upsert({ employee_id: p.id, year, amount });
-    setMsg(error ? `Couldn’t save ${p.first_name}: ${error.message}` : `Saved ${p.first_name}: ${money0(amount)} for ${year}.`);
+    const quarter = Number(vals[p.id] || 0);
+    if (!(quarter >= 0)) return;
+    const { error } = await sb.from('bonus_plans').upsert({ employee_id: p.id, year, amount: quarter * 4 });
+    setMsg(error ? `Couldn’t save ${p.first_name}: ${error.message}` : `Saved ${p.first_name}: ${money0(quarter)} a quarter (${money0(quarter * 4)} for ${year}).`);
     router.refresh();
   };
   return (
     <section className="rc-panel"><div className="rc-panel-body rf-sec">
-      <h2>Yearly bonuses for {year}</h2>
-      <p className="note">Each quarter pays a quarter of this, split across that quarter’s goals. Leave it blank or 0 for people without a bonus.</p>
+      <h2>Quarterly bonuses for {year}</h2>
+      <p className="note">What each person can earn per quarter, split across that quarter’s goals. Leave it blank or 0 for people without a bonus.</p>
       <Toggle checked={showAll} onChange={setShowAll}>Show everyone (not just leads and up)</Toggle>
       {msg && <p className={msg.startsWith('Saved') ? 'ok' : 'error'} role="status">{msg}</p>}
       <ul className="bn-amounts">
@@ -37,10 +37,10 @@ function Amounts({ people, plans, year, sb, router }) {
           <li key={p.id}>
             <span><b>{fullName(p)}</b><small>{roleTitle(p.department, p.level)}{p.office ? ` · ${OFFICE_NAME[p.office]}` : ''}</small></span>
             <span className="calc-input"><span className="calc-affix">$</span>
-              <input type="number" min="0" step="100" value={vals[p.id] ?? ''} placeholder="0" aria-label={`${fullName(p)} yearly bonus`}
+              <input type="number" min="0" step="50" value={vals[p.id] ?? ''} placeholder="0" aria-label={`${fullName(p)} quarterly bonus`}
                 onChange={(e) => setVals({ ...vals, [p.id]: e.target.value })} onBlur={() => { if (String(saved[p.id] ?? '') !== String(vals[p.id] ?? '')) save(p); }} />
             </span>
-            <small className="note">{Number(vals[p.id] || 0) > 0 ? `${money0(Number(vals[p.id]) / 4)} a quarter` : ''}</small>
+            <small className="note">{Number(vals[p.id] || 0) > 0 ? `a quarter · ${money0(Number(vals[p.id]) * 4)} a year` : ''}</small>
           </li>
         ))}
       </ul>
@@ -383,7 +383,14 @@ function Approve({ pending, sets, range, today, sb, router }) {
 }
 
 // ---------- Settings ----------
-function SettingsTab({ settings, sources, people, sb, router }) {
+function SettingsTab({ settings, sources, cancelReasons = [], people, sb, router }) {
+  const [skip, setSkip] = useState(settings.cancel_reasons_skip || []);
+  const reasons = useMemo(() => {
+    const m = {};
+    cancelReasons.forEach((r) => { m[r.reason] = (m[r.reason] || 0) + Number(r.n || 0); });
+    skip.forEach((r) => { if (!(r in m)) m[r] = 0; });
+    return Object.entries(m).sort((a, b) => b[1] - a[1]);
+  }, [cancelReasons, skip]);
   const [reportTo, setReportTo] = useState(settings.report_to || []);
   const [off, setOff] = useState(settings.sources_off || []);
   const [scale, setScale] = useState(settings.scale);
@@ -434,6 +441,22 @@ function SettingsTab({ settings, sources, people, sb, router }) {
       </div></section>
 
       <section className="rc-panel"><div className="rc-panel-body rf-sec">
+        <h2>Cancellation rate: which reasons count</h2>
+        <p className="note">Switched off reasons (moving, money and billing) are left out of the cancellation rate goal. (Counts are this quarter and last.)</p>
+        {reasons.length === 0 ? <p className="note">No cancels yet to list reasons from.</p> : (
+          <ul className="bn-sources">
+            {reasons.map(([r, n]) => (
+              <li key={r}>
+                <Toggle checked={!skip.includes(r)} onChange={(on) => { const v = on ? skip.filter((x) => x !== r) : [...skip, r]; setSkip(v); save({ cancel_reasons_skip: v }, on ? `“${r}” counts.` : `“${r}” no longer counts.`); }}>
+                  {r} <small className="note">({n})</small>
+                </Toggle>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div></section>
+
+      <section className="rc-panel"><div className="rc-panel-body rf-sec">
         <h2>Sliding scale</h2>
         <p className="note">For count goals (sales, reports, logged items). Reaching the goal pays 100%. Below it, pay drops along a straight line down to the lowest level; under that, nothing.</p>
         <div className="calc-row">
@@ -469,7 +492,7 @@ export default function BonusAdmin(props) {
   const common = { sb, router };
   if (props.tab === 'amounts') return <Amounts key={props.year} {...common} people={props.people} plans={props.plans} year={props.year} />;
   if (props.tab === 'approve') return <Approve {...common} pending={props.pending} sets={props.sets} range={props.range} today={props.today} />;
-  if (props.tab === 'settings') return <SettingsTab {...common} settings={props.settings} sources={props.sources} people={props.people} />;
+  if (props.tab === 'settings') return <SettingsTab {...common} settings={props.settings} sources={props.sources} cancelReasons={props.cancelReasons} people={props.people} />;
   return <Goals {...common} sets={props.sets} people={props.people} year={props.year} quarter={props.quarter} range={props.range}
     today={props.today} starts={props.starts} techCount={props.techCount} history={props.history} />;
 }

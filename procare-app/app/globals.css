@@ -1583,3 +1583,11 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .board.freeze-first th:first-child, .board.freeze-first td:first-child { position: sticky; left: 0; z-index: 1; background: var(--white); box-shadow: inset -1px 0 0 var(--line); }
 .board.freeze-first tbody tr:hover td:first-child { background: #F8FAF4; }
 .board.freeze-first tr.current td:first-child { background: var(--sage); box-shadow: inset 4px 0 0 var(--green), inset -1px 0 0 var(--line); }
+
+/* Prize payouts: edit and delete (change 51) */
+.payout-tools { display: flex; gap: 16px; }
+.payout-delete { display: grid; gap: 8px; }
+.payout-delete .note { margin: 0; }
+/* Time off: back to work on a day (change 51) */
+.workdays { display: grid; gap: 6px; }
+.workdays .chips { display: flex; flex-wrap: wrap; gap: 6px; }

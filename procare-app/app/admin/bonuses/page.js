@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 const TABS = [
   { key: 'goals', label: 'Goals' },
-  { key: 'amounts', label: 'Yearly bonuses' },
+  { key: 'amounts', label: 'Bonus amounts' },
   { key: 'approve', label: 'Approve' },
   { key: 'settings', label: 'Settings' },
 ];
@@ -50,14 +50,14 @@ export default async function BonusesPage({ searchParams }) {
   // Last quarter and the same quarter last year, per office, to help set goals
   const history = { prevName: quarterName(p.year, p.quarter), lyName: quarterName(at.year - 1, at.quarter) };
   [null, 'east', 'west', 'south'].forEach((office) => {
-    history[office || 'all'] = Object.fromEntries(['tech_sales', 'office_sales', 'marketing_sales', 'cancel', 'autopay', 'ar_past', 'pool']
+    history[office || 'all'] = Object.fromEntries(['tech_sales', 'office_sales', 'marketing_sales', 'cancel', 'resv', 'autopay', 'ar_past', 'pool']
       .map((k) => [k, { prev: pastValue(k, prevNums, office, pr), ly: pastValue(k, lyNums, office, ly) }]));
   });
   const starts = {};
   [null, 'east', 'west', 'south'].forEach((office) => {
     const o = officeNumbers(data.nums, office);
     const prev = prevNums ? officeNumbers(prevNums, office) : null;
-    starts[office || 'all'] = Object.fromEntries(['autopay', 'ar_past', 'pool', 'cancel'].map((k) => [k, autoStart(k, o, prev)]));
+    starts[office || 'all'] = Object.fromEntries(['autopay', 'ar_past', 'pool', 'cancel', 'resv'].map((k) => [k, autoStart(k, o, prev)]));
   });
   const techCount = { all: (techs || []).length };
   (techs || []).forEach((t) => { techCount[t.office || ''] = (techCount[t.office || ''] || 0) + 1; });
@@ -66,7 +66,7 @@ export default async function BonusesPage({ searchParams }) {
     <>
       <div className="admin-head">
         <h1>Quarterly bonuses</h1>
-        <p className="note">Yearly bonuses are paid a quarter at a time on the goals set here. Approved bonuses land in each person’s Earnings to cash out, then show under Prize payouts.</p>
+        <p className="note">Quarterly bonuses are paid on the goals set here. Approved bonuses land in each person’s Earnings to cash out, then show under Prize payouts.</p>
       </div>
       <div className="bn-admin-bar">
         <nav className="tabs tabs-inline" aria-label="Bonuses">
@@ -85,6 +85,7 @@ export default async function BonusesPage({ searchParams }) {
       <BonusAdmin
         tab={tab} me={me} today={today} year={at.year} quarter={at.quarter} range={quarterRange(at.year, at.quarter)}
         sets={data.sets} settings={data.settings} sources={[...(data.nums?.sources || []), ...(prevNums?.sources || [])]}
+        cancelReasons={[...(data.nums?.cancel_reasons || []), ...(prevNums?.cancel_reasons || [])]}
         people={people || []} plans={plans || []} pending={pending || []} starts={starts} techCount={techCount} history={history}
       />
     </>

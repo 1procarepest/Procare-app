@@ -534,3 +534,8 @@ grant execute on function public.mark_payout_paid(uuid, text) to authenticated;
 -- Change 2026-11-16-46: competition_board_calc counts sales by SOLD date (only sales sold in the competition).
 -- It returns "sales" (rep, sold day, first-service day, auto-pay, contract value, pest) and the app applies the
 -- optional service window (competitions.points.serve_days: serviced within N days after the end, else pending/dropped).
+
+-- Change 2026-11-18-51: bonus_numbers_calc leaves cancel reasons in bonus_settings.cancel_reasons_skip out of 'cancels'
+-- (cancels_all keeps every one), adds resv / resv_base (reservices + incompletes, regular core services) and
+-- 'cancel_reasons'. New: update_payout(id, amount, note), delete_payout(id, keep_prizes) for can_manage_payouts(),
+-- and time_off_work_day(id, day) for the person's time-off approver (shorten, split or cancel). Bodies in that change file.

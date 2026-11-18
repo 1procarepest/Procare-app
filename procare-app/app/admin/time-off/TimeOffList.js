@@ -4,7 +4,41 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { OFFICE_NAME, roleTitle, timeOffWhen } from '@/lib/labels';
+import { todayYmd } from '@/lib/repcards';
 import Face from '../../Face';
+
+const plusDay = (d, n) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+const dayName = (d) => new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+/** Approvers: put the person back to work on one day of their time off (today or later). */
+function WorkDays({ r }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const today = todayYmd();
+  const days = [];
+  for (let d = r.start_date > today ? r.start_date : today; d <= r.end_date && days.length < 31; d = plusDay(d, 1)) days.push(d);
+  if (!days.length) return null;
+  const back = async (d) => {
+    setBusy(true); setMsg('');
+    const { data, error } = await createClient().rpc('time_off_work_day', { p_id: r.id, p_day: d });
+    setBusy(false);
+    if (error || !data) { setMsg(error ? `Couldn’t change it: ${error.message}` : 'Not allowed for your account.'); return; }
+    router.refresh();
+  };
+  if (!open) return <button type="button" className="link" onClick={() => setOpen(true)}>Back to work on a day…</button>;
+  return (
+    <div className="workdays">
+      <span className="note">Tap a day to put {r.employee?.first_name} back on the schedule that day:</span>
+      <div className="chips">
+        {days.map((d) => <button key={d} type="button" className="chip" disabled={busy} onClick={() => back(d)}>{dayName(d)}</button>)}
+        <button type="button" className="link" onClick={() => setOpen(false)}>Done</button>
+      </div>
+      {msg && <p className="error" role="alert">{msg}</p>}
+    </div>
+  );
+}
 
 const STATUS = { pending: 'Waiting', approved: 'Approved', denied: 'Denied', cancelled: 'Cancelled' };
 
@@ -32,7 +66,7 @@ function headNote(me) {
   return 'Requests from your team. Final approval is given by HR.';
 }
 
-function Request({ r, canDecide }) {
+function Request({ r, canDecide, canEdit }) {
   const router = useRouter();
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -79,6 +113,7 @@ function Request({ r, canDecide }) {
       <span className={`badge status-${r.status}`}>
         {r.status === 'approved' && e.department === 'sales' && r.decided_by === r.employee_id ? 'Notice' : STATUS[r.status]}
       </span>
+      {canEdit && (r.status === 'approved' || r.status === 'pending') && <WorkDays r={r} />}
       {canDecide && r.status === 'pending' && (
         <div className="decide">
           <input placeholder="Reply to the employee (optional)" value={note} onChange={(ev) => setNote(ev.target.value)} aria-label="Reply" />
@@ -94,6 +129,8 @@ function Request({ r, canDecide }) {
 }
 
 export default function TimeOffList({ requests, me }) {
+  const today = todayYmd();
+  const upcoming = requests.filter((r) => r.status === 'approved' && r.end_date >= today && canApprove(me, r));
   const waiting = requests.filter((r) => r.status === 'pending');
   const decided = requests.filter((r) => r.status !== 'pending')
     .sort((a, b) => String(b.decided_at || b.created_at).localeCompare(String(a.decided_at || a.created_at)))
@@ -110,9 +147,19 @@ export default function TimeOffList({ requests, me }) {
 
       <h2>Waiting for a decision ({waiting.length})</h2>
       <ul className="requests">
-        {waiting.map((r) => <Request key={r.id} r={r} canDecide={canApprove(me, r)} />)}
+        {waiting.map((r) => <Request key={r.id} r={r} canDecide={canApprove(me, r)} canEdit={canApprove(me, r)} />)}
         {waiting.length === 0 && <li className="note">No requests are waiting.</li>}
       </ul>
+
+      {upcoming.length > 0 && (
+        <>
+          <h2 className="spaced">Upcoming approved time off ({upcoming.length})</h2>
+          <p className="note">Someone wants to work after all? Put them back on the schedule one day at a time.</p>
+          <ul className="requests">
+            {upcoming.map((r) => <Request key={r.id} r={r} canDecide={false} canEdit />)}
+          </ul>
+        </>
+      )}
 
       <h2 className="spaced">Recently decided</h2>
       <ul className="requests">

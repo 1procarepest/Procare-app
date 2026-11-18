@@ -9,7 +9,7 @@ Branch `manager-bonuses`. Database change 47. Everything below was agreed with J
 - **Shared by default.** One goal set can have several people (West: Brandon Logan, KC Todd and Miles). A toggle
   splits it into separate sets when Ally wants different goals per person. Each person is paid on their own bonus amount.
 - Goals are only on what a manager controls:
-  - Service: technician sales (not reps' or office sales), auto-pay %, AR 30+ dollars, cancellation %, reports.
+  - Service: technician sales (not reps' or office sales), auto-pay %, AR 30+ dollars, cancellation % (moving and money reasons left out, change 51), reservice rate (change 51), reports.
   - Administrative: office KPIs, including the job pool.
   - Marketing (Mark Daniel): marketing-source sales, cost per new customer, Google reviews, social posts, website leads,
     projects. Sales exclude door-to-door (sales reps), technician sales and office upsells; community events count.

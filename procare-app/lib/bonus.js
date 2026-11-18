@@ -21,13 +21,14 @@ export const KINDS = {
   reports: { label: 'Ride-alongs and follow-behinds', type: 'count', unit: 'reports', hint: 'Reports filed by the people on this goal with “I told the tech” switched on. Usually techs × 4 (2 ride-alongs + 2 follow-behinds each).' },
   autopay: { label: 'Auto-pay', type: 'improve', unit: '%', better: 'high', hint: 'Recurring customers on valid auto-pay.' },
   ar_past: { label: 'AR 30+ days past due', type: 'improve', unit: '$', better: 'low', hint: 'Dollars 30 or more days past due.' },
-  cancel: { label: 'Cancellation rate', type: 'improve', unit: '%', better: 'low', hint: 'Core cancels this quarter ÷ recurring customers at the start. Starts from last quarter’s rate.' },
+  cancel: { label: 'Cancellation rate', type: 'improve', unit: '%', better: 'low', hint: 'Core cancels this quarter ÷ recurring customers at the start, leaving out moving and money reasons (Settings tab). Starts from last quarter’s rate.' },
+  resv: { label: 'Reservice rate', type: 'improve', unit: '%', better: 'low', hint: 'Reservices and incompletes ÷ regular completed services in the core lines this quarter. Partial (weather) reservices never count. Starts from last quarter’s rate.' },
   pool: { label: 'Job pool past due', type: 'improve', unit: '%', better: 'low', hint: 'Past-due jobs not on the schedule, as a share of recurring customers.' },
   cost_per_customer: { label: 'Cost per new customer', type: 'cost', unit: '$', better: 'low', hint: 'Ad spend logged with proof ÷ marketing sales. Lower is better.' },
   logged: { label: 'Logged with proof', type: 'count', unit: '', logged: true, hint: 'Social posts, Google reviews, website leads… The person logs each one with a link or screenshot; Ally approves.' },
   project: { label: 'Project', type: 'project', logged: true, hint: 'Done by the due date pays 100%. Logged with proof; Ally approves.' },
 };
-export const KIND_ORDER = ['tech_sales', 'autopay', 'ar_past', 'cancel', 'reports', 'pool', 'office_sales', 'marketing_sales', 'cost_per_customer', 'logged', 'project'];
+export const KIND_ORDER = ['tech_sales', 'autopay', 'ar_past', 'cancel', 'resv', 'reports', 'pool', 'office_sales', 'marketing_sales', 'cost_per_customer', 'logged', 'project'];
 /** Goals that take logged entries (what Mark logs): logged items, projects and ad spend. */
 export const takesEntries = (kind) => kind === 'logged' || kind === 'project' || kind === 'cost_per_customer';
 
@@ -53,7 +54,7 @@ export const quarterName = (year, q) => `Q${q} ${year}`;
 /** One office's numbers, or every office added up when office is null (company-wide). */
 export function officeNumbers(nums, office) {
   const list = (nums?.offices || []).filter((o) => !office || o.office === office);
-  const keys = ['sales', 'tech_sales', 'marketing', 'cancels', 'accounts_start', 'ap_start', 'ar_past_start', 'pool_start', 'accounts', 'ap_valid', 'ar_past', 'pool_past'];
+  const keys = ['sales', 'tech_sales', 'marketing', 'cancels', 'accounts_start', 'ap_start', 'ar_past_start', 'pool_start', 'accounts', 'ap_valid', 'ar_past', 'pool_past', 'resv', 'resv_base'];
   const out = {};
   keys.forEach((k) => {
     const vals = list.map((o) => o[k]).filter((v) => v !== null && v !== undefined);
@@ -68,6 +69,7 @@ export function autoStart(kind, o, prev) {
   if (kind === 'ar_past') return o.ar_past_start;
   if (kind === 'pool') return pct(o.pool_start, o.accounts_start);
   if (kind === 'cancel') return prev ? pct(prev.cancels, prev.accounts_start) : null;
+  if (kind === 'resv') return prev ? pct(prev.resv, prev.resv_base) : null;
   return null;
 }
 
@@ -89,6 +91,7 @@ export function pastValue(kind, nums, office, range) {
     case 'office_sales': return hasSales ? { v: o.sales } : null;
     case 'marketing_sales': return hasSales ? { v: o.marketing } : null;
     case 'cancel': return hasSales && (o.accounts_start || o.accounts) ? { v: pct(o.cancels, o.accounts_start || o.accounts), approx: !startOk } : null;
+    case 'resv': return o.resv_base ? { v: pct(o.resv, o.resv_base) } : null;
     case 'autopay': return endOk ? { v: pct(o.ap_valid, o.accounts) } : null;
     case 'ar_past': return endOk ? { v: o.ar_past } : null;
     case 'pool': return endOk ? { v: pct(o.pool_past, o.accounts) } : null;
@@ -108,6 +111,7 @@ export function actualOf(goal, ctx) {
     case 'ar_past': return o.ar_past;
     case 'pool': return pct(o.pool_past, o.accounts);
     case 'cancel': return pct(o.cancels, o.accounts_start);
+    case 'resv': return pct(o.resv, o.resv_base);
     case 'cost_per_customer': {
       const spend = ctx.entries.reduce((t, e) => t + Number(e.qty || 0), 0);
       return o.marketing ? spend / o.marketing : null;

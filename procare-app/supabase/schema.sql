@@ -282,6 +282,7 @@ create table public.bonus_settings (
   id          integer primary key default 1 check (id = 1),
   report_to   uuid[] not null default '{}',    -- employees who get every ride-along and follow-behind (Ryan Boyd)
   sources_off text[] not null default '{}',    -- FieldRoutes sources that never count as marketing sales
+  cancel_reasons_skip text[] not null default '{}',  -- cancel reasons left out of the bonus cancellation rate (change 51)
   scale       jsonb not null default '{"floor": 60, "floor_pay": 20, "stretch": false, "cap": 110}'::jsonb,
   updated_by  uuid references public.employees(id) default public.my_id(),
   updated_at  timestamptz not null default now()
@@ -320,7 +321,7 @@ create table public.bonus_goals (
   id          uuid primary key default gen_random_uuid(),
   set_id      uuid not null references public.bonus_sets(id) on delete cascade,
   sort        smallint not null default 0,
-  kind        text not null check (kind in ('tech_sales', 'office_sales', 'marketing_sales', 'autopay', 'ar_past', 'cancel',
+  kind        text not null check (kind in ('tech_sales', 'office_sales', 'marketing_sales', 'autopay', 'ar_past', 'cancel', 'resv',
                                             'pool', 'reports', 'cost_per_customer', 'logged', 'project')),
   label       text not null check (length(trim(label)) > 0),
   target      numeric not null,
