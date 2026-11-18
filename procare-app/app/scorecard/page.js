@@ -35,6 +35,7 @@ export default async function ScorecardPage({ searchParams }) {
     <>
       <div className="admin-head bug-band">
         <h1 className="sc-title">Technician Performance Card</h1>
+        {me.rank >= 4 && <Link className="btn btn-small sc-rules-btn" href="/scorecard/rules">Incentive settings</Link>}
         <p className="note">
           {period.label}: {range(per.cur_start, per.cur_end)}{per.in_progress ? ' so far' : ''}. Compared with {period.prior} ({range(per.prior_start, per.prior_end)}).
         </p>

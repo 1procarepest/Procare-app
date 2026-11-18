@@ -1608,3 +1608,5 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 /* Scorecard: room between the office chips and the Columns button; money and pill side by side */
 .sc-cols-row { margin-top: 10px; }
 .board td .money-good + .pill { margin-left: 8px; }
+.sc-rules-btn { float: right; margin-left: 12px; }
+@media (max-width: 640px) { .sc-rules-btn { float: none; display: inline-block; margin: 0 0 8px; } }

@@ -15,7 +15,7 @@ export default async function ScorecardLayout({ children }) {
 
   return (
     <>
-      <TopNav me={me} supabase={supabase} current="technician" extra={me.rank >= 4 && <Link className="toplink" href="/scorecard/rules">Rules</Link>} />
+      <TopNav me={me} supabase={supabase} current="technician" extra={me.rank >= 4 && <Link className="toplink" href="/scorecard/rules">Incentives</Link>} />
       <main className="admin scorecard">{children}</main>
     </>
   );

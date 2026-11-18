@@ -41,7 +41,9 @@ export function calcPay(m, R, scale) {
   const comp = pct(m.serv, m.sched) || 0;
   const resv = num(m.serv) ? pct(num(m.reservices) + num(m.incompletes), m.serv) : null;
   p.minServed = Math.ceil(num(R.min_served) * scale);
-  p.qualified = num(m.serv) >= p.minServed;
+  // The minimum only matters while a service incentive is on; with sales / auto-pay only, nobody is "under".
+  p.minMatters = ['completed', 'completion', 'reservice', 'reviews', 'safety'].some(on);
+  p.qualified = !p.minMatters || num(m.serv) >= p.minServed;
   p.distractedMax = Math.ceil(num(R.distracted_max) * scale);
   const drove = m.drive_score !== null && m.drive_score !== undefined && num(m.drive_miles) > 0;
   if (p.qualified) {
