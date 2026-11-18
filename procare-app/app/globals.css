@@ -1426,9 +1426,13 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .rf-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
 .rf-roster, .rf-list, .rf-truck, .rf-patterns, .bn-entries, .bn-amounts, .bn-close, .bn-sources, .bn-people { list-style: none; margin: 0; padding: 0; display: grid; }
 .rf-roster li { display: grid; grid-template-columns: minmax(0, 1.4fr) 1fr 1fr; gap: 8px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 15px; }
-.rf-roster li span:not(:first-child) { color: #B4441A; font-variant-numeric: tabular-nums; }
-.rf-roster li span.rf-ok { color: var(--forest); }
-.rf-roster li.rf-done { opacity: 0.6; }
+.rf-roster li > span:not(:first-child) { font-variant-numeric: tabular-nums; }
+/* none yet: red · started: Procare teal-navy · goal met: green */
+.rf-step { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 14px; border: 1px solid; }
+.rf-step.rf-none { color: var(--danger); background: #FBEDEB; border-color: #E9B8B2; }
+.rf-step.rf-started { color: var(--white); background: var(--ink); border-color: var(--ink); }
+.rf-step.rf-met { color: var(--white); background: var(--forest); border-color: var(--forest); }
+.rf-step.rf-met::before { content: '✓ '; }
 @media (max-width: 560px) { .rf-roster li { grid-template-columns: 1fr 1fr; } .rf-roster li span:first-child { grid-column: 1 / -1; font-weight: 600; } }
 .rf-list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
 .rf-list a { display: grid; gap: 2px; color: var(--ink); text-decoration: none; min-width: 0; }

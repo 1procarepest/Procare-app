@@ -14,6 +14,9 @@ export const dynamic = 'force-dynamic';
 
 const PER_TECH = { ride_along: 2, follow_behind: 2 };
 
+// Roster colors: red = none yet, Procare teal-navy = started, green = goal met.
+const step = (n) => (n >= 2 ? 'rf-met' : n > 0 ? 'rf-started' : 'rf-none');
+
 export default async function ReportsPage({ searchParams }) {
   const supabase = createClient();
   const { me } = await getMe(supabase);
@@ -101,8 +104,8 @@ export default async function ReportsPage({ searchParams }) {
             {roster.map((t) => (
               <li key={t.id} className={t.left === 0 ? 'rf-done' : ''}>
                 <span>{t.first_name} {t.last_name}</span>
-                <span className={t.ra >= 2 ? 'rf-ok' : ''}>Ride-alongs {t.ra}/2</span>
-                <span className={t.fb >= 2 ? 'rf-ok' : ''}>Follow-behinds {t.fb}/2</span>
+                <span><span className={`rf-step ${step(t.ra)}`}>Ride-alongs {t.ra}/2</span></span>
+                <span><span className={`rf-step ${step(t.fb)}`}>Follow-behinds {t.fb}/2</span></span>
               </li>
             ))}
           </ul>
