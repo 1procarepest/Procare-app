@@ -1597,3 +1597,8 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .rc-leader { scroll-snap-align: start; }
 .rc-cities { display: block; font-size: 13px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rc-block-tight { margin: 16px 0; }
+/* Scorecard: column picker (2026-11-18) */
+.sc-cols-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.sc-cols-row .note { margin: 0; flex: 1 1 280px; }
+.sc-cols { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; padding: 12px 0 4px; }
+.sc-board .board.freeze-first { min-width: max-content; }
