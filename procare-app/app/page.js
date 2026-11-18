@@ -39,7 +39,12 @@ export default async function Home({ searchParams }) {
   if (!user) redirect('/login');
 
   if (!me) {
-    return (
+    // Quarterly bonus link for people with goals of their own (managers)
+  const { count: bonusSets } = me.rank >= 2 || me.hr_approver
+    ? await supabase.from('bonus_members').select('set_id', { count: 'exact', head: true }).eq('employee_id', me.id)
+    : { count: 0 };
+
+  return (
       <main className="empty">
         <img src="/logo.png" alt="Procare" width="150" />
         <h1>Your account isn’t set up yet</h1>
@@ -214,6 +219,13 @@ export default async function Home({ searchParams }) {
         )}
 
         <MyCompetitions list={myComps} />
+
+        {bonusSets > 0 && (
+          <Link className="home-bonus" href="/bonus">
+            <span><b>Your quarterly bonus</b><small>See your goals and what you’re earning so far</small></span>
+            <span aria-hidden="true">›</span>
+          </Link>
+        )}
 
         {(awards || []).length > 0 && <Earnings awards={awards} requests={payouts || []} />}
 

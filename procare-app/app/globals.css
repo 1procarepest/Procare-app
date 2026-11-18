@@ -1614,3 +1614,11 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .board td .money-good + .pill { margin-left: 8px; }
 .sc-rules-btn { float: right; margin-left: 12px; }
 @media (max-width: 640px) { .sc-rules-btn { float: none; display: inline-block; margin: 0 0 8px; } }
+/* Home: link to your own quarterly bonus; Operations: route plan button (2026-11-18) */
+.home-bonus { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 16px 0; padding: 16px 20px; border-radius: 16px; background: var(--ink); color: var(--white); text-decoration: none; }
+.home-bonus b { display: block; font-size: 18px; }
+.home-bonus small { display: block; color: var(--lime); font-size: 14px; }
+.home-bonus > span:last-child { font-size: 28px; color: var(--lime); }
+.home-bonus:hover { background: var(--forest); }
+.ops-plan-btn { display: inline-block; margin-top: 12px; background: var(--lime); color: var(--ink); }
+.ops-plan-btn:hover { background: #E8EE7A; color: var(--ink); }

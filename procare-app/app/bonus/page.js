@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { todayYmd } from '@/lib/repcards';
@@ -29,6 +30,10 @@ export default async function BonusPage({ searchParams }) {
   const { sets, error, from, to } = await loadQuarter(supabase, at.year, at.quarter, today);
   const { data: links } = await supabase.rpc('my_bonus_links');
   if (error) return <p className="error">Bonuses couldn’t load: {error.message}</p>;
+  if (links?.manage) {
+    const { count } = await supabase.from('bonus_members').select('set_id', { count: 'exact', head: true }).eq('employee_id', me.id);
+    if (!count) redirect('/admin/bonuses');   // runs bonuses but has no goals of their own
+  }
   const mine = sets.filter((s) => s.members.some((m) => m.employee_id === me.id));
   const prev = step(at, -1);
   const next = step(at, 1);
