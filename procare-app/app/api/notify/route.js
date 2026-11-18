@@ -127,12 +127,12 @@ export async function POST(request) {
       const to = await others(await hrApprovers(), person.id);
       const { ok: sent, problem } = await sendEmail({
         to: to.map((p) => p.email),
-        subject: `${r.use_pto ? 'PTO request' : 'Time-off request'}: ${name(person)}, ${when}`,
-        heading: r.use_pto ? `${name(person)} is asking for paid time off` : `${name(person)} is asking for time off`,
+        subject: `${r.use_pto ? 'Paid vacation request' : 'Time-off request'}: ${name(person)}, ${when}`,
+        heading: r.use_pto ? `${name(person)} is asking for paid vacation time` : `${name(person)} is asking for time off`,
         lines: [
           who(person),
           `When: ${when}`,
-          `Paid time off (PTO): ${r.use_pto ? 'Yes, they want this paid' : 'No'}`,
+          `Paid vacation time: ${r.use_pto ? 'Yes, they want this paid' : 'No'}`,
           ...(r.note ? [`Note: ${r.note}`] : []),
         ],
         link: { href: `${origin}/admin/time-off`, label: 'Approve or deny' },
@@ -153,7 +153,7 @@ export async function POST(request) {
       heading: approved ? 'Your time off is approved' : 'Your time-off request was denied',
       lines: [
         `When: ${when}`,
-        ...(r.use_pto ? ['You asked for this to be paid time off (PTO).'] : []),
+        ...(r.use_pto ? ['You asked for this to be paid vacation time.'] : []),
         ...(r.decision_note ? [`Reply from ${name(me)}: ${r.decision_note}`] : [`Decided by ${name(me)}.`]),
         approved ? 'It’s on your schedule in the app.' : 'If you have questions, talk with your manager or HR.',
       ],

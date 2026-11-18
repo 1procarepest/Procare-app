@@ -212,7 +212,7 @@ export default function ProfileActions({ employeeId, email, isSales = false }) {
             <label className="toggle">
               <input type="checkbox" role="switch" checked={usePto} onChange={(e) => setUsePto(e.target.checked)} />
               <span className="toggle-track" aria-hidden="true" />
-              Use paid time off (PTO)
+              Use paid vacation time
             </label>
           )}
           <div>

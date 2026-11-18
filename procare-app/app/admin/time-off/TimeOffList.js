@@ -71,7 +71,7 @@ function Request({ r, canDecide }) {
         <span className="person-role">{roleTitle(e.department, e.level)}, {OFFICE_NAME[e.office] || 'No office'}</span>
         <span>
           {timeOffWhen(r)}
-          {r.use_pto && <> <span className="badge badge-pto">PTO</span></>}
+          {r.use_pto && <> <span className="badge badge-pto">Paid vacation</span></>}
         </span>
         {r.note && <span className="note">“{r.note}”</span>}
         {r.decision_note && <span className="note">Reply: {r.decision_note}</span>}

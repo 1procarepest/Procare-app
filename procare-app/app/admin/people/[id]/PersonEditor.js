@@ -131,7 +131,7 @@ export default function PersonEditor({ person, schedule, upcoming = [], me, canM
               <li key={r.id} className="request">
                 <div className="request-main">
                   <span className="person-name">
-                    {timeOffWhen(r)}{r.use_pto ? ', PTO' : ''}
+                    {timeOffWhen(r)}{r.use_pto ? ', paid vacation' : ''}
                   </span>
                   {r.note && <span className="note">{r.note}</span>}
                 </div>
