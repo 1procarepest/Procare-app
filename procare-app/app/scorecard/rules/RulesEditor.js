@@ -47,9 +47,8 @@ const GROUPS = [
 const DEFAULTS = { autopay_amt: 0, completed_min: 0, completed_amt: 0, resv_max: 3, resv_amt: 0, sale_amt: 100 };
 
 const num = (v) => Number(v || 0);
-const lines = (v) => (Array.isArray(v) ? v.join('\n') : '');
 
-export default function RulesEditor({ initial, myId }) {
+export default function RulesEditor({ initial, myId, reasons = [] }) {
   const router = useRouter();
   const [rules, setRules] = useState(() => {
     const r = { ...DEFAULTS, ...initial };
@@ -57,8 +56,16 @@ export default function RulesEditor({ initial, myId }) {
     r.drive_gate_keep_sales = initial.drive_gate_keep_sales !== false;
     return r;
   });
-  const [tech, setTech] = useState(lines(initial.cancel_tech_reasons));
-  const [billing, setBilling] = useState(lines(initial.cancel_billing_reasons));
+  const [tech, setTech] = useState(Array.isArray(initial.cancel_tech_reasons) ? initial.cancel_tech_reasons : []);
+  const [billing, setBilling] = useState(Array.isArray(initial.cancel_billing_reasons) ? initial.cancel_billing_reasons : []);
+  const [added, setAdded] = useState('');
+  const [extra, setExtra] = useState([]);
+  // Every reason: the ones FieldRoutes used this quarter and last (with counts), the saved ones, and any typed in.
+  const counts = Object.fromEntries(reasons.map((r) => [r.reason, r.n]));
+  const allReasons = [...new Set([...reasons.map((r) => r.reason), ...tech, ...billing, ...extra])]
+    .filter((r) => r && r !== 'Not specified')
+    .sort((a, b) => (counts[b] || 0) - (counts[a] || 0) || a.localeCompare(b));
+  const flip = (list, setList, r, on) => setList(on ? [...new Set([...list, r])] : list.filter((x) => x !== r));
   const [msg, setMsg] = useState({ text: '', bad: false });
   const [saving, setSaving] = useState(false);
 
@@ -72,9 +79,8 @@ export default function RulesEditor({ initial, myId }) {
       if (rules[k] === '' || !Number.isFinite(n) || n < 0) { setMsg({ text: `“${label}” needs a number of 0 or more.`, bad: true }); return; }
       clean[k] = n;
     }
-    const list = (s) => s.split('\n').map((x) => x.trim()).filter(Boolean);
-    clean.cancel_tech_reasons = list(tech);
-    clean.cancel_billing_reasons = list(billing);
+    clean.cancel_tech_reasons = tech;
+    clean.cancel_billing_reasons = billing;
     setSaving(true);
     setMsg({ text: '', bad: false });
     const { data, error } = await createClient().from('scorecard_rules')
@@ -125,16 +131,22 @@ export default function RulesEditor({ initial, myId }) {
 
       <section className="panel">
         <h2>Cancel reasons</h2>
-        <p className="note">One per line, as they’re named in FieldRoutes. Any other reason never counts against a tech.</p>
-        <div className="row">
-          <div>
-            <label htmlFor="cx-tech">Caused by the tech</label>
-            <textarea id="cx-tech" rows={6} value={tech} onChange={(e) => setTech(e.target.value)} />
-          </div>
-          <div>
-            <label htmlFor="cx-billing">Billing (shown, never counted)</label>
-            <textarea id="cx-billing" rows={6} value={billing} onChange={(e) => setBilling(e.target.value)} />
-          </div>
+        <p className="note">Switch on the FieldRoutes cancel reasons that count. Any reason left off never counts against a tech. (Counts are this quarter and last.) Click Save rules when done.</p>
+        <h3>Caused by the tech</h3>
+        <ul className="bn-sources">
+          {allReasons.map((r) => (
+            <li key={`t-${r}`}><Toggle checked={tech.includes(r)} onChange={(on) => flip(tech, setTech, r, on)}>{r} {counts[r] ? <small className="note">({counts[r]})</small> : null}</Toggle></li>
+          ))}
+        </ul>
+        <h3 className="spaced">Billing (shown, never counted)</h3>
+        <ul className="bn-sources">
+          {allReasons.map((r) => (
+            <li key={`b-${r}`}><Toggle checked={billing.includes(r)} onChange={(on) => flip(billing, setBilling, r, on)}>{r} {counts[r] ? <small className="note">({counts[r]})</small> : null}</Toggle></li>
+          ))}
+        </ul>
+        <div className="calc-row spaced">
+          <input value={added} onChange={(e) => setAdded(e.target.value)} placeholder="Reason not listed? Type it exactly as in FieldRoutes" aria-label="Add a reason" style={{ flex: '1 1 260px' }} />
+          <button type="button" className="btn btn-small btn-quiet" disabled={!added.trim()} onClick={() => { setExtra([...extra, added.trim()]); setAdded(''); }}>Add reason</button>
         </div>
       </section>
 
