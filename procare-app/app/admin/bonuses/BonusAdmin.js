@@ -49,7 +49,8 @@ function Amounts({ people, plans, year, sb, router }) {
 }
 
 // ---------- Goal set editor ----------
-const blankGoal = (kind = 'tech_sales') => ({ kind, label: KINDS[kind].label, target: '', start_value: '', weight: 20, due_date: '' });
+const goalName = (kind) => KINDS[kind].name || KINDS[kind].label;
+const blankGoal = (kind = 'tech_sales') => ({ kind, label: goalName(kind), target: '', start_value: '', weight: 20, due_date: '' });
 
 function SetEditor({ initial, people, starts, techCount, history = {}, onSave, onCancel, busy }) {
   const [d, setD] = useState(initial);
@@ -110,7 +111,7 @@ function SetEditor({ initial, people, starts, techCount, history = {}, onSave, o
               <li key={g.id || `new-${i}`}>
                 <div className="calc-row">
                   <div className="calc-field bn-grow"><span className="rf-label">Measures</span>
-                    <Picker label="Measures" value={g.kind} search={false} onChange={(v) => setGoal(i, { kind: v, label: g.label === k.label || !g.label ? KINDS[v].label : g.label })}
+                    <Picker label="Measures" value={g.kind} search={false} onChange={(v) => setGoal(i, { kind: v, label: !g.label || g.label === k.label || g.label === goalName(g.kind) ? goalName(v) : g.label })}
                       options={KIND_ORDER.map((key) => ({ value: key, label: KINDS[key].label }))} />
                   </div>
                   <label className="calc-field bn-grow">Name on the goal<input value={g.label} onChange={(e) => setGoal(i, { label: e.target.value })} /></label>
@@ -201,7 +202,7 @@ function Goals({ sets, people, year, quarter, range, today, starts, techCount, h
     }
     for (let i = 0; i < goals.length; i += 1) {
       const g = goals[i];
-      const row = { set_id: setId, sort: i, kind: g.kind, label: g.label.trim() || KINDS[g.kind].label, target: KINDS[g.kind].type === 'project' ? 1 : Number(g.target),
+      const row = { set_id: setId, sort: i, kind: g.kind, label: g.label.trim() || goalName(g.kind), target: KINDS[g.kind].type === 'project' ? 1 : Number(g.target),
         start_value: KINDS[g.kind].type === 'improve' ? num(g.start_value) : null, weight: Number(g.weight || 0), due_date: g.due_date || null };
       r = g.id && id ? await sb.from('bonus_goals').update(row).eq('id', g.id) : await sb.from('bonus_goals').insert(row);
       if (r.error) throw r.error;
@@ -286,7 +287,7 @@ function Goals({ sets, people, year, quarter, range, today, starts, techCount, h
           <ul className="bn-people">
             {s.score.people.map((p) => {
               const m = s.members.find((x) => x.employee_id === p.id);
-              return <li key={p.id}><b>{fullName(m)}</b> {money2(p.earned)} of {money2(p.quarter)}{!s.score.final && today >= range.from ? ` · at this pace ${money2(p.projected)}` : ''}</li>;
+              return <li key={p.id}><b>{fullName(m)}</b> {s.score.final ? '' : 'earning so far '}{money2(p.earned)} of {money2(p.quarter)}{!s.score.final && today >= range.from ? ` · at this pace ${money2(p.projected)}` : ''}</li>;
             })}
           </ul>
           <ul className="bn-goals">{s.score.goals.map((g) => <GoalCard key={g.id} g={g} quarter={0} final={!!s.score.final} />)}</ul>

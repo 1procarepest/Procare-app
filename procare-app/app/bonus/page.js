@@ -70,12 +70,12 @@ export default async function BonusPage({ searchParams }) {
               <span className="note">{whereName(s.office)}{others.length ? ` · shared with ${others.map((m) => m.first_name).join(', ')}` : ''}</span>
             </div>
             <div className="bn-hero">
-              <span><small>{final ? 'Final bonus' : 'Earned so far'}</small><b>{money2(meRow.earned)}</b></span>
+              <span><small>{final ? 'Final bonus' : 'Earning so far'}</small><b>{money2(meRow.earned)}</b></span>
               {!final && <span><small>At this pace</small><b>{money2(meRow.projected)}</b></span>}
               <span><small>Quarter bonus</small><b>{money2(meRow.quarter)}</b></span>
             </div>
             {final && <p className="ok">Approved {shortDate(String(s.approved_at).slice(0, 10))}. It’s in your Earnings on your profile to cash out.</p>}
-            {!final && s.score.through && <p className="note">Numbers through {shortDate(s.score.through)}, {Math.round(s.score.share * 100)}% of the way through the quarter.</p>}
+            {!final && s.score.through && <p className="note">Numbers through {shortDate(s.score.through)}, {Math.round(s.score.share * 100)}% of the way through the quarter. Nothing is paid until the quarter closes and the final numbers are approved.</p>}
             <ul className="bn-goals">
               {s.score.goals.map((g) => (
                 <GoalCard key={g.id} g={g} quarter={meRow.quarter} final={final}>

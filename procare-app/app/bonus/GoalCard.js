@@ -27,7 +27,7 @@ export default function GoalCard({ g, quarter, final = false, children }) {
         <span><small>Now</small><b>{fmt(g.kind, g.actual)}</b></span>
         <span><small>Goal</small><b>{fmt(g.kind, g.target)}</b></span>
         {k.type === 'improve' && <span><small>Started at</small><b>{startText}</b></span>}
-        {quarter > 0 && <span><small>{final ? 'Earned' : 'Earned so far'}</small><b>{money2(dollars)}</b></span>}
+        {quarter > 0 && <span><small>{final ? 'Earned' : 'Earning so far'}</small><b>{money2(dollars)}</b></span>}
       </div>
       <div className="bn-bar" aria-hidden="true"><span style={{ width: `${bar}%` }} /></div>
       {!final && (
