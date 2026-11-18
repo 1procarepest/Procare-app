@@ -1,4 +1,6 @@
--- 2026-11-18. Office staff time off copied from Sling (shifts-export.csv, Oct 26 – Dec 3, 2026).
+-- 2026-11-18. Office staff time off copied from Sling (two exports, Oct 26, 2026 – Jan 2, 2027).
+-- "All day" in Sling = the office's 9 AM – 5 PM day, stored as full days.
+-- Anyone in this list with no weekly schedule in the app gets the office default: Monday–Friday, 9 AM – 5 PM.
 -- Safe to run more than once: a row is skipped when that person already has time off in the app overlapping
 -- those dates (anything not denied or cancelled). Approved in Sling = approved here; "Pending" stays waiting.
 -- Paid vacation only where the note asks for PTO. The last result lists what happened to each row.
@@ -24,8 +26,12 @@ insert into sling_import (name, start_date, end_date, start_time, end_time, use_
   ('Kaitryn Acklen', date '2026-11-23', date '2026-11-23', '14:30'::time, '17:00'::time, false, 'pending', 'Pre move in duties for new home'),
   ('Ryan Boyd', date '2026-11-23', date '2026-11-25', null::time, null::time, false, 'approved', 'thanksgiving'),
   ('Jessica Bowles', date '2026-11-25', date '2026-11-25', null::time, null::time, true, 'approved', 'Off for Thanksgiving yes PTO please'),
-  ('Kali Atkinson', date '2026-11-25', date '2026-11-25', null::time, null::time, true, 'approved', 'Use PTO- Family Thanksgiving Dinner- need to prepare and kids are out of school'),
-  ('Naomi Zoker', date '2026-12-03', date '2026-12-03', null::time, null::time, false, 'approved', 'Family Birthday celebration');
+  ('Kali Atkinson', date '2026-11-25', date '2026-11-25', null::time, null::time, true, 'approved', 'Use PTO - Family Thanksgiving Dinner - need to prepare and kids are out of school'),
+  ('Naomi Zoker', date '2026-12-03', date '2026-12-03', null::time, null::time, false, 'approved', 'Family Birthday celebration'),
+  ('Naomi Zoker', date '2026-12-08', date '2026-12-08', null::time, null::time, false, 'approved', 'Acct final exam'),
+  ('Nick Todd', date '2026-12-14', date '2026-12-18', null::time, null::time, false, 'approved', 'Jury Duty'),
+  ('Kali Atkinson', date '2026-12-21', date '2026-12-23', null::time, null::time, true, 'approved', 'Christmas with kids - Use PTO'),
+  ('Nick Todd', date '2026-12-28', date '2027-01-02', null::time, null::time, true, 'approved', 'PTO Holiday vacation');
 
 update sling_import s set result = 'no match: check the name in People'
 where not exists (select 1 from employees e where lower(trim(e.first_name) || ' ' || trim(e.last_name)) = lower(s.name));
@@ -44,6 +50,15 @@ join employees e on lower(trim(e.first_name) || ' ' || trim(e.last_name)) = lowe
 where s.result is null;
 
 update sling_import set result = 'added' where result is null;
+
+-- Office default hours for people with no weekly schedule yet (never changes a schedule someone already has).
+create temp table sling_schedules on commit drop as
+select distinct e.id, e.first_name || ' ' || e.last_name as name
+from sling_import s join employees e on lower(trim(e.first_name) || ' ' || trim(e.last_name)) = lower(s.name)
+where not exists (select 1 from schedules x where x.employee_id = e.id);
+insert into schedules (employee_id, weekday, start_time, end_time)
+select id, d, time '09:00', time '17:00' from sling_schedules cross join generate_series(1, 5) d;
+insert into sling_import (name, result) select name, 'schedule set: Mon–Fri 9 AM – 5 PM' from sling_schedules;
 
 select name, start_date, end_date, start_time, end_time, use_pto, status, note, result from sling_import order by start_date, name;
 
