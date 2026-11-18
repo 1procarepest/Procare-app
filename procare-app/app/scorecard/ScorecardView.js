@@ -129,9 +129,9 @@ export default function ScorecardView({ techs, R, per, period, meId }) {
                 ))}
               </div>
             </div>
-            <p className="note">Click a column to sort and a technician to see their breakdown. Arrows compare with {period.prior}.</p>
+            <p className="note">Click a column to sort and a technician to see their breakdown. Safety arrows compare with {period.prior}.</p>
             <div className="board-wrap">
-              <table className="board">
+              <table className="board freeze-first">
                 <thead>
                   <tr>
                     <Th k="name" num={false}>Technician</Th>
@@ -167,18 +167,18 @@ export default function ScorecardView({ techs, R, per, period, meId }) {
                         <td className="num">
                           {!t.c.pay.qualified ? <span className="pill">Under {t.c.pay.minServed}</span>
                             : t.c.pay.gated ? <span className="pill pill-bad">On hold</span>
-                            : <span className="money-good">{money0(t.c.pay.total)} <Arrow cur={t.c.pay.total} prior={t.p?.pay.total} /></span>}
+                            : <span className="money-good">{money0(t.c.pay.total)}</span>}
                         </td>
                       )}
-                      <td className="num">{t.c.sold} <Arrow cur={t.c.sold} prior={t.p?.sold} />{t.c.soldValue > 0 && <span className="cell-sub">{money0(t.c.soldValue)}</span>}</td>
-                      <td className="num"><strong>{t.c.salesDone}</strong> <Arrow cur={t.c.salesDone} prior={t.p?.salesDone} />{t.c.salesDoneValue > 0 && <span className="cell-sub">{money0(t.c.salesDoneValue)}</span>}</td>
-                      <td className="num">{t.c.autopay} <Arrow cur={t.c.autopay} prior={t.p?.autopay} /></td>
-                      <td className="num">{t.c.serv} <Arrow cur={t.c.serv} prior={t.p?.serv} /></td>
-                      <td className="num">{fmtPct(t.c.comp)} <Arrow cur={t.c.comp} prior={t.p?.comp} /></td>
-                      <td className="num">{fmtPct(t.c.resv)} <Arrow cur={t.c.resv} prior={t.p?.resv} lowerIsBetter /></td>
+                      <td className="num">{t.c.sold}{t.c.soldValue > 0 && <span className="cell-sub">{money0(t.c.soldValue)}</span>}</td>
+                      <td className="num"><strong>{t.c.salesDone}</strong>{t.c.salesDoneValue > 0 && <span className="cell-sub">{money0(t.c.salesDoneValue)}</span>}</td>
+                      <td className="num">{t.c.autopay}</td>
+                      <td className="num">{t.c.serv}</td>
+                      <td className="num">{fmtPct(t.c.comp)}</td>
+                      <td className="num">{fmtPct(t.c.resv)}</td>
                       <td className="num">{t.c.cxTech ? <span className="ring">{t.c.cxTech}</span> : 0}</td>
                       <td className="num">{t.c.cxBilling}</td>
-                      <td className="num">{t.c.stars} <Arrow cur={t.c.stars} prior={t.p?.stars} />{t.c.rating !== null && <span className="cell-sub">{t.c.rating}★ avg</span>}</td>
+                      <td className="num">{t.c.stars}{t.c.rating !== null && <span className="cell-sub">{t.c.rating}★ avg</span>}</td>
                       <td className="num">{t.c.safety ?? '—'} <Arrow cur={t.c.safety} prior={t.p?.safety} /></td>
                     </tr>
                   ))}
@@ -344,7 +344,7 @@ function Offices({ rows, R, bonusesOn, onPick }) {
       <h2 id="offices-heading">Office comparison</h2>
       <p className="note">Totals for the technicians in each office. Safety is a mileage-weighted average. Click an office to see its technicians.</p>
       <div className="board-wrap">
-        <table className="board">
+        <table className="board freeze-first">
           <thead>
             <tr>
               <th>Office</th>
@@ -360,17 +360,17 @@ function Offices({ rows, R, bonusesOn, onPick }) {
               return (
                 <tr key={g.key} className={g.all ? 'total-row' : ''} onClick={() => onPick(g.key)}>
                   <td><button type="button" className="who-name link" onClick={() => onPick(g.key)}>{g.name}</button></td>
-                  {bonusesOn && <td className="num"><span className="money-good">{money0(c.incentive)}</span> <Arrow cur={c.incentive} prior={p.incentive} /></td>}
+                  {bonusesOn && <td className="num"><span className="money-good">{money0(c.incentive)}</span></td>}
                   <td className="num">{c.qualified} / {c.total}{bonusesOn && c.held > 0 && <span className="pill pill-bad"> {c.held} on hold</span>}</td>
-                  <td className="num">{c.sold} <Arrow cur={c.sold} prior={p.sold} /></td>
-                  <td className="num"><strong>{c.salesDone}</strong> <Arrow cur={c.salesDone} prior={p.salesDone} /></td>
-                  <td className="num">{c.autopay} <Arrow cur={c.autopay} prior={p.autopay} /></td>
-                  <td className="num">{c.serv.toLocaleString()} <Arrow cur={c.serv} prior={p.serv} /></td>
-                  <td className="num">{fmtPct(c.comp)} <Arrow cur={c.comp} prior={p.comp} /></td>
-                  <td className="num">{fmtPct(c.resv)} <Arrow cur={c.resv} prior={p.resv} lowerIsBetter /></td>
-                  <td className="num">{c.cxTech} <Arrow cur={c.cxTech} prior={p.cxTech} lowerIsBetter /></td>
+                  <td className="num">{c.sold}</td>
+                  <td className="num"><strong>{c.salesDone}</strong></td>
+                  <td className="num">{c.autopay}</td>
+                  <td className="num">{c.serv.toLocaleString()}</td>
+                  <td className="num">{fmtPct(c.comp)}</td>
+                  <td className="num">{fmtPct(c.resv)}</td>
+                  <td className="num">{c.cxTech}</td>
                   <td className="num">{c.cxBilling}</td>
-                  <td className="num">{c.stars} <Arrow cur={c.stars} prior={p.stars} /></td>
+                  <td className="num">{c.stars}</td>
                   <td className="num">{c.safety ?? '—'} <Arrow cur={c.safety} prior={p.safety} /></td>
                 </tr>
               );

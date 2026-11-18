@@ -1577,3 +1577,9 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .bn-past-btn { font: inherit; font-size: 13px; color: var(--ink); background: var(--white); border: 1px solid var(--line); border-radius: 99px; padding: 4px 12px; cursor: pointer; }
 .bn-past-btn:hover { border-color: var(--forest); background: var(--sage); }
 .bn-past-none { color: var(--muted); font-size: 13px; padding: 4px 4px; }
+
+/* Scorecard tables: keep the name column in view when sliding sideways */
+.board.freeze-first { border-collapse: separate; border-spacing: 0; }
+.board.freeze-first th:first-child, .board.freeze-first td:first-child { position: sticky; left: 0; z-index: 1; background: var(--white); box-shadow: inset -1px 0 0 var(--line); }
+.board.freeze-first tbody tr:hover td:first-child { background: #F8FAF4; }
+.board.freeze-first tr.current td:first-child { background: var(--sage); box-shadow: inset 4px 0 0 var(--green), inset -1px 0 0 var(--line); }
