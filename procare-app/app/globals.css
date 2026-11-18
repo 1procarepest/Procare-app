@@ -1591,3 +1591,9 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 /* Time off: back to work on a day (change 51) */
 .workdays { display: grid; gap: 6px; }
 .workdays .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Rep Cards (2026-11-18): leaders in one swipeable line; city of the last 5 pins under the name */
+.rc-leaders { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: minmax(180px, 200px); overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 6px; }
+.rc-leader { scroll-snap-align: start; }
+.rc-cities { display: block; font-size: 13px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-block-tight { margin: 16px 0; }
