@@ -3,16 +3,15 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { OFFICE_NAME, clock, fromMinutes, roleTitle } from '@/lib/labels';
-import { DAY_FULL, FORM_DAYS } from '@/lib/availability';
+import { DAY_FULL, DEFAULT_HOURS, FORM_DAYS, formWords } from '@/lib/availability';
 import Bug, { BugTile } from './Bug';
 import Toggle from './Toggle';
 
 // Every 15 minutes, 6 AM to 9 PM
 const TIMES = Array.from({ length: (21 - 6) * 4 + 1 }, (_, i) => fromMinutes(6 * 60 + i * 15));
-const KINDS = [['all', 'All day'], ['hours', 'Set hours'], ['off', 'Not available']];
+const KINDS = [['hours', 'Available'], ['off', 'Not available']];
 const DAY_BUG = { 1: 'ant', 2: 'spider', 3: 'cricket', 4: 'roach', 5: 'termite', 6: 'stinging' };
 const LOCATIONS = [['west', 'West'], ['east', 'East'], ['south', 'South'], ['admin', 'Admin']];
-const blank = () => ({ kind: 'all', s: '09:00', e: '17:00' });
 
 /** One choice for a day (or for its every-other-week version): All day / Set hours / Not available. */
 function Slot({ value, onChange, label }) {
@@ -40,14 +39,19 @@ function Slot({ value, onChange, label }) {
 }
 
 /**
- * The Employee Availability Form, in the app. Saves to the person's file (availability_forms) and emails Ally.
+ * The Availability Form, in the app. Saves to the person's file (availability_forms). Technicians and office: Ally
+ * approves and enters it. Sales reps are contractors: their form says so, and their schedule updates right away.
  * person: { first_name, last_name, office, department, level }
  */
 export default function AvailabilityForm({ employeeId, person, onSent, onCancel }) {
   const today = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date());
   const [location, setLocation] = useState(person.department === 'administrative' ? 'admin' : (person.office || 'west'));
-  const [position, setPosition] = useState(roleTitle(person.department, person.level));
-  const [days, setDays] = useState(() => Object.fromEntries(FORM_DAYS.map((d) => [d, { a: blank(), alt: false, b: { ...blank(), kind: 'off' } }])));
+  const isSales = person.department === 'sales';
+  const W = formWords(isSales);
+  const hours = DEFAULT_HOURS[person.department] || DEFAULT_HOURS.administrative;
+  const blank = (kind = 'hours') => ({ kind, s: hours.s, e: hours.e });
+  const [position, setPosition] = useState(isSales ? 'Sales rep (contractor)' : roleTitle(person.department, person.level));
+  const [days, setDays] = useState(() => Object.fromEntries(FORM_DAYS.map((d) => [d, { a: blank(), alt: false, b: blank('off') }])));
   const [notes, setNotes] = useState('');
   const [signature, setSignature] = useState('');
   const [busy, setBusy] = useState(false);
@@ -72,14 +76,16 @@ export default function AvailabilityForm({ employeeId, person, onSent, onCancel 
     }).select('id').single();
     setBusy(false);
     if (err) { setError('The form didn’t save. Check your connection and try again.'); return; }
-    onSent?.(saved.id);
+    // Contractors (sales): their schedule in the app updates right away, no approval
+    if (isSales) await createClient().rpc('apply_sales_availability', { p_id: saved.id });
+    onSent?.(saved.id, isSales);
   }
 
   return (
     <form className="av-form" onSubmit={submit}>
       <div className="brand-head brand-hero av-head">
         <Bug kind="termite" size={150} className="brand-head-bug" />
-        <p className="rc-kicker">Employee availability form · {new Date().getFullYear()}</p>
+        <p className="rc-kicker">{W.title} · {new Date().getFullYear()}</p>
         <h3 className="rc-title">When can you <em>work?</em></h3>
         <p className="av-who">{person.first_name} {person.last_name} · {OFFICE_NAME[person.office] || 'No office'}</p>
       </div>
@@ -98,10 +104,10 @@ export default function AvailabilityForm({ employeeId, person, onSent, onCancel 
       <div className="av-how">
         <BugTile kind="ant" tone="lime" size={34} />
         <ul>
-          <li><b>All day</b> means you can work the company hours that day.</li>
-          <li><b>Set hours</b> when you can only work part of the day.</li>
-          <li><b>Not available</b> when you can’t work that day.</li>
-          <li>Different every other week? Switch on <b>Every other week</b> for that day.</li>
+          <li>Pick <b>Available</b> and set the hours you can work each day, or <b>Not available</b>.</li>
+          {person.department === 'technician' && <li>Technicians: be at your first appointment by <b>9 AM</b> and available until <b>6 PM</b>.</li>}
+          {person.department === 'administrative' && <li>The office team’s usual day is <b>8:30 AM – 5 PM</b>.</li>}
+          <li>Different every other week? Switch on <b>Every other week</b>: the first choice is <b>this week</b>, the second is <b>next week</b>, and they keep alternating.</li>
         </ul>
       </div>
 
@@ -116,7 +122,7 @@ export default function AvailabilityForm({ employeeId, person, onSent, onCancel 
             <Toggle small checked={days[d].alt} onChange={(v) => setDay(d, { alt: v })}>Every other week</Toggle>
             {days[d].alt && (
               <div className="av-alt">
-                <span className="rc-label">The other week</span>
+                <span className="rc-label">Next week (then every other week)</span>
                 <Slot label={`${DAY_FULL[d]}, the other week`} value={days[d].b} onChange={(b) => setDay(d, { b })} />
               </div>
             )}
@@ -128,10 +134,12 @@ export default function AvailabilityForm({ employeeId, person, onSent, onCancel 
         <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Starting date, school schedule, a second job…" maxLength={600} />
       </label>
 
-      <p className="note av-note">This is used to build your schedule. If your availability changes, let your manager know right away and fill out a new form. It’s kept in your employee file.</p>
+      <p className="note av-note">{isSales
+        ? 'Your schedule in the app updates as soon as you send this, and the sales manager gets a note. If your availability changes, send a new form. It’s kept in your contractor file.'
+        : `This is used to build your schedule. Ally approves it and updates your schedule. If your availability changes, let your manager know right away and fill out a new form. It’s kept in your ${W.file}.`}</p>
 
       <div className="av-row av-sign">
-        <label className="calc-field av-grow">Signature: type your full name
+        <label className="calc-field av-grow">{W.sign}: type your full name
           <input value={signature} onChange={(e) => setSignature(e.target.value)} placeholder={`${person.first_name} ${person.last_name}`} autoComplete="name" required />
         </label>
         <span className="av-date"><span className="rc-label">Date</span>{today}</span>
@@ -139,7 +147,7 @@ export default function AvailabilityForm({ employeeId, person, onSent, onCancel 
 
       {error && <p className="error" role="alert">{error}</p>}
       <div className="panel-buttons">
-        <button className="btn" type="submit" disabled={busy}>{busy ? 'Sending…' : 'Send to Ally'}</button>
+        <button className="btn" type="submit" disabled={busy}>{busy ? 'Sending…' : isSales ? 'Send and update my schedule' : 'Send to Ally'}</button>
         <button className="btn btn-quiet" type="button" onClick={onCancel}>Cancel</button>
       </div>
     </form>

@@ -19,7 +19,7 @@ function weeksFrom(today, ymd) {
 }
 const shortName = (p) => `${p.first_name} ${p.last_name?.[0] || ''}`.trim();
 
-export default function TeamSchedule({ data, days, today, week, weeksBack, weeksAhead, month, monthsBack, monthsAhead, pick, meId, myOffice }) {
+export default function TeamSchedule({ data, days, today, week, weeksBack, weeksAhead, month, monthsBack, monthsAhead, pick, meId, myOffice, updates = [] }) {
   const isMonth = month !== undefined;
   const depts = data.depts || [];
   const [dept, setDept] = useState(depts.length === 1 ? depts[0] : depts.includes('technician') ? 'technician' : depts[0]);
@@ -126,6 +126,14 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
           {OFFICES.map((o) => <option key={o.key} value={o.key}>{o.name}{o.key === myOffice ? ' (yours)' : ''}</option>)}
         </select>
       </div>
+
+      {dept === 'sales' && updates.length > 0 && (
+        <p className="ts-updates">
+          <b>Availability updated:</b>{' '}
+          {updates.map((u, i) => <span key={`${u.id}-${u.at}`}>{i ? ', ' : ''}{u.name} ({shortDate(String(u.at).slice(0, 10))})</span>)}
+          {' '}· from their availability form, no approval needed.
+        </p>
+      )}
 
       {isMonth && (
         <section className="ts-month" aria-label={monthLabel}>

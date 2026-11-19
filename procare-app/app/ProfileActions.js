@@ -158,7 +158,7 @@ export default function ProfileActions({ employeeId, email, isSales = false, per
 
       {open === 'availability' && person && (
         <AvailabilityForm employeeId={employeeId} person={person} onCancel={() => setOpen(null)}
-          onSent={(id) => { notify('availability', id); setOpen(null); setDone('Availability sent to Ally. It’s saved in your employee file.'); }} />
+          onSent={(id, sales) => { notify('availability', id); setOpen(null); setDone(sales ? 'Availability saved and your schedule is updated. It’s kept in your contractor file.' : 'Availability sent to Ally for approval. It’s saved in your employee file.'); if (sales) router.refresh(); }} />
       )}
 
       {open === 'issue' && (

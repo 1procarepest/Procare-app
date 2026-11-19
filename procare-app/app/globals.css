@@ -1659,3 +1659,4 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .av-date { display: grid; gap: 4px; font-weight: 600; padding-bottom: 10px; }
 .av-file { display: grid; gap: 8px; }
 .av-file ul { margin: 0; padding-left: 18px; }
+.ts-updates { margin: 12px 0 0; padding: 10px 14px; border-radius: 12px; background: var(--lime); color: var(--ink); font-size: 15px; }

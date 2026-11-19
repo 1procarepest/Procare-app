@@ -210,20 +210,27 @@ export async function POST(request) {
     const person = await employee(f.employee_id);
     if (!person) return reply(404, { message: 'Employee not found.' });
     if (!(await switchedOn('availability_form'))) return reply(200, { sent: false });
-    const to = await others(await hrApprovers(), person.id);
+    // Sales reps are contractors: their schedule already updated; the sales managers and the President get a note.
+    // Everyone else: Ally (HR approver) approves it and fills in the schedule.
+    const isSales = person.department === 'sales';
+    const to = isSales
+      ? [...await salesManagers(), ...await presidents()].filter((p, i, all) => p.id !== person.id && all.findIndex((x) => x.id === p.id) === i)
+      : await others(await hrApprovers(), person.id);
+    const days = [
+      `Location: ${f.location || '–'} · Position: ${f.position || '–'}`,
+      ...FORM_DAYS.map((d) => dayLine(f.days, d)),
+      ...(f.notes ? [`Notes: “${f.notes}”`] : []),
+      `Signed: ${f.signature}`,
+    ];
     const { ok: sent, problem } = await sendEmail({
       to: to.map((p) => p.email),
-      subject: `Availability form: ${name(person)}`,
-      heading: `${name(person)} updated their availability`,
-      lines: [
-        who(person),
-        `Location: ${f.location || '–'} · Position: ${f.position || '–'}`,
-        ...FORM_DAYS.map((d) => dayLine(f.days, d)),
-        ...(f.notes ? [`Notes: “${f.notes}”`] : []),
-        `Signed: ${f.signature}`,
-        'Open their page and click “Fill in from this form” to update their weekly schedule.',
-      ],
-      link: { href: `${origin}/admin/people/${person.id}`, label: 'Open their schedule' },
+      subject: isSales ? `Contractor availability updated: ${name(person)}` : `Availability form to approve: ${name(person)}`,
+      heading: isSales ? `${name(person)} updated their availability` : `${name(person)} sent a new availability form`,
+      lines: isSales
+        ? [`${name(person)}, Sales rep (contractor)${person.office ? `, ${OFFICE_NAME[person.office] || person.office}` : ''}`, ...days,
+          'Their schedule in the app is already updated. Nothing to approve.']
+        : [who(person), ...days, 'Open their page, click “Fill in from this form”, check the hours and save to approve it.'],
+      link: isSales ? { href: `${origin}/team`, label: 'Open the schedule' } : { href: `${origin}/admin/people/${person.id}`, label: 'Open their schedule' },
     });
     return reply(200, { sent, problem });
   }

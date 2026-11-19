@@ -97,7 +97,11 @@ export default function PersonEditor({ person, schedule, altSchedule = [], forms
     });
     setDays(nextDays);
     setAltDays(nextAlt);
-    if (anyAlt) setAlternates(true);
+    if (anyAlt) {
+      setAlternates(true);
+      // The form's first choice was the week it was sent: that week is week A
+      setThisWeekIsA(!isBWeek(mondayOf(String(f.submitted_at).slice(0, 10)), thisMonday));
+    }
     setUsedForm(f.id);
     setScheduleMsg({ text: 'Filled in from the form. Check the hours below, then click Save schedule.', bad: false });
   }
@@ -260,17 +264,17 @@ export default function PersonEditor({ person, schedule, altSchedule = [], forms
 
       {forms.length > 0 && (
         <section className="panel av-file">
-          <h2><BugTile kind="cricket" tone="lime" size={30} /> Availability form</h2>
+          <h2><BugTile kind="cricket" tone="lime" size={30} /> {person.department === 'sales' ? 'Contractor availability form' : 'Availability form'}</h2>
           {(() => {
             const f = forms[0];
             const when = new Date(f.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' });
             return (
               <>
                 <p className="note">Filled out {when}, signed “{f.signature}”{f.location ? ` · ${f.location}` : ''}{f.position ? ` · ${f.position}` : ''}.
-                  {f.applied_at ? ' Already entered in the schedule.' : ' Not entered in the schedule yet.'} “All day” fills in 8:30 AM – 5 PM.</p>
+                  {f.applied_at ? (person.department === 'sales' ? ' Their schedule updated from it automatically.' : ' Approved and entered in the schedule.') : ' Waiting for approval: not entered in the schedule yet.'}</p>
                 <ul>{FORM_DAYS.map((d) => <li key={d}>{dayLine(f.days, d)}</li>)}</ul>
                 {f.notes && <p className="note">“{f.notes}”</p>}
-                {canEditSchedule && <div className="panel-buttons"><button type="button" className="btn btn-small" onClick={() => fillFromForm(f)}>Fill in from this form</button></div>}
+                {canEditSchedule && <div className="panel-buttons"><button type="button" className="btn btn-small" onClick={() => fillFromForm(f)}>{f.applied_at ? 'Fill in from this form again' : 'Fill in from this form'}</button></div>}
                 {forms.length > 1 && <p className="note">{forms.length - 1} earlier form{forms.length > 2 ? 's' : ''} on file.</p>}
               </>
             );
