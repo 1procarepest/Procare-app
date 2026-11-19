@@ -1734,3 +1734,6 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .my-reviews { margin-top: 24px; }
 .my-reviews details { margin-bottom: 10px; }
 .my-reviews summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+
+/* Operations tabs: Suite, AR & job pool, Route plan side by side */
+.ops-tabs { max-width: 1320px; }

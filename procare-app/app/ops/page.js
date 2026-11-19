@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { VIEWS, todayYmd } from '@/lib/repcards';
-import { buildOps, buildSnapshot, opsRange } from '@/lib/ops';
+import { buildOps, opsRange } from '@/lib/ops';
 import OpsView from './OpsView';
 
 export const dynamic = 'force-dynamic';
@@ -12,12 +12,12 @@ export default async function OpsPage({ searchParams }) {
   const asked = /^\d{4}-\d{2}-\d{2}$/.test(searchParams?.date || '') ? searchParams.date : today;
   const r = opsRange(view, asked, today);
 
-  const [{ data: suite, error }, { data: snap, error: snapError }, { data: synced }] = await Promise.all([
+  // Job pool and AR moved to their own tab (/ops/accounts), so this page runs one big calculation, not two
+  const [{ data: suite, error }, { data: synced }] = await Promise.all([
     supabase.rpc('ops_suite', { p_from: r.from, p_to: r.to, p_cfrom: r.cFrom, p_cto: r.cTo }),
-    supabase.rpc('ops_snapshot'),
     supabase.rpc('fr_last_sync'),
   ]);
-  if (error || snapError) return <p className="error">The Operations Suite couldn’t load: {(error || snapError).message}</p>;
+  if (error) return <p className="error">The Operations Suite couldn’t load: {error.message}</p>;
 
   return (
     <>
@@ -26,7 +26,6 @@ export default async function OpsPage({ searchParams }) {
         range={r}
         today={today}
         stats={buildOps(suite)}
-        snap={buildSnapshot(snap)}
         syncedAt={synced || null}
       />
     </>

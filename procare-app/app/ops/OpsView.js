@@ -226,15 +226,20 @@ function Tiles({ s, p }) {
 const PICKS = [...OPS_OFFICES, { key: 'total', name: 'Total' }];
 const PICK_KEYS = PICKS.map((o) => o.key);
 
-export default function OpsView({ view, range, today, stats, snap, syncedAt }) {
+/**
+ * mode 'suite' (the /ops tab): the numbers the time frame changes. mode 'accounts' (the /ops/accounts tab):
+ * job pool and AR, balances right now. Split so each tab runs only one of the two big calculations.
+ */
+export default function OpsView({ mode = 'suite', view, range, today, stats, snap, syncedAt }) {
+  const suite = mode === 'suite';
   const [picked, setPicked] = useState(PICK_KEYS);
   const offices = OPS_OFFICES.filter((o) => picked.includes(o.key));
   const showTotal = picked.includes('total');
   const all = allPicked(picked, PICK_KEYS);
   const time = (t) => (t ? new Date(t).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '');
-  const asOf = snap.asOf ? new Date(snap.asOf).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' }) : '';
-  const next = shiftPeriod(view, range.anchor, 1);
-  const months = [snap.thisMonth, snap.nextMonth];
+  const asOf = snap?.asOf ? new Date(snap.asOf).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' }) : '';
+  const next = suite ? shiftPeriod(view, range.anchor, 1) : null;
+  const months = snap ? [snap.thisMonth, snap.nextMonth] : [];
   const scope = all ? 'All offices' : PICKS.filter((o) => picked.includes(o.key)).map((o) => (o.key === 'total' ? 'Total · all offices' : o.name)).join(' vs ');
 
   return (
@@ -242,13 +247,13 @@ export default function OpsView({ view, range, today, stats, snap, syncedAt }) {
       <div className="rc-top bug-band">
         <div>
           <p className="rc-kicker">Operations</p>
-          <h1 className="rc-title">Operation <em>Suite</em></h1>
-          <Link className="btn ops-plan-btn" href="/ops/route-plan">Route plan for next month →</Link>
+          <h1 className="rc-title">{suite ? <>Operation <em>Suite</em></> : <>AR &amp; <em>job pool</em></>}</h1>
         </div>
         {syncedAt && <p className="rc-updated">Updated {time(syncedAt)} ET · refreshes from FieldRoutes about every 15 minutes</p>}
       </div>
 
       <div className="rc-controls">
+        {suite && <>
         <nav className="rc-seg" aria-label="Time frame">
           {VIEWS.map((v) => (
             <Link key={v.key} href={href(v.key, range.anchor)} className={v.key === view ? 'on' : ''} aria-current={v.key === view ? 'page' : undefined} scroll={false}>{v.label}</Link>
@@ -263,6 +268,7 @@ export default function OpsView({ view, range, today, stats, snap, syncedAt }) {
             : <Link className="rc-arrow" href={href(view, next > today ? today : next)} aria-label="Later" scroll={false}>›</Link>}
           {range.anchor !== today && <Link className="ops-today" href={href(view, today)} scroll={false}>Today</Link>}
         </div>
+        </>}
         <div className="ops-picks" role="group" aria-label="Offices to compare (pick one or more)">
           <button type="button" className={`ops-pick${all ? ' on' : ''}`} onClick={() => setPicked(PICK_KEYS)} aria-pressed={all}>All</button>
           {PICKS.map((o) => (
@@ -273,6 +279,7 @@ export default function OpsView({ view, range, today, stats, snap, syncedAt }) {
         </div>
       </div>
 
+      {suite ? (<>
       <div className="ops-heading">
         <h2>{range.title}</h2>
         <p>{scope} · {range.vs}</p>
@@ -282,6 +289,14 @@ export default function OpsView({ view, range, today, stats, snap, syncedAt }) {
       <div className="ops-cards">
         {offices.map((o) => <OfficeCard key={o.key} name={o.name} s={stats[o.key].cur} p={stats[o.key].prior} view={view} />)}
         {showTotal && <OfficeCard name="Total · all offices" s={stats.total.cur} p={stats.total.prior} view={view} total />}
+      </div>
+
+      <p className="ops-kicker ops-group">Company total · all offices</p>
+      <Tiles s={stats.total.cur} p={stats.total.prior} />
+      </>) : (<>
+      <div className="ops-heading">
+        <h2>Right now</h2>
+        <p>{scope} · as of {asOf} · doesn’t change with a time frame</p>
       </div>
 
       <p className="ops-kicker ops-group">Job pool · as of {asOf}</p>
@@ -296,9 +311,7 @@ export default function OpsView({ view, range, today, stats, snap, syncedAt }) {
         {offices.map((o) => <ArCard key={o.key} name={o.name} a={snap[o.key]} />)}
         {showTotal && <ArCard name="Total · all offices" a={snap.total} total />}
       </div>
-
-      <p className="ops-kicker ops-group">Company total · all offices</p>
-      <Tiles s={stats.total.cur} p={stats.total.prior} />
+      </>)}
 
       <p className="ops-note ops-foot">
         Totals count the 4 core services only: General Pest, Mosquito, Mosquito Green and Termite Baiting. Future revenue = price per service ×
