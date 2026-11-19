@@ -1670,3 +1670,4 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 /* Time off: when each request was sent; waiting 2+ days stands out */
 .sent-line { font-size: 13px; color: var(--muted); }
 .sent-line.sent-old { color: var(--danger); font-weight: 600; }
+.login-forgot { justify-self: center; font-size: 14px; }

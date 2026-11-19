@@ -10,6 +10,19 @@ export default function LoginPage() {
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [forgot, setForgot] = useState(false);
+  const [resetMsg, setResetMsg] = useState('');
+
+  // "Forgot passcode?": emails a one-time link to set a new one (app/login/send-reset)
+  async function sendReset() {
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) { setError('Type your company email above first.'); return; }
+    setBusy(true);
+    setError('');
+    const res = await fetch('/login/send-reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim() }) })
+      .then((r) => r.json()).catch(() => ({ message: 'That didn’t go through. Check your connection and try again.' }));
+    setBusy(false);
+    setResetMsg(res.message);
+  }
 
   async function signIn(event) {
     event.preventDefault();
@@ -23,7 +36,7 @@ export default function LoginPage() {
       const busyNow = authError.status >= 500 || /fetch|network|timeout/i.test(authError.message || '');
       setError(busyNow
         ? 'The app couldn’t reach the sign-in service. Wait a few seconds and try again.'
-        : 'That email and passcode don’t match. Check both and try again, or ask your lead to reset your passcode.');
+        : 'That email and passcode don’t match. Check both and try again, or tap “Forgot passcode?” below.');
       setBusy(false);
       return;
     }
@@ -33,7 +46,7 @@ export default function LoginPage() {
 
   return (
     <main className="login">
-      <form className="login-card" onSubmit={signIn}>
+      <form className="login-card" onSubmit={(e) => { if (forgot) { e.preventDefault(); sendReset(); } else signIn(e); }}>
         <img className="login-logo" src="/logo.png" alt="Procare" />
         <h1>Sign in</h1>
         <div>
@@ -47,7 +60,7 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
-        <div>
+        {!forgot && <div>
           <label htmlFor="passcode">Passcode</label>
           <input
             id="passcode"
@@ -58,11 +71,23 @@ export default function LoginPage() {
             value={passcode}
             onChange={(e) => setPasscode(e.target.value)}
           />
-        </div>
+        </div>}
         {error && <p className="error" role="alert">{error}</p>}
-        <button className="btn" type="submit" disabled={busy}>
-          {busy ? 'Signing in…' : 'Sign in'}
-        </button>
+        {resetMsg && <p className="ok" role="status">{resetMsg}</p>}
+        {!forgot ? (
+          <>
+            <button className="btn" type="submit" disabled={busy}>
+              {busy ? 'Signing in…' : 'Sign in'}
+            </button>
+            <button type="button" className="link login-forgot" onClick={() => { setForgot(true); setError(''); }}>Forgot passcode?</button>
+          </>
+        ) : (
+          <>
+            <p className="note">We’ll email a link to your company email to set a new passcode.</p>
+            <button className="btn" type="button" disabled={busy} onClick={sendReset}>{busy ? 'Sending…' : 'Email me a link'}</button>
+            <button type="button" className="link login-forgot" onClick={() => { setForgot(false); setResetMsg(''); }}>Back to sign in</button>
+          </>
+        )}
       </form>
     </main>
   );
