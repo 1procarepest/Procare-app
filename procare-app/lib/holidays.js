@@ -1,7 +1,7 @@
 /**
  * Company holidays (change 57). The company_holidays table holds one on/off switch per holiday; the dates come
- * from the rules here, so they roll forward every year without anyone entering them. A holiday that's on is a day
- * off for everyone except sales reps, who keep their own schedules. Dates are the holiday itself (no Friday/Monday
+ * from the rules here, so they roll forward every year without anyone entering them. A holiday that's on shows as a
+ * company day off for everyone, sales reps included (John, 2026-11-19: reps may still choose to work). Dates are the holiday itself (no Friday/Monday
  * "observed" shift when it lands on a weekend).
  */
 
@@ -64,5 +64,5 @@ export function holidayLookup(rows) {
   };
 }
 
-/** Sales reps keep their own schedules; everyone else gets company holidays off. */
-export const followsHolidays = (department) => department !== 'sales';
+/** Who gets company holidays off: everyone (sales too since 2026-11-19). One place to change it if that changes. */
+export const followsHolidays = () => true;

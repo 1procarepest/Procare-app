@@ -38,8 +38,8 @@ export default function HolidaySwitches({ rows: start, today }) {
       <div className="admin-head">
         <h1>Company holidays</h1>
         <p className="note">
-          Holidays that are on are a day off for the office team and technicians: they show as the holiday on every
-          schedule and the route plan, with no time-off request needed. Sales reps keep their own schedules.
+          Holidays that are on are a company day off for everyone (office, technicians and sales): they show as the
+          holiday on every schedule and the route plan, with no time-off request needed. Sales reps may still choose to work.
           {' '}{on} of {rows.length} on.
         </p>
       </div>

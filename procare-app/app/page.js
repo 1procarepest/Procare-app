@@ -118,7 +118,7 @@ export default async function Home({ searchParams }) {
   const [{ data: altRows }, { data: rotRow }, { data: holidayRows }] = await Promise.all([
     supabase.from('schedule_alt').select('weekday, start_time, end_time').eq('employee_id', me.id),
     supabase.from('schedule_rotations').select('a_week').eq('employee_id', me.id).maybeSingle(),
-    // Company holidays that are on (change 57): days off for everyone but sales
+    // Company holidays that are on (change 57): a company day off for everyone
     supabase.from('company_holidays').select('key, enabled').eq('enabled', true),
   ]);
   const holidayOn = followsHolidays(me.department) ? holidayLookup(holidayRows) : () => null;

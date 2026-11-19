@@ -32,7 +32,7 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
   const day = days.includes(picked) ? picked : (days.includes(pick) ? pick : thisWeek ? today : days[0]);
   const [view, setView] = useState('day');
 
-  // Company holidays (change 57): a day off for everyone but sales
+  // Company holidays (change 57): a company day off for everyone
   const holidayOn = useMemo(() => holidayLookup(holidays), [holidays]);
   // Everyone's week, worked out once
   const grid = useMemo(() => {
@@ -193,7 +193,7 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
       {!isMonth && view === 'day' && (
         <section className="ts-list" aria-label={`${DAY_LONG[dow(day)]}, ${shortDate(day)}`}>
           <h2>{DAY_LONG[dow(day)]}, {shortDate(day)}: {working.length} {verb}</h2>
-          {holidayFor(day) && <p className="ts-holiday-note"><b>{holidayFor(day)}</b> · company holiday, the {dept === 'technician' ? 'technicians are' : 'office team is'} off.</p>}
+          {holidayFor(day) && <p className="ts-holiday-note"><b>{holidayFor(day)}</b> · company day off{dept === 'sales' ? '. Reps who choose to work can still knock' : ''}.</p>}
           {byOffice.length === 0 && <p className="note">Nobody is scheduled.</p>}
           {byOffice.map((o) => (
             <div key={o.key} className="ts-office">

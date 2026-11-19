@@ -39,7 +39,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - **Company holidays (change 57, 2026-11-19)**: Settings → Holidays (C-Suite and President) has a switch per federal
   holiday plus Good Friday, Christmas Eve, day after Thanksgiving, day after Christmas and New Year's Eve (58 added Good Friday and day after Christmas). Dates come from `lib/holidays.js` (no weekend
   "observed" shift). On = day off for office and techs on Home, Team schedule and the Route plan (a one-day route still
-  shows); sales keep their own schedules. Starts on: Thanksgiving, Christmas Eve/Day, New Year's Eve/Day.
+  shows). Applies to everyone, sales included (John changed this 2026-11-19; reps may still choose to work; `followsHolidays` in lib/holidays.js). Starts on: Thanksgiving, Christmas Eve/Day, New Year's Eve/Day.
 
 ## Next up (John's list)
 1. ~~Manager bonuses~~: live since 2026-11-16 (changes 47–49). Setup left for Ally: Ryan as report recipient, yearly amounts, Q4 goals, past reports.
