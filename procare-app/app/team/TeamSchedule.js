@@ -121,10 +121,13 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
             </div>
           )}
         </div>
-        <select className="rc-office-pick" aria-label="Office" value={office} onChange={(e) => setOffice(e.target.value)}>
-          <option value="all">All offices</option>
-          {OFFICES.map((o) => <option key={o.key} value={o.key}>{o.name}{o.key === myOffice ? ' (yours)' : ''}</option>)}
-        </select>
+        <div className="chips ts-office-chips" role="group" aria-label="Office">
+          {[{ key: 'all', name: 'All offices' }, ...OFFICES].map((o) => (
+            <button key={o.key} type="button" className={`chip${office === o.key ? ' on' : ''}`} aria-pressed={office === o.key} onClick={() => setOffice(o.key)}>
+              {o.name}{o.key === myOffice ? ' (yours)' : ''}
+            </button>
+          ))}
+        </div>
       </div>
 
       {dept === 'sales' && updates.length > 0 && (
