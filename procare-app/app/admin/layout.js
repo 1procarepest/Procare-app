@@ -16,7 +16,7 @@ export default async function AdminLayout({ children }) {
   return (
     <>
       <TopNav me={me} supabase={supabase} current="settings" />
-      <AdminNav showSettings={me.rank >= 4} showPayouts={me.rank >= 4 || !!me.hr_approver} />
+      <AdminNav showSettings={me.rank >= 4} showPayouts={me.rank >= 4 || !!me.hr_approver} showReviews={me.rank >= 3 || !!me.hr_approver} />
       <main className="admin">{children}</main>
     </>
   );

@@ -6,7 +6,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - John Ely, President of Procare Pest (3 Atlanta offices: East, West, South). Not technical: short, plain answers, one step and one question at a time.
 - Repo `1procarepest/Procare-app`; the app is in `procare-app/` (Next.js 14 App Router, plain JS, Supabase). Vercel deploys from `main`.
 - Check with `npm run build` before pushing. Commit and push only your own files; end commit messages with the Co-Authored-By line.
-- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-19-59-ops-speed.sql`, so the next is 60). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
+- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-19-60-payroll-and-reviews.sql`, so the next is 61). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
 - Supabase cuts a request off after about 8 s. Time heavy queries on real data first.
 - SQL tests run in PGlite (`@electric-sql/pglite`); there's no local Postgres. The new Mac (2026-11-16) had no Node.js or Homebrew at first.
 - **UI rules from John**: use toggle switches (`app/Toggle.js`), never checkboxes. Use the brand look: `.brand-head` patterned headers, bug art from `app/Bug.js` (bugs anywhere; wildlife icons only on future wildlife pages), colors ink/forest/green/lime/sage.
@@ -45,6 +45,13 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
   `getClaims`; middleware uses `getClaims` and skips static files; home and team pages start their lookups in parallel.
   Change 59: `ops_suite`/`ops_snapshot` are 5-minute cached wrappers over `*_calc` (like change 45), new indexes on
   `fr_subscriptions(date_added)` and `(date_cancelled)`, and `authenticated` statement_timeout raised to 20s.
+
+- **Payroll, sick days, year reviews (change 60, 2026-11-19, for Ally)**: Settings → Payroll (HR approver, C-Suite,
+  President): approved time off per pay period (1st–15th, 16th–end; default the current one) or per year, in scheduled
+  hours (`lib/payroll.js`; holidays and unscheduled days don't count), paid vacation vs unpaid, sick and called-out
+  counts, Copy list. "Mark sick / called out" logs `time_off_requests.kind` = sick/called_out, approved right away
+  (approvers may now insert for others). Settings → Reviews: year reviews on the G.R.E.E.N. values (`employee_reviews`,
+  `can_review`: HR approver, C-Suite, President, the person's managers); shared reviews show on the person's My profile.
 
 ## Next up (John's list)
 1. ~~Manager bonuses~~: live since 2026-11-16 (changes 47–49). Setup left for Ally: Ryan as report recipient, yearly amounts, Q4 goals, past reports.

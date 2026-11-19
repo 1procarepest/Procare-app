@@ -1697,3 +1697,40 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 @keyframes pl-shine { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @keyframes pl-slide { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @media (prefers-reduced-motion: reduce) { .page-loading .pl-line, .page-loading .pl-card, .page-loading .pl-bar { animation: none; } }
+
+/* Payroll time off (change 60) */
+.pr-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin: 4px 0 14px; }
+.pr-sum { margin: 0 0 10px; font-size: 15px; }
+.pr-copy { margin-left: 12px; }
+.pr-table th[scope="row"] small { display: block; color: var(--muted); font-weight: 400; font-size: 12px; }
+.pr-name { font-weight: 600; text-align: left; padding: 0; }
+.pr-detail td { text-align: left; background: var(--paper); }
+.pr-detail ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.pr-mark { flex-basis: 100%; max-width: 620px; }
+.pr-form { display: grid; gap: 12px; margin: 10px 0 14px; }
+.pr-form select, .pr-form input[type="text"], .pr-form input[type="date"], .pr-form input[type="time"] { width: 100%; }
+.pr-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.pr-check { display: flex; align-items: center; gap: 8px; font-weight: 400; margin: 0; }
+
+/* Year reviews (change 60) */
+.rv-search { width: 100%; max-width: 360px; margin: 0 0 12px; }
+.rv-form { margin: 12px 0 18px; display: grid; gap: 12px; max-width: 720px; }
+.rv-form textarea { width: 100%; }
+.rv-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 220px)); gap: 12px; }
+.rv-values { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin: 0; display: grid; gap: 10px; }
+.rv-values legend { font-weight: 600; padding: 0 6px; }
+.rv-value { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.rv-value small { display: block; color: var(--muted); font-size: 13px; }
+.rv-letter { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; background: var(--forest); color: var(--white); font-size: 12px; font-weight: 700; margin-right: 4px; }
+.rv-scale { display: flex; gap: 6px; }
+.rv-dot { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: var(--white); font: inherit; font-weight: 600; cursor: pointer; color: var(--ink); }
+.rv-dot.on { background: var(--forest); border-color: var(--forest); color: var(--white); }
+.rv-list { display: grid; gap: 14px; margin-top: 16px; }
+.rv-card { background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.rv-card header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin-bottom: 8px; }
+.rv-card h3 { margin: 0; font-size: 18px; }
+.rv-ratings { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
+.rv-text p { margin: 2px 0 8px; white-space: pre-wrap; }
+.my-reviews { margin-top: 24px; }
+.my-reviews details { margin-bottom: 10px; }
+.my-reviews summary { cursor: pointer; font-weight: 600; padding: 6px 0; }

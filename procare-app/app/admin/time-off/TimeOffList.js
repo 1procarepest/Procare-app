@@ -117,6 +117,7 @@ function Request({ r, canDecide, canEdit }) {
         <span>
           {timeOffWhen(r)}
           {r.use_pto && <> <span className="badge badge-pto">Paid vacation</span></>}
+          {r.kind && r.kind !== 'time_off' && <> <span className="badge badge-warn">{r.kind === 'sick' ? 'Sick' : 'Called out'}</span></>}
         </span>
         <span className={`sent-line${r.status === 'pending' && Date.now() - new Date(r.created_at).getTime() > 2 * 864e5 ? ' sent-old' : ''}`} suppressHydrationWarning>{sentLine(r)}</span>
         {r.note && <span className="note">“{r.note}”</span>}

@@ -23,6 +23,7 @@ import Outbox from './reports/Outbox';
 import { money, money0, nextMonday, nice, statement } from '@/lib/comp';
 import { usualShift } from '@/lib/schedules';
 import { followsHolidays, holidayLookup } from '@/lib/holidays';
+import ReviewCard from './ReviewCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,6 +95,9 @@ export default async function Home({ searchParams }) {
     // Company holidays that are on (change 57): a company day off for everyone
     start(supabase.from('company_holidays').select('key, enabled').eq('enabled', true)),
   ]);
+  // Year reviews shared with this person (change 60); empty until that change has run
+  const pReviews = start(supabase.from('employee_reviews').select('*').eq('employee_id', me.id).eq('shared', true)
+    .order('year', { ascending: false }).order('review_date', { ascending: false }));
   const pBonusSets = me.rank >= 2 || me.hr_approver
     ? start(supabase.from('bonus_members').select('set_id', { count: 'exact', head: true }).eq('employee_id', me.id))
     : Promise.resolve({ count: 0 });
@@ -223,6 +227,7 @@ export default async function Home({ searchParams }) {
 
   // Quarterly bonus link for people with goals of their own (managers)
   const { count: bonusSets } = await pBonusSets;
+  const { data: myReviews } = await pReviews;
 
   return (
     <>
@@ -331,6 +336,18 @@ export default async function Home({ searchParams }) {
             })}
           </ul>
         </section>
+
+        {myReviews?.length > 0 && (
+          <section className="my-reviews" aria-labelledby="my-reviews-h">
+            <h2 id="my-reviews-h">Your year reviews</h2>
+            {myReviews.map((r, i) => (
+              <details key={r.id} open={i === 0}>
+                <summary>{r.year} review</summary>
+                <ReviewCard r={r} />
+              </details>
+            ))}
+          </section>
+        )}
 
         <ProfileActions employeeId={me.id} email={user.email} isSales={me.department === 'sales'}
           person={{ first_name: me.first_name, last_name: me.last_name, office: me.office, department: me.department, level: me.level }} />
