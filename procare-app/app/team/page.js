@@ -16,6 +16,8 @@ export default async function TeamPage({ searchParams }) {
   const today = todayYmd();
   // Sales reps' availability forms update their schedule on their own: a note for sales managers and up (change 55)
   const { data: updates } = await supabase.rpc('recent_availability_updates', { p_days: 14 });
+  // Company holidays that are switched on (change 57); empty until that change has run
+  const { data: holidays } = await supabase.from('company_holidays').select('key, enabled').eq('enabled', true);
   // Week is the default; ?span=month shows a month calendar (?month=1 is next month)
   if (searchParams?.span === 'month') {
     const askedMonth = parseInt(searchParams?.month, 10);
@@ -26,7 +28,7 @@ export default async function TeamPage({ searchParams }) {
     for (const d = new Date(first); d.getUTCMonth() === first.getUTCMonth(); d.setUTCDate(d.getUTCDate() + 1)) days.push(d.toISOString().slice(0, 10));
     const { data, error } = await supabase.rpc('team_schedule', { p_from: days[0], p_to: days[days.length - 1] });
     if (error || !data) return <p className="error">The team schedule couldn’t load: {error?.message || 'nothing to show'}</p>;
-    return <TeamSchedule data={data} days={days} today={today} month={month} monthsBack={MONTHS_BACK} monthsAhead={MONTHS_AHEAD} weeksBack={WEEKS_BACK} weeksAhead={WEEKS_AHEAD} meId={me.id} myOffice={me.office} updates={updates || []} />;
+    return <TeamSchedule data={data} days={days} today={today} month={month} monthsBack={MONTHS_BACK} monthsAhead={MONTHS_AHEAD} weeksBack={WEEKS_BACK} weeksAhead={WEEKS_AHEAD} meId={me.id} myOffice={me.office} updates={updates || []} holidays={holidays || []} />;
   }
   const asked = parseInt(searchParams?.week, 10);
   const week = Number.isNaN(asked) ? 0 : Math.min(WEEKS_AHEAD, Math.max(-WEEKS_BACK, asked));
@@ -42,5 +44,5 @@ export default async function TeamPage({ searchParams }) {
   if (error || !data) return <p className="error">The team schedule couldn’t load: {error?.message || 'nothing to show'}</p>;
   // ?day= comes from tapping a day on the month calendar
   const pick = days.includes(searchParams?.day) ? searchParams.day : null;
-  return <TeamSchedule data={data} days={days} today={today} week={week} weeksBack={WEEKS_BACK} weeksAhead={WEEKS_AHEAD} pick={pick} meId={me.id} myOffice={me.office} updates={updates || []} />;
+  return <TeamSchedule data={data} days={days} today={today} week={week} weeksBack={WEEKS_BACK} weeksAhead={WEEKS_AHEAD} pick={pick} meId={me.id} myOffice={me.office} updates={updates || []} holidays={holidays || []} />;
 }

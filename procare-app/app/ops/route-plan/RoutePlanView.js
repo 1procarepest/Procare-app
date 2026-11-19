@@ -156,7 +156,8 @@ export default function RoutePlanView({ data, office, from, to, today, meId }) {
               <h3>{dayLabel(d.day)}</h3>
               <CopyButton text={dayText(d)} />
             </header>
-            {!d.groups.length && <p className="ops-none">No routes</p>}
+            {d.holiday && <p className="rp-holiday">{d.holiday} · company holiday, no routes unless you add one</p>}
+            {!d.groups.length && !d.holiday && <p className="ops-none">No routes</p>}
             {d.groups.map((g) => (
               <div key={g.template} className="rp-group">
                 <p className={`rp-template${g.template === DEFAULT_TEMPLATE ? '' : ' other'}`}>{g.template} <span>{g.routes.length}</span></p>

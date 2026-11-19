@@ -5,9 +5,11 @@ export const canSeeTeamSchedule = (me) => me && (me.rank >= 3 || me.department =
 
 /**
  * One person's day: their usual hours minus approved time off; requested time off is flagged.
- * shift = [startMin, endMin] or undefined; off = their time-off rows ({ a, b, s, x, st }).
+ * shift = [startMin, endMin] or undefined; off = their time-off rows ({ a, b, s, x, st });
+ * holiday = the company holiday's name when that day is one they get off (change 57), else null.
  */
-export function dayFor(shift, off, ymd) {
+export function dayFor(shift, off, ymd, holiday = null) {
+  if (holiday) return { working: false, text: holiday, kind: 'holiday' };
   const hits = off.filter((r) => r.a <= ymd && r.b >= ymd);
   const approved = hits.filter((r) => r.st === 'approved');
   const pending = hits.filter((r) => r.st === 'pending');

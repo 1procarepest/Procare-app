@@ -9,6 +9,7 @@
 
 import { clock, OFFICE_NAME, toMinutes } from './labels';
 import { isBWeek } from './schedules';
+import { holidayLookup } from './holidays';
 
 export const DEFAULT_TEMPLATE = '16 Spot Route';
 export const PLAN_DAYS = [1, 2, 3, 4, 5, 6]; // Monday … Saturday
@@ -119,7 +120,9 @@ export function indexData(data) {
   const templates = {};
   (d.templates || []).forEach((t) => { (templates[t.office] ||= []).push(t); });
   Object.keys(templates).forEach((k) => templates[k].sort((a, b) => b.n - a.n || a.title.localeCompare(b.title)));
-  return { techs, byId, sched, alt, rot, usual, days, timeoff, templates, builds: d.builds || [], changes: d.changes || [] };
+  // Company holidays (change 57): techs aren't routed on one unless someone adds a one-day route for them
+  const holiday = holidayLookup(d.holidays);
+  return { techs, byId, sched, alt, rot, usual, days, timeoff, templates, holiday, builds: d.builds || [], changes: d.changes || [] };
 }
 
 /** Template names for an office's pick list: 16 Spot Route first, then what FieldRoutes uses most. */
@@ -149,9 +152,11 @@ export function buildPlan(ix, office, from, to) {
     const wd = weekdayOf(day);
     const groups = {};
     const off = [];
+    const holiday = ix.holiday ? ix.holiday(day) : null;
     ix.techs.forEach((t) => {
       const a = assignment(ix, t, day);
       if (a.office !== office) return;
+      if (holiday && !a.oneDay) return;
       const altKey = `${t.id}|${wd}`;
       const shift = isBWeek(ix.rot?.[t.id], day) && ix.alt && altKey in ix.alt ? (ix.alt[altKey] || undefined) : ix.sched[`${t.id}|${wd}`];
       const offs = (ix.timeoff[t.id] || []).filter((o) => o.from <= day && o.to >= day);
@@ -178,7 +183,7 @@ export function buildPlan(ix, office, from, to) {
     });
     const order = Object.keys(groups).sort((x, y) => (x === DEFAULT_TEMPLATE ? -1 : y === DEFAULT_TEMPLATE ? 1 : x.localeCompare(y)));
     order.forEach((k) => groups[k].sort((x, y) => x.name.localeCompare(y.name)));
-    return { day, groups: order.map((k) => ({ template: k, routes: groups[k] })), off: off.sort() };
+    return { day, holiday, groups: order.map((k) => ({ template: k, routes: groups[k] })), off: off.sort() };
   });
 }
 
@@ -195,7 +200,7 @@ export function routeLine(r, template) {
 }
 
 export function dayText(d) {
-  const lines = [dayLabel(d.day)];
+  const lines = [dayLabel(d.day) + (d.holiday ? ` (${d.holiday}, company holiday)` : '')];
   if (!d.groups.length) lines.push('  No routes');
   d.groups.forEach((g) => {
     lines.push(`  ${g.template} (${g.routes.length})`);

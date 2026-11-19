@@ -22,6 +22,7 @@ import MyFeedback from './MyFeedback';
 import Outbox from './reports/Outbox';
 import { money, money0, nextMonday, nice, statement } from '@/lib/comp';
 import { usualShift } from '@/lib/schedules';
+import { followsHolidays, holidayLookup } from '@/lib/holidays';
 
 export const dynamic = 'force-dynamic';
 
@@ -114,10 +115,13 @@ export default async function Home({ searchParams }) {
     if (d.start_time && d.end_time) shifts[d.weekday] = [toMinutes(d.start_time), toMinutes(d.end_time)];
   });
   // Every-other-week hours (change 54): week-B hours for the days that differ, and which Monday starts a week A
-  const [{ data: altRows }, { data: rotRow }] = await Promise.all([
+  const [{ data: altRows }, { data: rotRow }, { data: holidayRows }] = await Promise.all([
     supabase.from('schedule_alt').select('weekday, start_time, end_time').eq('employee_id', me.id),
     supabase.from('schedule_rotations').select('a_week').eq('employee_id', me.id).maybeSingle(),
+    // Company holidays that are on (change 57): days off for everyone but sales
+    supabase.from('company_holidays').select('key, enabled').eq('enabled', true),
   ]);
+  const holidayOn = followsHolidays(me.department) ? holidayLookup(holidayRows) : () => null;
   const altShifts = {};
   (altRows || []).forEach((d) => { altShifts[d.weekday] = d.start_time && d.end_time ? [toMinutes(d.start_time), toMinutes(d.end_time)] : null; });
   const aWeek = rotRow?.a_week || null;
@@ -171,6 +175,8 @@ export default async function Home({ searchParams }) {
   // What a day's row says. Approved time off is taken out of the scheduled hours
   // ("9 AM – 5 PM" when someone leaves at 5); requested time off is shown alongside.
   function dayInfo(d, ymd) {
+    const holiday = holidayOn(ymd);
+    if (holiday) return { text: `${holiday} (company holiday)`, working: false, holiday: true };
     const shift = usualShift(shifts, altShifts, aWeek, ymd, d);
     const hits = (timeOff || []).filter((r) => r.start_date <= ymd && r.end_date >= ymd);
     const approved = hits.filter((r) => r.status === 'approved');
@@ -301,9 +307,9 @@ export default async function Home({ searchParams }) {
           {monthView && schedMonth === 0 && <p className="calc-hint week-month-name">{monthLabel}</p>}
           <ul className="week">
             {rows.map(({ d, ymd }, i) => {
-              const { text, working } = dayInfo(d, ymd);
+              const { text, working, holiday } = dayInfo(d, ymd);
               return (
-                <li key={ymd} className={`day${working ? '' : ' off'}${ymd === todayYmd ? ' today' : ''}${monthView && d === 1 && i > 0 ? ' week-break' : ''}`}>
+                <li key={ymd} className={`day${working ? '' : ' off'}${holiday ? ' holiday' : ''}${ymd === todayYmd ? ' today' : ''}${monthView && d === 1 && i > 0 ? ' week-break' : ''}`}>
                   <span className="day-name">{DAY_NAMES[d]}, {shortDate(ymd)}</span>
                   <span className="day-hours">{text}</span>
                 </li>

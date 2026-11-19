@@ -111,6 +111,16 @@ create table public.notification_settings (
   updated_at timestamptz not null default now()
 );
 
+-- Company holidays (change 57): one switch per holiday; dates come from lib/holidays.js. On = day off for
+-- everyone but sales. Read by all, flipped by C-Suite and the President.
+create table public.company_holidays (
+  key        text primary key,
+  name       text not null,
+  enabled    boolean not null default false,
+  sort       smallint not null default 0,
+  updated_at timestamptz not null default now()
+);
+
 -- ---------- Activity log ----------
 -- Every insert, update and delete on the tables above, written by log_change().
 

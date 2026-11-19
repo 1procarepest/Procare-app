@@ -6,6 +6,7 @@ import Face from '../Face';
 import { DEPT_LABEL, OFFICES, OFFICE_NAME, roleTitle, shortDate, toMinutes } from '@/lib/labels';
 import { dayFor } from '@/lib/teamSchedule';
 import { isBWeek, usualShift } from '@/lib/schedules';
+import { followsHolidays, holidayLookup } from '@/lib/holidays';
 
 const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -19,7 +20,7 @@ function weeksFrom(today, ymd) {
 }
 const shortName = (p) => `${p.first_name} ${p.last_name?.[0] || ''}`.trim();
 
-export default function TeamSchedule({ data, days, today, week, weeksBack, weeksAhead, month, monthsBack, monthsAhead, pick, meId, myOffice, updates = [] }) {
+export default function TeamSchedule({ data, days, today, week, weeksBack, weeksAhead, month, monthsBack, monthsAhead, pick, meId, myOffice, updates = [], holidays = [] }) {
   const isMonth = month !== undefined;
   const depts = data.depts || [];
   const [dept, setDept] = useState(depts.length === 1 ? depts[0] : depts.includes('technician') ? 'technician' : depts[0]);
@@ -31,6 +32,8 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
   const day = days.includes(picked) ? picked : (days.includes(pick) ? pick : thisWeek ? today : days[0]);
   const [view, setView] = useState('day');
 
+  // Company holidays (change 57): a day off for everyone but sales
+  const holidayOn = useMemo(() => holidayLookup(holidays), [holidays]);
   // Everyone's week, worked out once
   const grid = useMemo(() => {
     const shifts = {};
@@ -47,10 +50,12 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
       const usual = (d) => usualShift(shifts[p.id], alt[p.id], rot[p.id], d, dow(d));
       return {
         p, usual, weekB: (d) => isBWeek(rot[p.id], d),
-        byDay: Object.fromEntries(days.map((d) => [d, dayFor(usual(d), off[p.id] || [], d)])),
+        byDay: Object.fromEntries(days.map((d) => [d, dayFor(usual(d), off[p.id] || [], d, followsHolidays(p.department) ? holidayOn(d) : null)])),
       };
     });
-  }, [data, days]);
+  }, [data, days, holidayOn]);
+  // The holiday's name on a day, when it applies to the department being shown
+  const holidayFor = (d) => (followsHolidays(dept) ? holidayOn(d) : null);
 
   const shown = grid.filter(({ p }) => p.department === dept && (office === 'all' || p.office === office));
   const showSunday = shown.some((r) => r.byDay[days[6]].working);
@@ -150,6 +155,7 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
               const inner = (
                 <>
                   <span className="ts-cal-date">{Number(d.slice(8))}</span>
+                  {holidayFor(d) && <span className="ts-cal-holiday">{holidayFor(d)}</span>}
                   <span className="ts-cal-count"><strong>{count(d)}</strong> {verb}</span>
                   {offs.map(({ p, byDay }) => (
                     <span key={p.id} className={`ts-cal-off ts-cal-${byDay[d].kind === 'off' ? 'full' : byDay[d].kind === 'part' ? 'part' : 'ask'}`}
@@ -178,6 +184,7 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
             <span className="ts-ddate">{shortDate(d)}</span>
             <strong>{count(d)}</strong>
             <span className="ts-dsub">{verb}</span>
+            {holidayFor(d) && <span className="ts-dholiday">{holidayFor(d)}</span>}
           </button>
         ))}
       </div>
@@ -186,6 +193,7 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
       {!isMonth && view === 'day' && (
         <section className="ts-list" aria-label={`${DAY_LONG[dow(day)]}, ${shortDate(day)}`}>
           <h2>{DAY_LONG[dow(day)]}, {shortDate(day)}: {working.length} {verb}</h2>
+          {holidayFor(day) && <p className="ts-holiday-note"><b>{holidayFor(day)}</b> · company holiday, the {dept === 'technician' ? 'technicians are' : 'office team is'} off.</p>}
           {byOffice.length === 0 && <p className="note">Nobody is scheduled.</p>}
           {byOffice.map((o) => (
             <div key={o.key} className="ts-office">

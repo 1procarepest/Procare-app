@@ -1671,3 +1671,12 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .sent-line { font-size: 13px; color: var(--muted); }
 .sent-line.sent-old { color: var(--danger); font-weight: 600; }
 .login-forgot { justify-self: center; font-size: 14px; }
+
+/* Company holidays (change 57) */
+.holiday-date { display: block; color: var(--muted); font-size: 13px; font-weight: 400; margin-top: 2px; }
+.ts-week td.ts-holiday { background: #eef4dc; color: var(--forest); font-weight: 500; }
+.ts-holiday-note { margin: 0 0 12px; padding: 10px 14px; background: #eef4dc; border: 1px solid #d7e3b0; border-radius: 12px; color: var(--forest); font-size: 14px; }
+.ts-cal-holiday { font-size: 12px; font-weight: 600; color: var(--forest); }
+.ts-dholiday { display: block; font-size: 11px; color: var(--forest); font-weight: 600; }
+.day.holiday .day-hours { color: var(--forest); font-weight: 500; }
+.rp-holiday { margin: 6px 0 0; font-size: 13px; color: var(--forest); font-weight: 600; }
