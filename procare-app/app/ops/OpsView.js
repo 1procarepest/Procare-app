@@ -5,6 +5,7 @@ import { useState } from 'react';
 import Bug from '../Bug';
 import { VIEWS, shiftPeriod } from '@/lib/repcards';
 import { LINES, OPS_OFFICES, SELLERS, change, int, money0, moneyK, pct1, reservice } from '@/lib/ops';
+import { allPicked, togglePick } from '@/lib/multiPick';
 
 const href = (view, date) => `/ops?view=${view}&date=${date}`;
 const PERIOD_WORD = { day: 'Day', week: 'Week', month: 'Month', year: 'Year' };
@@ -221,17 +222,20 @@ function Tiles({ s, p }) {
   );
 }
 
-const PICKS = [{ key: 'all', name: 'All' }, ...OPS_OFFICES, { key: 'total', name: 'Total' }];
+// Multi-select: pick any offices (and/or the company total) to compare side by side; "All" picks everything
+const PICKS = [...OPS_OFFICES, { key: 'total', name: 'Total' }];
+const PICK_KEYS = PICKS.map((o) => o.key);
 
 export default function OpsView({ view, range, today, stats, snap, syncedAt }) {
-  const [office, setOffice] = useState('all');
-  const offices = office === 'all' ? OPS_OFFICES : OPS_OFFICES.filter((o) => o.key === office);
-  const showTotal = office === 'all' || office === 'total';
+  const [picked, setPicked] = useState(PICK_KEYS);
+  const offices = OPS_OFFICES.filter((o) => picked.includes(o.key));
+  const showTotal = picked.includes('total');
+  const all = allPicked(picked, PICK_KEYS);
   const time = (t) => (t ? new Date(t).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '');
   const asOf = snap.asOf ? new Date(snap.asOf).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' }) : '';
   const next = shiftPeriod(view, range.anchor, 1);
   const months = [snap.thisMonth, snap.nextMonth];
-  const scope = office === 'all' ? 'All offices' : office === 'total' ? 'Total · all offices' : PICKS.find((o) => o.key === office).name;
+  const scope = all ? 'All offices' : PICKS.filter((o) => picked.includes(o.key)).map((o) => (o.key === 'total' ? 'Total · all offices' : o.name)).join(' vs ');
 
   return (
     <>
@@ -259,10 +263,13 @@ export default function OpsView({ view, range, today, stats, snap, syncedAt }) {
             : <Link className="rc-arrow" href={href(view, next > today ? today : next)} aria-label="Later" scroll={false}>›</Link>}
           {range.anchor !== today && <Link className="ops-today" href={href(view, today)} scroll={false}>Today</Link>}
         </div>
-        <div className="ops-picks" role="group" aria-label="Office">
+        <div className="ops-picks" role="group" aria-label="Offices to compare (pick one or more)">
+          <button type="button" className={`ops-pick${all ? ' on' : ''}`} onClick={() => setPicked(PICK_KEYS)} aria-pressed={all}>All</button>
           {PICKS.map((o) => (
-            <button key={o.key} type="button" className={`ops-pick${office === o.key ? ' on' : ''}`} onClick={() => setOffice(o.key)} aria-pressed={office === o.key}>{o.name}</button>
+            <button key={o.key} type="button" className={`ops-pick${!all && picked.includes(o.key) ? ' on' : ''}`}
+              onClick={() => setPicked((cur) => togglePick(cur, o.key, PICK_KEYS))} aria-pressed={picked.includes(o.key)}>{o.name}</button>
           ))}
+          <p className="calc-hint ops-pick-hint">Tap offices to compare them side by side.</p>
         </div>
       </div>
 
@@ -271,22 +278,22 @@ export default function OpsView({ view, range, today, stats, snap, syncedAt }) {
         <p>{scope} · {range.vs}</p>
       </div>
 
-      <p className="ops-kicker ops-group">{office === 'total' ? 'Company total' : 'By office'}</p>
+      <p className="ops-kicker ops-group">{offices.length ? 'By office' : 'Company total'}</p>
       <div className="ops-cards">
-        {office !== 'total' && offices.map((o) => <OfficeCard key={o.key} name={o.name} s={stats[o.key].cur} p={stats[o.key].prior} view={view} />)}
+        {offices.map((o) => <OfficeCard key={o.key} name={o.name} s={stats[o.key].cur} p={stats[o.key].prior} view={view} />)}
         {showTotal && <OfficeCard name="Total · all offices" s={stats.total.cur} p={stats.total.prior} view={view} total />}
       </div>
 
       <p className="ops-kicker ops-group">Job pool · as of {asOf}</p>
       <p className="ops-note">Services due (next service date on active, recurring subscriptions; one-time, as-needed, on-hold and out-of-season seasonal plans are left out) that aren’t on the schedule yet. Doesn’t change with the time frame.</p>
       <div className="ops-minis">
-        {office !== 'total' && offices.map((o) => <PoolCard key={o.key} name={o.name} pool={snap[o.key].pool} months={months} />)}
+        {offices.map((o) => <PoolCard key={o.key} name={o.name} pool={snap[o.key].pool} months={months} />)}
         {showTotal && <PoolCard name="Total · all offices" pool={snap.total.pool} months={months} total />}
       </div>
 
       <p className="ops-kicker ops-group">AR &amp; auto-pay · as of {asOf} <span className="ops-note-inline">Balances right now. These don’t change with the time frame.</span></p>
       <div className="ops-minis">
-        {office !== 'total' && offices.map((o) => <ArCard key={o.key} name={o.name} a={snap[o.key]} />)}
+        {offices.map((o) => <ArCard key={o.key} name={o.name} a={snap[o.key]} />)}
         {showTotal && <ArCard name="Total · all offices" a={snap.total} total />}
       </div>
 

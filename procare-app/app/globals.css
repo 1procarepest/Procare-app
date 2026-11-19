@@ -1680,3 +1680,7 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .ts-dholiday { display: block; font-size: 11px; color: var(--forest); font-weight: 600; }
 .day.holiday .day-hours { color: var(--forest); font-weight: 500; }
 .rp-holiday { margin: 6px 0 0; font-size: 13px; color: var(--forest); font-weight: 600; }
+
+/* Multi-select office and department pickers */
+.ts-pick-hint { margin: 6px 0 0; }
+.ops-pick-hint { flex-basis: 100%; margin: 2px 0 0; }

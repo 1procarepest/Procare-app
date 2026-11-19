@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import Face from '../Face';
-import { DEPT_LABEL, OFFICES, OFFICE_NAME, roleTitle, shortDate, toMinutes } from '@/lib/labels';
+import { OFFICES, OFFICE_NAME, roleTitle, shortDate, toMinutes } from '@/lib/labels';
 import { dayFor } from '@/lib/teamSchedule';
 import { isBWeek, usualShift } from '@/lib/schedules';
-import { followsHolidays, holidayLookup } from '@/lib/holidays';
+import { holidayLookup } from '@/lib/holidays';
+import { allPicked, togglePick } from '@/lib/multiPick';
 
 const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -23,8 +24,13 @@ const shortName = (p) => `${p.first_name} ${p.last_name?.[0] || ''}`.trim();
 export default function TeamSchedule({ data, days, today, week, weeksBack, weeksAhead, month, monthsBack, monthsAhead, pick, meId, myOffice, updates = [], holidays = [] }) {
   const isMonth = month !== undefined;
   const depts = data.depts || [];
-  const [dept, setDept] = useState(depts.length === 1 ? depts[0] : depts.includes('technician') ? 'technician' : depts[0]);
-  const [office, setOffice] = useState('all');
+  // Departments and offices are multi-select: tap to add or remove, "All" picks every one
+  const [deptPick, setDepts] = useState(depts.length === 1 ? [depts[0]] : depts.includes('technician') ? ['technician'] : [depts[0]]);
+  const officeKeys = OFFICES.map((o) => o.key);
+  const [offices, setOffices] = useState(officeKeys);
+  const allOffices = allPicked(offices, officeKeys);
+  const allDepts = depts.length > 1 && allPicked(deptPick, depts);
+  const onlySales = deptPick.length === 1 && deptPick[0] === 'sales';
   const thisWeek = days.includes(today);
   const [picked, setDay] = useState(pick || (thisWeek ? today : days[0]));
   // The arrows load another week into this same page, so a day picked earlier may not be in it: fall back
@@ -50,21 +56,23 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
       const usual = (d) => usualShift(shifts[p.id], alt[p.id], rot[p.id], d, dow(d));
       return {
         p, usual, weekB: (d) => isBWeek(rot[p.id], d),
-        byDay: Object.fromEntries(days.map((d) => [d, dayFor(usual(d), off[p.id] || [], d, followsHolidays(p.department) ? holidayOn(d) : null)])),
+        byDay: Object.fromEntries(days.map((d) => [d, dayFor(usual(d), off[p.id] || [], d, holidayOn(d))])),
       };
     });
   }, [data, days, holidayOn]);
   // The holiday's name on a day, when it applies to the department being shown
-  const holidayFor = (d) => (followsHolidays(dept) ? holidayOn(d) : null);
+  const holidayFor = (d) => holidayOn(d);
 
-  const shown = grid.filter(({ p }) => p.department === dept && (office === 'all' || p.office === office));
+  // Grouped by department in the picked order (tech, office, sales), keeping each group's own order
+  const shown = deptPick.flatMap((dp) => grid.filter(({ p }) => p.department === dp && offices.includes(p.office)));
   const showSunday = shown.some((r) => r.byDay[days[6]].working);
   const cols = showSunday ? days : days.slice(0, 6);
   const count = (d) => shown.filter((r) => r.byDay[d].working).length;
   const working = shown.filter((r) => r.byDay[day].working).sort((a, b) => (a.byDay[day].start ?? 0) - (b.byDay[day].start ?? 0) || a.p.first_name.localeCompare(b.p.first_name));
   const notWorking = shown.filter((r) => !r.byDay[day].working);
-  const byOffice = OFFICES.map((o) => ({ ...o, list: working.filter((r) => r.p.office === o.key) })).filter((o) => o.list.length);
-  const verb = dept === 'sales' ? 'selling' : 'working';
+  const byOffice = OFFICES.filter((o) => offices.includes(o.key)).map((o) => ({ ...o, list: working.filter((r) => r.p.office === o.key) })).filter((o) => o.list.length);
+  const verb = onlySales ? 'selling' : 'working';
+  const deptLabel = allDepts ? 'Everyone' : deptPick.map((d) => (d === 'administrative' ? 'Office team' : DEPT_TITLE[d])).join(' + ');
   const href = (n) => (n ? `/team?week=${n}` : '/team');
   const monthHref = (n) => (n ? `/team?span=month&month=${n}` : '/team?span=month');
   const monthLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${days[0]}T12:00:00Z`));
@@ -108,8 +116,12 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
       <div className="rc-controls">
         <div className="calc-row">
           {depts.length > 1 && (
-            <div className="rc-seg" role="group" aria-label="Department">
-              {depts.map((d) => <button key={d} type="button" className={dept === d ? 'on' : ''} onClick={() => setDept(d)}>{DEPT_TITLE[d]}</button>)}
+            <div className="rc-seg" role="group" aria-label="Departments (pick one or more)">
+              {depts.map((d) => (
+                <button key={d} type="button" className={!allDepts && deptPick.includes(d) ? 'on' : ''} aria-pressed={deptPick.includes(d)}
+                  onClick={() => setDepts((cur) => togglePick(cur, d, depts))}>{DEPT_TITLE[d]}</button>
+              ))}
+              <button type="button" className={allDepts ? 'on' : ''} aria-pressed={allDepts} onClick={() => setDepts([...depts])}>All</button>
             </div>
           )}
           {isMonth ? (
@@ -126,16 +138,20 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
             </div>
           )}
         </div>
-        <div className="chips ts-office-chips" role="group" aria-label="Office">
-          {[{ key: 'all', name: 'All offices' }, ...OFFICES].map((o) => (
-            <button key={o.key} type="button" className={`chip${office === o.key ? ' on' : ''}`} aria-pressed={office === o.key} onClick={() => setOffice(o.key)}>
+        <div className="chips ts-office-chips" role="group" aria-label="Offices (pick one or more)">
+          {[{ key: 'all', name: 'All offices' }, ...OFFICES].map((o) => {
+            const on = o.key === 'all' ? allOffices : !allOffices && offices.includes(o.key);
+            return (
+            <button key={o.key} type="button" className={`chip${on ? ' on' : ''}`} aria-pressed={on} onClick={() => setOffices((cur) => togglePick(cur, o.key, officeKeys))}>
               {o.name}{o.key === myOffice ? ' (yours)' : ''}
             </button>
-          ))}
+            );
+          })}
         </div>
+        <p className="calc-hint ts-pick-hint">Tap to add or remove; pick more than one to see them together.</p>
       </div>
 
-      {dept === 'sales' && updates.length > 0 && (
+      {deptPick.includes('sales') && updates.length > 0 && (
         <p className="ts-updates">
           <b>Availability updated:</b>{' '}
           {updates.map((u, i) => <span key={`${u.id}-${u.at}`}>{i ? ', ' : ''}{u.name} ({shortDate(String(u.at).slice(0, 10))})</span>)}
@@ -193,7 +209,7 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
       {!isMonth && view === 'day' && (
         <section className="ts-list" aria-label={`${DAY_LONG[dow(day)]}, ${shortDate(day)}`}>
           <h2>{DAY_LONG[dow(day)]}, {shortDate(day)}: {working.length} {verb}</h2>
-          {holidayFor(day) && <p className="ts-holiday-note"><b>{holidayFor(day)}</b> · company day off{dept === 'sales' ? '. Reps who choose to work can still knock' : ''}.</p>}
+          {holidayFor(day) && <p className="ts-holiday-note"><b>{holidayFor(day)}</b> · company day off{deptPick.includes('sales') ? '. Reps who choose to work can still knock' : ''}.</p>}
           {byOffice.length === 0 && <p className="note">Nobody is scheduled.</p>}
           {byOffice.map((o) => (
             <div key={o.key} className="ts-office">
@@ -219,12 +235,12 @@ export default function TeamSchedule({ data, days, today, week, weeksBack, weeks
         <div className="pay-scroll">
           <table className="ops-table ts-week">
             <thead>
-              <tr><th scope="col">{DEPT_LABEL[dept] === 'Office' ? 'Office team' : DEPT_TITLE[dept]}</th>{cols.map((d) => <th key={d} scope="col" className={d === today ? 'today' : ''}>{DAY[dow(d)]} {shortDate(d)}</th>)}</tr>
+              <tr><th scope="col">{deptLabel}</th>{cols.map((d) => <th key={d} scope="col" className={d === today ? 'today' : ''}>{DAY[dow(d)]} {shortDate(d)}</th>)}</tr>
             </thead>
             <tbody>
               {shown.map(({ p, byDay }) => (
                 <tr key={p.id} className={p.id === meId ? 'me' : ''}>
-                  <th scope="row">{p.first_name} {p.last_name}<small>{OFFICE_NAME[p.office] || ''}</small></th>
+                  <th scope="row">{p.first_name} {p.last_name}<small>{deptPick.length > 1 ? `${roleTitle(p.department, p.level)} · ` : ''}{OFFICE_NAME[p.office] || ''}</small></th>
                   {cols.map((d) => {
                     const x = byDay[d];
                     return <td key={d} className={`ts-${x.kind}`}>{x.text}{x.requested && <small>{x.requested}</small>}</td>;
