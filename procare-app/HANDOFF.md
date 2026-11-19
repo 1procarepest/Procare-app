@@ -6,7 +6,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - John Ely, President of Procare Pest (3 Atlanta offices: East, West, South). Not technical: short, plain answers, one step and one question at a time.
 - Repo `1procarepest/Procare-app`; the app is in `procare-app/` (Next.js 14 App Router, plain JS, Supabase). Vercel deploys from `main`.
 - Check with `npm run build` before pushing. Commit and push only your own files; end commit messages with the Co-Authored-By line.
-- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-19-57-company-holidays.sql`, so the next is 58). Copy it to the clipboard (`pbcopy` on a Mac). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
+- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-19-58-more-holidays.sql`, so the next is 59). Copy it to the clipboard (`pbcopy` on a Mac). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
 - Supabase cuts a request off after about 8 s. Time heavy queries on real data first.
 - SQL tests run in PGlite (`@electric-sql/pglite`); there's no local Postgres. The new Mac (2026-11-16) had no Node.js or Homebrew at first.
 - **UI rules from John**: use toggle switches (`app/Toggle.js`), never checkboxes. Use the brand look: `.brand-head` patterned headers, bug art from `app/Bug.js` (bugs anywhere; wildlife icons only on future wildlife pages), colors ink/forest/green/lime/sage.
@@ -37,7 +37,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - **Manager bonuses, ride-alongs and follow-behinds** (changes 47-49, live on `main` since 2026-11-16): see `BONUSES.md` for everything John agreed. `/bonus` progress, `/reports` and the two forms, Settings → Bonuses, tech feedback on the home page (`app/MyFeedback.js`). John wants to review exactly what techs see before it goes live. No photos yet (no Supabase Storage set up); customers have no street address in the app (privacy), so follow-behinds show name + city.
 
 - **Company holidays (change 57, 2026-11-19)**: Settings → Holidays (C-Suite and President) has a switch per federal
-  holiday plus Christmas Eve, day after Thanksgiving and New Year's Eve. Dates come from `lib/holidays.js` (no weekend
+  holiday plus Good Friday, Christmas Eve, day after Thanksgiving, day after Christmas and New Year's Eve (58 added Good Friday and day after Christmas). Dates come from `lib/holidays.js` (no weekend
   "observed" shift). On = day off for office and techs on Home, Team schedule and the Route plan (a one-day route still
   shows); sales keep their own schedules. Starts on: Thanksgiving, Christmas Eve/Day, New Year's Eve/Day.
 
