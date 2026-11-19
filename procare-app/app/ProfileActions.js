@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { clock, fromMinutes } from '@/lib/labels';
+import AvailabilityForm from './AvailabilityForm';
 
 // Times people can pick for part of a day: every 15 minutes, 5 AM to 10 PM
 // Asks the server to send the automatic email for something just saved. Never blocks or
@@ -45,10 +46,10 @@ const WORDS = {
   },
 };
 
-export default function ProfileActions({ employeeId, email, isSales = false }) {
+export default function ProfileActions({ employeeId, email, isSales = false, person = null }) {
   const w = isSales ? WORDS.sales : WORDS.staff;
   const router = useRouter();
-  const [open, setOpen] = useState(null); // 'issue' | 'timeoff' | 'passcode' | null
+  const [open, setOpen] = useState(null); // 'availability' | 'issue' | 'timeoff' | 'passcode' | null
   const [done, setDone] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -137,15 +138,28 @@ export default function ProfileActions({ employeeId, email, isSales = false }) {
 
   return (
     <section className="actions" aria-label="Schedule actions">
-      <button className="btn btn-quiet" type="button" onClick={() => show('issue')} aria-expanded={open === 'issue'}>
-        {w.issueButton}
-      </button>
+      {person && (
+        <button className="btn btn-quiet" type="button" onClick={() => show('availability')} aria-expanded={open === 'availability'}>
+          Update my availability
+        </button>
+      )}
+      {/* Sales used "Update my schedule" for this; the availability form replaces it (2026-11-18) */}
+      {!(isSales && person) && (
+        <button className="btn btn-quiet" type="button" onClick={() => show('issue')} aria-expanded={open === 'issue'}>
+          {w.issueButton}
+        </button>
+      )}
       <button className="btn btn-quiet" type="button" onClick={() => show('timeoff')} aria-expanded={open === 'timeoff'}>
         {w.timeOffButton}
       </button>
       <button className="btn btn-quiet" type="button" onClick={() => show('passcode')} aria-expanded={open === 'passcode'}>
         Change passcode
       </button>
+
+      {open === 'availability' && person && (
+        <AvailabilityForm employeeId={employeeId} person={person} onCancel={() => setOpen(null)}
+          onSent={(id) => { notify('availability', id); setOpen(null); setDone('Availability sent to Ally. It’s saved in your employee file.'); }} />
+      )}
 
       {open === 'issue' && (
         <form className="panel" onSubmit={sendIssue}>

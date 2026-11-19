@@ -5,6 +5,7 @@ import { getMe } from '@/lib/me';
 import { sendEmail } from '@/lib/email';
 import { OFFICE_NAME, roleTitle, timeOffWhen } from '@/lib/labels';
 import { EXPERIENCE, KIND_LABEL, SKILL_LABEL, answerLines, lowScore } from '@/lib/reports';
+import { FORM_DAYS, dayLine } from '@/lib/availability';
 
 // Sends the automatic emails. The app calls this right after someone:
 //   { event: 'time_off', id }          adds time off (request → HR; sales notice → sales manager)
@@ -14,6 +15,7 @@ import { EXPERIENCE, KIND_LABEL, SKILL_LABEL, answerLines, lowScore } from '@/li
 //   { event: 'field_report', id }      files a ride-along or follow-behind (→ report recipients; truck items and
 //                                      Upset / Let down customers → the office's branch managers)
 //   { event: 'bonus_entry', id }       logs bonus proof (→ the HR approver to approve it)
+//   { event: 'availability', id }      fills out the availability form (switch availability_form → the HR approver, Ally)
 // Each email has a switch on Settings → Email settings (notification_settings.key).
 // People can only trigger emails about their own action, and only within a few minutes of it.
 
@@ -194,6 +196,33 @@ export async function POST(request) {
       subject: `${isSales ? 'Schedule update' : 'Schedule issue'} from ${name(person)}`,
       heading: isSales ? `${name(person)} sent a schedule update` : `${name(person)} reported a schedule issue`,
       lines: [who(person), `“${issue.message}”`, 'Update their schedule on their page, then mark it resolved under Schedule issues.'],
+      link: { href: `${origin}/admin/people/${person.id}`, label: 'Open their schedule' },
+    });
+    return reply(200, { sent, problem });
+  }
+
+  // ---------- Availability form → HR approver (Ally) to update the schedule ----------
+  if (event === 'availability') {
+    const { data: f } = await admin.from('availability_forms')
+      .select('id, employee_id, location, position, days, notes, signature, submitted_at').eq('id', id).maybeSingle();
+    if (!f) return reply(404, { message: 'Form not found.' });
+    if (f.employee_id !== me.id || !recent(f.submitted_at)) return reply(403, { message: 'Not your recent form.' });
+    const person = await employee(f.employee_id);
+    if (!person) return reply(404, { message: 'Employee not found.' });
+    if (!(await switchedOn('availability_form'))) return reply(200, { sent: false });
+    const to = await others(await hrApprovers(), person.id);
+    const { ok: sent, problem } = await sendEmail({
+      to: to.map((p) => p.email),
+      subject: `Availability form: ${name(person)}`,
+      heading: `${name(person)} updated their availability`,
+      lines: [
+        who(person),
+        `Location: ${f.location || '–'} · Position: ${f.position || '–'}`,
+        ...FORM_DAYS.map((d) => dayLine(f.days, d)),
+        ...(f.notes ? [`Notes: “${f.notes}”`] : []),
+        `Signed: ${f.signature}`,
+        'Open their page and click “Fill in from this form” to update their weekly schedule.',
+      ],
       link: { href: `${origin}/admin/people/${person.id}`, label: 'Open their schedule' },
     });
     return reply(200, { sent, problem });

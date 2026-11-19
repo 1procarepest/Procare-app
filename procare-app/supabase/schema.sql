@@ -391,3 +391,17 @@ create table public.schedule_alt (                                    -- week-B 
   primary key (employee_id, weekday),
   check ((start_time is null and end_time is null) or (start_time is not null and end_time is not null and start_time < end_time))
 );
+
+-- ---------- Employee availability forms (change 2026-11-18-55) ----------
+create table public.availability_forms (
+  id           uuid primary key default gen_random_uuid(),
+  employee_id  uuid not null references public.employees(id) on delete cascade,
+  location     text,
+  position     text,
+  days         jsonb not null,      -- { weekday: { a: {kind all|hours|off, s, e}, b: same or null (every other week) } }
+  notes        text,
+  signature    text not null check (length(trim(signature)) > 1),
+  submitted_at timestamptz not null default now(),
+  applied_at   timestamptz,
+  applied_by   uuid references public.employees(id) on delete set null
+);

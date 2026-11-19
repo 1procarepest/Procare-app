@@ -312,7 +312,8 @@ export default async function Home({ searchParams }) {
           </ul>
         </section>
 
-        <ProfileActions employeeId={me.id} email={user.email} isSales={me.department === 'sales'} />
+        <ProfileActions employeeId={me.id} email={user.email} isSales={me.department === 'sales'}
+          person={{ first_name: me.first_name, last_name: me.last_name, office: me.office, department: me.department, level: me.level }} />
 
         {route && <TodayRoute jobs={route} offset={dayOffset} day={routeDay} links={{
           prev: dayOffset > -ROUTE_DAYS ? dayHref(dayOffset - 1) : null,

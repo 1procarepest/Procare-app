@@ -7,12 +7,14 @@ import { DAY_NAMES, DEPT_LABEL, LEVEL_LABEL, OFFICES, WEEK_ORDER, levelOptions, 
 import Face from '../../../Face';
 import Toggle from '../../../Toggle';
 import { isBWeek, mondayOf } from '@/lib/schedules';
+import { FORM_DAYS, dayLine, slotHours } from '@/lib/availability';
+import { BugTile } from '../../../Bug';
 
 function trimTime(t) { return t ? String(t).slice(0, 5) : ''; }
 
 const TIME_OFF_BADGE = { approved: 'Approved', pending: 'Requested' };
 
-export default function PersonEditor({ person, schedule, altSchedule = [], aWeek = null, today, upcoming = [], me, canManage, canEditSchedule }) {
+export default function PersonEditor({ person, schedule, altSchedule = [], forms = [], aWeek = null, today, upcoming = [], me, canManage, canEditSchedule }) {
   const router = useRouter();
   const isSelf = person.id === me.id;
 
@@ -76,6 +78,29 @@ export default function PersonEditor({ person, schedule, altSchedule = [], aWeek
   });
   const [altDays, setAltDays] = useState(altInitial);
   function setAltDay(d, patch) { setAltDays((prev) => ({ ...prev, [d]: { ...prev[d], ...patch } })); }
+
+  // Fill the weekly schedule from an availability form (Mon–Sat; Sunday stays as it is). Saved with "Save schedule".
+  const [usedForm, setUsedForm] = useState(null);
+  function fillFromForm(f) {
+    const nextDays = { ...days };
+    const nextAlt = { ...altDays };
+    let anyAlt = false;
+    FORM_DAYS.forEach((d) => {
+      const a = slotHours(f.days?.[d]?.a);
+      nextDays[d] = a ? { on: true, start: a.s, end: a.e } : { ...nextDays[d], on: false };
+      const bSlot = f.days?.[d]?.b;
+      if (bSlot) {
+        anyAlt = true;
+        const b = slotHours(bSlot);
+        nextAlt[d] = b ? { differ: true, on: true, start: b.s, end: b.e } : { ...nextAlt[d], differ: true, on: false };
+      } else nextAlt[d] = { ...nextAlt[d], differ: false };
+    });
+    setDays(nextDays);
+    setAltDays(nextAlt);
+    if (anyAlt) setAlternates(true);
+    setUsedForm(f.id);
+    setScheduleMsg({ text: 'Filled in from the form. Check the hours below, then click Save schedule.', bad: false });
+  }
   const [scheduleMsg, setScheduleMsg] = useState({ text: '', bad: false });
   const [savingSchedule, setSavingSchedule] = useState(false);
 
@@ -108,6 +133,10 @@ export default function PersonEditor({ person, schedule, altSchedule = [], aWeek
     }
     setSavingSchedule(false);
     if (error) { setScheduleMsg({ text: error.message, bad: true }); return; }
+    if (usedForm) {
+      await supabase.from('availability_forms').update({ applied_at: new Date().toISOString(), applied_by: me.id }).eq('id', usedForm);
+      setUsedForm(null);
+    }
     setScheduleMsg({ text: 'Schedule saved.', bad: false });
     router.refresh();
   }
@@ -226,6 +255,26 @@ export default function PersonEditor({ person, schedule, altSchedule = [], aWeek
               </button>
             )}
           </div>
+        </section>
+      )}
+
+      {forms.length > 0 && (
+        <section className="panel av-file">
+          <h2><BugTile kind="cricket" tone="lime" size={30} /> Availability form</h2>
+          {(() => {
+            const f = forms[0];
+            const when = new Date(f.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' });
+            return (
+              <>
+                <p className="note">Filled out {when}, signed “{f.signature}”{f.location ? ` · ${f.location}` : ''}{f.position ? ` · ${f.position}` : ''}.
+                  {f.applied_at ? ' Already entered in the schedule.' : ' Not entered in the schedule yet.'} “All day” fills in 8:30 AM – 5 PM.</p>
+                <ul>{FORM_DAYS.map((d) => <li key={d}>{dayLine(f.days, d)}</li>)}</ul>
+                {f.notes && <p className="note">“{f.notes}”</p>}
+                {canEditSchedule && <div className="panel-buttons"><button type="button" className="btn btn-small" onClick={() => fillFromForm(f)}>Fill in from this form</button></div>}
+                {forms.length > 1 && <p className="note">{forms.length - 1} earlier form{forms.length > 2 ? 's' : ''} on file.</p>}
+              </>
+            );
+          })()}
         </section>
       )}
 

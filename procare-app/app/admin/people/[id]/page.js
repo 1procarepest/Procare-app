@@ -26,7 +26,7 @@ export default async function PersonPage({ params }) {
   // Today in Atlanta as YYYY-MM-DD, so requests still in progress count as upcoming.
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
 
-  const [{ data: schedule }, { data: canManage }, { data: canEditSchedule }, { data: upcoming }, { data: follows }, { data: altRows }, { data: rotation }] = await Promise.all([
+  const [{ data: schedule }, { data: canManage }, { data: canEditSchedule }, { data: upcoming }, { data: follows }, { data: altRows }, { data: rotation }, { data: forms }] = await Promise.all([
     supabase.from('schedules').select('weekday, start_time, end_time').eq('employee_id', person.id),
     supabase.rpc('can_manage', { target: person.id }),
     supabase.rpc('can_edit_schedule', { target: person.id }),
@@ -41,6 +41,9 @@ export default async function PersonPage({ params }) {
     // Every-other-week hours (change 54)
     supabase.from('schedule_alt').select('weekday, start_time, end_time').eq('employee_id', person.id),
     supabase.from('schedule_rotations').select('a_week').eq('employee_id', person.id).maybeSingle(),
+    // Availability forms they filled out (change 55), newest first
+    supabase.from('availability_forms').select('id, location, position, days, notes, signature, submitted_at, applied_at')
+      .eq('employee_id', person.id).order('submitted_at', { ascending: false }).limit(5),
   ]);
 
   return (
@@ -50,6 +53,7 @@ export default async function PersonPage({ params }) {
         person={person}
         schedule={schedule || []}
         altSchedule={altRows || []}
+        forms={forms || []}
         aWeek={rotation?.a_week || null}
         today={today}
         upcoming={upcoming || []}
