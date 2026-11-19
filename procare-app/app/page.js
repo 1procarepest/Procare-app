@@ -54,37 +54,61 @@ export default async function Home({ searchParams }) {
     );
   }
 
-  // Competition prizes: pay out anything that just finished, then this person's earnings
-  await settleCompetitions(supabase, atlantaToday());
+  // Speed: every lookup below starts now, all at once, and each is awaited where it's used
+  // (they used to run one after another). `start` kicks off a Supabase query without waiting for it.
+  const start = (q) => Promise.resolve(q);
+  const none = Promise.resolve({ data: null });
+  const isTech = me.department === 'technician';
+  const isSales = me.department === 'sales';
   // Office staff: their office's numbers this month (same data as the Operations card)
   const isOffice = me.department === 'administrative';
   const month = opsRange('month', atlantaToday(), atlantaToday());
-  const [{ data: awards }, { data: payouts }, myComps, opsSuite, opsSnap] = await Promise.all([
-    supabase.from('competition_awards').select('id, amount, reason, payout_id, created_at').eq('employee_id', me.id).order('created_at', { ascending: false }),
-    supabase.from('payout_requests').select('id, amount, status, requested_at, paid_at').eq('employee_id', me.id).order('requested_at', { ascending: false }),
-    myLiveCompetitions(supabase, me, atlantaToday()),
-    isOffice ? supabase.rpc('ops_suite', { p_from: month.from, p_to: month.to, p_cfrom: month.cFrom, p_cto: month.cTo }) : { data: null },
-    isOffice ? supabase.rpc('ops_snapshot') : { data: null },
-  ]);
-  const officeStats = opsSuite?.data && opsSnap?.data ? { stats: buildOps(opsSuite.data), snap: buildSnapshot(opsSnap.data) } : null;
-  // Technicians: feedback from ride-alongs and follow-behinds, and truck items to fix
-  const { data: feedback } = me.department === 'technician' ? await supabase.rpc('my_feedback') : { data: null };
-
   // Route day: ?day=0 is today, 1 tomorrow, -1 yesterday (7 days either way)
   const askedDay = parseInt(searchParams?.day, 10);
   const dayOffset = Number.isNaN(askedDay) ? 0 : Math.min(ROUTE_DAYS, Math.max(-ROUTE_DAYS, askedDay));
   const routeDate = new Date(Date.now() + dayOffset * 86400000);
   const routeDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(routeDate);
-  const { data: route } = me.department === 'technician'
-    ? await supabase.rpc('my_route', { p_day: routeDay })
-    : { data: null };
+  const salesWeek = periodRange('week', atlantaToday());
+  const salesYear = Number(atlantaToday().slice(0, 4));
+  // Competition prizes: pay out anything that just finished first, then this person's earnings
+  const pEarnings = settleCompetitions(supabase, atlantaToday()).then(() => Promise.all([
+    supabase.from('competition_awards').select('id, amount, reason, payout_id, created_at').eq('employee_id', me.id).order('created_at', { ascending: false }),
+    supabase.from('payout_requests').select('id, amount, status, requested_at, paid_at').eq('employee_id', me.id).order('requested_at', { ascending: false }),
+  ]));
+  const pRest = Promise.all([
+    myLiveCompetitions(supabase, me, atlantaToday()),
+    isOffice ? start(supabase.rpc('ops_suite', { p_from: month.from, p_to: month.to, p_cfrom: month.cFrom, p_cto: month.cTo })) : none,
+    isOffice ? start(supabase.rpc('ops_snapshot')) : none,
+  ]);
+  // Technicians: feedback from ride-alongs and follow-behinds, and their route
+  const pFeedback = isTech ? start(supabase.rpc('my_feedback')) : none;
+  const pRoute = isTech ? start(supabase.rpc('my_route', { p_day: routeDay })) : none;
+  // Sales reps: this week's Rep Card and pay
+  const pCards = isSales ? start(supabase.rpc('rep_cards', { p_from: salesWeek.from, p_to: salesWeek.to })) : none;
+  const pComp = isSales ? start(supabase.rpc('comp_sales', { p_year: salesYear, p_emp: me.id })) : none;
+  // Everyone: their schedule, every-other-week hours, company holidays, and bonus goals
+  const pSchedule = start(supabase.from('schedules').select('weekday, start_time, end_time').eq('employee_id', me.id));
+  const pSched2 = Promise.all([
+    start(supabase.from('schedule_alt').select('weekday, start_time, end_time').eq('employee_id', me.id)),
+    start(supabase.from('schedule_rotations').select('a_week').eq('employee_id', me.id).maybeSingle()),
+    // Company holidays that are on (change 57): a company day off for everyone
+    start(supabase.from('company_holidays').select('key, enabled').eq('enabled', true)),
+  ]);
+  const pBonusSets = me.rank >= 2 || me.hr_approver
+    ? start(supabase.from('bonus_members').select('set_id', { count: 'exact', head: true }).eq('employee_id', me.id))
+    : Promise.resolve({ count: 0 });
+
+  const [{ data: awards }, { data: payouts }] = await pEarnings;
+  const [myComps, opsSuite, opsSnap] = await pRest;
+  const officeStats = opsSuite?.data && opsSnap?.data ? { stats: buildOps(opsSuite.data), snap: buildSnapshot(opsSnap.data) } : null;
+  const { data: feedback } = await pFeedback;
+  const { data: route } = await pRoute;
 
   // Sales reps: their own Rep Card for this week
   let myCard = null;
-  if (me.department === 'sales') {
-    const wk = periodRange('week', atlantaToday());
-    const { data: rows } = await supabase.rpc('rep_cards', { p_from: wk.from, p_to: wk.to });
-    const { reps } = buildCards(rows, wk.to);
+  if (isSales) {
+    const { data: rows } = await pCards;
+    const { reps } = buildCards(rows, salesWeek.to);
     myCard = reps.find((r) => r.id === me.id) || {
       id: me.id, first_name: me.first_name, last_name: me.last_name, name: `${me.first_name} ${me.last_name}`,
       office: me.office, photo: me.photo_url, m: measure({}), weeks: [],
@@ -93,9 +117,9 @@ export default async function Home({ searchParams }) {
 
   // Sales reps: pay at a glance (shadow mode)
   let myPay = null;
-  if (me.department === 'sales') {
+  if (isSales) {
     const today = atlantaToday();
-    const { data: comp } = await supabase.rpc('comp_sales', { p_year: Number(today.slice(0, 4)), p_emp: me.id });
+    const { data: comp } = await pComp;
     if (comp) {
       const st = statement(comp, me.id, Number(today.slice(0, 4)), today);
       const monday = nextMonday(today);
@@ -104,10 +128,7 @@ export default async function Home({ searchParams }) {
     }
   }
 
-  const { data: schedule } = await supabase
-    .from('schedules')
-    .select('weekday, start_time, end_time')
-    .eq('employee_id', me.id);
+  const { data: schedule } = await pSchedule;
 
   // Scheduled hours per weekday, in minutes from midnight
   const shifts = {};
@@ -115,12 +136,7 @@ export default async function Home({ searchParams }) {
     if (d.start_time && d.end_time) shifts[d.weekday] = [toMinutes(d.start_time), toMinutes(d.end_time)];
   });
   // Every-other-week hours (change 54): week-B hours for the days that differ, and which Monday starts a week A
-  const [{ data: altRows }, { data: rotRow }, { data: holidayRows }] = await Promise.all([
-    supabase.from('schedule_alt').select('weekday, start_time, end_time').eq('employee_id', me.id),
-    supabase.from('schedule_rotations').select('a_week').eq('employee_id', me.id).maybeSingle(),
-    // Company holidays that are on (change 57): a company day off for everyone
-    supabase.from('company_holidays').select('key, enabled').eq('enabled', true),
-  ]);
+  const [{ data: altRows }, { data: rotRow }, { data: holidayRows }] = await pSched2;
   const holidayOn = followsHolidays(me.department) ? holidayLookup(holidayRows) : () => null;
   const altShifts = {};
   (altRows || []).forEach((d) => { altShifts[d.weekday] = d.start_time && d.end_time ? [toMinutes(d.start_time), toMinutes(d.end_time)] : null; });
@@ -206,9 +222,7 @@ export default async function Home({ searchParams }) {
   const officeName = me.offices?.name;
 
   // Quarterly bonus link for people with goals of their own (managers)
-  const { count: bonusSets } = me.rank >= 2 || me.hr_approver
-    ? await supabase.from('bonus_members').select('set_id', { count: 'exact', head: true }).eq('employee_id', me.id)
-    : { count: 0 };
+  const { count: bonusSets } = await pBonusSets;
 
   return (
     <>

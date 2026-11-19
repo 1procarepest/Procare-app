@@ -21,7 +21,10 @@ export async function middleware(request) {
     },
   });
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // getClaims() refreshes an expiring token, then checks it locally when the project uses signing keys
+  // (no trip to Supabase Auth on every click); without signing keys it asks Supabase Auth like getUser().
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims?.sub ? data.claims : null;
   const path = request.nextUrl.pathname;
 
   if (!user && !path.startsWith('/login')) {
@@ -38,5 +41,6 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|logo.png).*)'],
+  // Pages and API routes only: images, icons and other files in public/ don't need a sign-in check
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|txt|woff2?)$).*)'],
 };

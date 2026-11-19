@@ -1,9 +1,19 @@
+import { cache } from 'react';
 import { RANK } from './labels';
+import { createClient } from './supabase/server';
 
-/** The signed-in auth user and their active employee record (or null). */
-export async function getMe(supabase) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { user: null, me: null };
+/**
+ * Who's signed in, worked out once per page load. The layout, the page and the top bar all ask, so React's
+ * cache() shares one answer instead of asking Supabase each time (outside a page, e.g. an API route, it just runs).
+ * getClaims() checks the sign-in token locally when the project uses signing keys (no trip to Supabase Auth);
+ * otherwise it asks Supabase Auth, the same as getUser(). The middleware has already refreshed the token.
+ */
+const loadMe = cache(async () => {
+  const supabase = createClient();
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub) return { user: null, me: null };
+  const user = { id: claims.sub, email: claims.email || '' };
   const { data: me } = await supabase
     .from('employees')
     .select('id, first_name, last_name, photo_url, office, department, level, hr_approver, offices(name)')
@@ -12,4 +22,14 @@ export async function getMe(supabase) {
     .maybeSingle();
   if (me) me.rank = RANK[me.level] || 0;
   return { user, me };
+});
+
+/**
+ * The signed-in auth user ({ id, email }) and their active employee record (or null).
+ * Callers still pass their Supabase client; it isn't needed (the shared lookup makes its own).
+ */
+export async function getMe() {
+  const { user, me } = await loadMe();
+  // A copy, so a page adding fields to `me` doesn't change what the next caller sees
+  return { user, me: me ? { ...me } : null };
 }

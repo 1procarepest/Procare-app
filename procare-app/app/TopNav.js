@@ -9,13 +9,15 @@ import { canSeeTeamSchedule } from '@/lib/teamSchedule';
  */
 export default async function TopNav({ me, supabase, current, extra = null }) {
   const apps = appsFor(me.department, me.level);
-  let pay = me.department === 'sales';
-  if (!pay && me.rank >= 3) {
-    const { data } = await supabase.rpc('can_manage_pay');
-    pay = !!data;
-  }
-  // Reports (ride-alongs and follow-behinds) and Bonus: only for the people they're for (change 47)
-  const { data: bonusLinks } = me.rank >= 2 || me.hr_approver ? await supabase.rpc('my_bonus_links') : { data: null };
+  // Both lookups at once (they don't depend on each other)
+  const isSales = me.department === 'sales';
+  const [payCheck, links] = await Promise.all([
+    !isSales && me.rank >= 3 ? supabase.rpc('can_manage_pay') : { data: false },
+    // Reports (ride-alongs and follow-behinds) and Bonus: only for the people they're for (change 47)
+    me.rank >= 2 || me.hr_approver ? supabase.rpc('my_bonus_links') : { data: null },
+  ]);
+  const pay = isSales || !!payCheck.data;
+  const bonusLinks = links.data;
   const link = (key, href, label) => (
     <Link key={key} className={`toplink${current === key ? ' on' : ''}`} href={href} aria-current={current === key ? 'page' : undefined}>{label}</Link>
   );

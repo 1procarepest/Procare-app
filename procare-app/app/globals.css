@@ -1684,3 +1684,16 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 /* Multi-select office and department pickers */
 .ts-pick-hint { margin: 6px 0 0; }
 .ops-pick-hint { flex-basis: 100%; margin: 2px 0 0; }
+
+/* Loading screens (loading.js): shown the moment a link is tapped, while the page's data loads */
+.page-loading { display: grid; gap: 14px; }
+.page-loading .pl-bar { height: 3px; border-radius: 3px; background: linear-gradient(90deg, var(--forest) 0 30%, transparent 30%); background-size: 200% 100%; animation: pl-slide 1s linear infinite; }
+.page-loading .pl-line, .page-loading .pl-card { border-radius: 10px; background: linear-gradient(90deg, #e7ebe3 0%, #f3f5f0 50%, #e7ebe3 100%); background-size: 200% 100%; animation: pl-shine 1.2s ease-in-out infinite; }
+.page-loading .pl-line { height: 16px; }
+.page-loading .pl-title { height: 34px; width: 55%; }
+.page-loading .pl-short { width: 40%; }
+.page-loading .pl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.page-loading .pl-card { height: 120px; }
+@keyframes pl-shine { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@keyframes pl-slide { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .page-loading .pl-line, .page-loading .pl-card, .page-loading .pl-bar { animation: none; } }
