@@ -229,7 +229,19 @@ begin
     raise exception 'Only the President can create or edit a President account';
   end if;
 
-  -- Your own record: phone number and photo only. Nobody can promote themselves.
+  -- C-Suite, own record (change 56): also office, level (never President, checked above) and final approval.
+  if tg_op = 'UPDATE' and old.id = actor.id and actor.level = 'c_suite' then
+    if (new.email, new.first_name, new.last_name, new.fr_employee_type, new.fr_ids,
+        new.samsara_driver_id, new.active, new.auth_user_id)
+       is distinct from
+       (old.email, old.first_name, old.last_name, old.fr_employee_type, old.fr_ids,
+        old.samsara_driver_id, old.active, old.auth_user_id) then
+      raise exception 'You can change your own office, level and final approval, but not those details';
+    end if;
+    return new;
+  end if;
+
+  -- Your own record (everyone else): phone number and photo only. Nobody can promote themselves.
   if tg_op = 'UPDATE' and old.id = actor.id then
     if (new.email, new.first_name, new.last_name, new.office, new.fr_employee_type, new.fr_ids,
         new.samsara_driver_id, new.level, new.hr_approver, new.active, new.auth_user_id)

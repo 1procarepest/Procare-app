@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { DAY_NAMES, DEPT_LABEL, LEVEL_LABEL, OFFICES, WEEK_ORDER, levelOptions, roleTitle, timeOffWhen } from '@/lib/labels';
+import { DAY_NAMES, DEPT_LABEL, LEVEL_LABEL, OFFICES, WEEK_ORDER, clock, fromMinutes, levelOptions, roleTitle, timeOffWhen } from '@/lib/labels';
+import Picker from '../../../Picker';
 import Face from '../../../Face';
 import Toggle from '../../../Toggle';
 import { isBWeek, mondayOf } from '@/lib/schedules';
@@ -13,6 +14,14 @@ import { BugTile } from '../../../Bug';
 function trimTime(t) { return t ? String(t).slice(0, 5) : ''; }
 
 const TIME_OFF_BADGE = { approved: 'Approved', pending: 'Requested' };
+
+// Rounded time menus instead of the browser's clock box: every 15 minutes, 5 AM – 10 PM
+const TIME_OPTIONS = Array.from({ length: (22 - 5) * 4 + 1 }, (_, i) => { const t = fromMinutes(5 * 60 + i * 15); return { value: t, label: clock(t) }; });
+function TimePick({ value, onChange, label, disabled }) {
+  if (disabled) return <span className="tp-static">{value ? clock(value) : '–'}</span>;
+  const opts = TIME_OPTIONS.some((o) => o.value === value) || !value ? TIME_OPTIONS : [{ value, label: clock(value) }, ...TIME_OPTIONS];
+  return <Picker className="tp" label={label} value={value} onChange={onChange} options={opts} search={false} />;
+}
 
 export default function PersonEditor({ person, schedule, altSchedule = [], forms = [], aWeek = null, today, upcoming = [], me, canManage, canEditSchedule }) {
   const router = useRouter();
@@ -31,12 +40,17 @@ export default function PersonEditor({ person, schedule, altSchedule = [], forms
   let options = levelOptions(me.level);
   if (!options.includes(person.level)) options = [...options, person.level];
   const officeLocked = me.level === 'lead';
+  // C-Suite and the President can change their own office, level and final approval too (change 56);
+  // a President's level stays as it is so nobody loses that access.
+  const canEditRole = canManage || (isSelf && me.rank >= 4);
+  const levelLocked = !canEditRole || person.level === 'president';
 
   async function saveDetails(e) {
     e.preventDefault();
     setSavingDetails(true);
     setDetailsMsg({ text: '', bad: false });
-    const changes = { level, office: office || null };
+    const changes = { office: office || null };
+    if (!levelLocked) changes.level = level;
     if (me.rank >= 4) changes.hr_approver = hr;
     const { error } = await createClient().from('employees').update(changes).eq('id', person.id);
     setSavingDetails(false);
@@ -209,23 +223,23 @@ export default function PersonEditor({ person, schedule, altSchedule = [], forms
         <div className="row">
           <div>
             <label htmlFor="level">Level</label>
-            <select id="level" value={level} onChange={(e) => setLevel(e.target.value)} disabled={!canManage}>
+            <select id="level" value={level} onChange={(e) => setLevel(e.target.value)} disabled={levelLocked}>
               {options.map((l) => <option key={l} value={l}>{LEVEL_LABEL[l]}</option>)}
             </select>
           </div>
           <div>
             <label htmlFor="office">Office</label>
-            <select id="office" value={office} onChange={(e) => setOffice(e.target.value)} disabled={!canManage || officeLocked}>
+            <select id="office" value={office} onChange={(e) => setOffice(e.target.value)} disabled={!canEditRole || officeLocked}>
               <option value="">No office</option>
               {OFFICES.map((o) => <option key={o.key} value={o.key}>{o.name}</option>)}
             </select>
           </div>
         </div>
         {me.rank >= 4 && (
-          <Toggle checked={hr} onChange={setHr} disabled={!canManage}>Gives final approval on time off</Toggle>
+          <Toggle checked={hr} onChange={setHr} disabled={!canEditRole}>Gives final approval on time off</Toggle>
         )}
         {detailsMsg.text && <p className={detailsMsg.bad ? 'error' : 'ok'} role="status">{detailsMsg.text}</p>}
-        {canManage && (
+        {canEditRole && (
           <div className="panel-buttons">
             <button className="btn" type="submit" disabled={savingDetails}>{savingDetails ? 'Saving…' : 'Save changes'}</button>
           </div>
@@ -293,9 +307,9 @@ export default function PersonEditor({ person, schedule, altSchedule = [], forms
               </Toggle>
               {days[d].on ? (
                 <span className="sched-times">
-                  <input type="time" aria-label={`${DAY_NAMES[d]} start`} value={days[d].start} disabled={!canEditSchedule} onChange={(e) => setDay(d, { start: e.target.value })} />
+                  <TimePick label={`${DAY_NAMES[d]} start`} value={days[d].start} disabled={!canEditSchedule} onChange={(v) => setDay(d, { start: v })} />
                   <span aria-hidden="true">to</span>
-                  <input type="time" aria-label={`${DAY_NAMES[d]} end`} value={days[d].end} disabled={!canEditSchedule} onChange={(e) => setDay(d, { end: e.target.value })} />
+                  <TimePick label={`${DAY_NAMES[d]} end`} value={days[d].end} disabled={!canEditSchedule} onChange={(v) => setDay(d, { end: v })} />
                 </span>
               ) : <span className="note">Off</span>}
             </li>
@@ -323,9 +337,9 @@ export default function PersonEditor({ person, schedule, altSchedule = [], forms
                         <Toggle small checked={altDays[d].on} disabled={!canEditSchedule} onChange={(v) => setAltDay(d, { on: v })}>{altDays[d].on ? 'Works' : 'Off'}</Toggle>
                         {altDays[d].on && (
                           <>
-                            <input type="time" aria-label={`Week B ${DAY_NAMES[d]} start`} value={altDays[d].start} disabled={!canEditSchedule} onChange={(e) => setAltDay(d, { start: e.target.value })} />
+                            <TimePick label={`Week B ${DAY_NAMES[d]} start`} value={altDays[d].start} disabled={!canEditSchedule} onChange={(v) => setAltDay(d, { start: v })} />
                             <span aria-hidden="true">to</span>
-                            <input type="time" aria-label={`Week B ${DAY_NAMES[d]} end`} value={altDays[d].end} disabled={!canEditSchedule} onChange={(e) => setAltDay(d, { end: e.target.value })} />
+                            <TimePick label={`Week B ${DAY_NAMES[d]} end`} value={altDays[d].end} disabled={!canEditSchedule} onChange={(v) => setAltDay(d, { end: v })} />
                           </>
                         )}
                       </span>

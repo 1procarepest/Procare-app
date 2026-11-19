@@ -40,6 +40,17 @@ function WorkDays({ r }) {
   );
 }
 
+/** "Sent Nov 17, 3:42 PM · waiting 1 day" so approvers can see how long a request has waited. */
+function sentLine(r) {
+  if (!r.created_at) return '';
+  const t = new Date(r.created_at);
+  const when = t.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  if (r.status !== 'pending') return `Sent ${when}`;
+  const hrs = Math.max(0, (Date.now() - t.getTime()) / 36e5);
+  const wait = hrs < 1 ? 'less than an hour' : hrs < 24 ? `${Math.floor(hrs)} hour${Math.floor(hrs) === 1 ? '' : 's'}` : `${Math.floor(hrs / 24)} day${Math.floor(hrs / 24) === 1 ? '' : 's'}`;
+  return `Sent ${when} · waiting ${wait}`;
+}
+
 const STATUS = { pending: 'Waiting', approved: 'Approved', denied: 'Denied', cancelled: 'Cancelled' };
 
 /**
@@ -107,6 +118,7 @@ function Request({ r, canDecide, canEdit }) {
           {timeOffWhen(r)}
           {r.use_pto && <> <span className="badge badge-pto">Paid vacation</span></>}
         </span>
+        <span className={`sent-line${r.status === 'pending' && Date.now() - new Date(r.created_at).getTime() > 2 * 864e5 ? ' sent-old' : ''}`} suppressHydrationWarning>{sentLine(r)}</span>
         {r.note && <span className="note">“{r.note}”</span>}
         {r.decision_note && <span className="note">Reply: {r.decision_note}</span>}
       </div>

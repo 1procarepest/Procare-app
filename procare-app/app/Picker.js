@@ -23,6 +23,13 @@ export default function Picker({ value, onChange, options, placeholder = 'Pick o
     return () => { document.removeEventListener('mousedown', close); document.removeEventListener('touchstart', close); document.removeEventListener('keydown', esc); };
   }, [open]);
 
+  // Long lists (like times) open scrolled to the picked option
+  const list = useRef(null);
+  useEffect(() => {
+    const el = open && list.current?.querySelector('.pk-opt.on');
+    if (el) list.current.scrollTop = el.offsetTop - list.current.offsetTop - list.current.clientHeight / 2 + el.clientHeight / 2;   // only the list scrolls, not the page
+  }, [open]);
+
   const shown = options.filter((o) => !q || `${o.label} ${o.sub || ''} ${o.group || ''}`.toLowerCase().includes(q.toLowerCase()));
   const groups = [];
   shown.forEach((o) => {
@@ -43,7 +50,7 @@ export default function Picker({ value, onChange, options, placeholder = 'Pick o
           {search && (
             <input className="pk-search" autoFocus value={q} placeholder="Search…" aria-label="Search" onChange={(e) => setQ(e.target.value)} />
           )}
-          <div className="pk-list" role="listbox" aria-label={label}>
+          <div className="pk-list" role="listbox" aria-label={label} ref={list}>
             {groups.length === 0 && <p className="pk-none">No matches.</p>}
             {groups.map((g) => (
               <div key={g.name || 'all'} className="pk-group">

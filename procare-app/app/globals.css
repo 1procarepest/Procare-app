@@ -1661,3 +1661,12 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .av-file ul { margin: 0; padding-left: 18px; }
 .ts-updates { margin: 12px 0 0; padding: 10px 14px; border-radius: 12px; background: var(--lime); color: var(--ink); font-size: 15px; }
 .ts-office-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Weekly schedule: rounded time menus instead of the browser's clock box (2026-11-18) */
+.sched-times .tp { width: 132px; }
+.sched-times .tp .pk-btn { padding: 8px 14px; font-size: 15px; }
+.sched-times .tp .pk-list { max-height: 260px; overflow-y: auto; }
+.tp-static { min-width: 70px; text-align: right; font-variant-numeric: tabular-nums; }
+.sched-times .tp .pk-pop { min-width: 150px; }
+/* Time off: when each request was sent; waiting 2+ days stands out */
+.sent-line { font-size: 13px; color: var(--muted); }
+.sent-line.sent-old { color: var(--danger); font-weight: 600; }
