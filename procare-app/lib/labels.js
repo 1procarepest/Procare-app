@@ -8,7 +8,7 @@ export const LEVEL_LABEL = {
   c_suite: 'C-Suite',
   president: 'President',
 };
-export const DEPT_LABEL = { technician: 'Technician', sales: 'Sales', administrative: 'Office' };
+export const DEPT_LABEL = { technician: 'Technician', sales: 'Sales', administrative: 'Office', wildlife: 'Wildlife' };
 export const OFFICES = [
   { key: 'east', name: 'Atlanta East' },
   { key: 'west', name: 'Atlanta West' },

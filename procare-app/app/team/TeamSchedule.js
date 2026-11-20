@@ -12,7 +12,7 @@ import { allPicked, togglePick } from '@/lib/multiPick';
 const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const dow = (ymd) => new Date(`${ymd}T12:00:00Z`).getUTCDay();
-const DEPT_TITLE = { sales: 'Sales', technician: 'Technicians', administrative: 'Office' };
+const DEPT_TITLE = { sales: 'Sales', technician: 'Technicians', wildlife: 'Wildlife', administrative: 'Office' };
 
 // Whole weeks from this week's Monday to the week holding ymd (for the month calendar's links)
 function weeksFrom(today, ymd) {

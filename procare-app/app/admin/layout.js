@@ -11,7 +11,7 @@ export default async function AdminLayout({ children }) {
   const supabase = createClient();
   const { user, me } = await getMe(supabase);
   if (!user) redirect('/login');
-  if (!me || me.rank < 2) redirect('/');
+  if (!me || me.rank < 2 || me.department === 'wildlife') redirect('/');   // Wildlife: Wildlife-only access
 
   return (
     <>

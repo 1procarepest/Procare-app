@@ -8,7 +8,7 @@ import { canSeeTeamSchedule } from '@/lib/teamSchedule';
  * people who manage pay), Compete (everyone), Settings (leads and up), and Sign out. `extra` adds a page's own sub-links.
  */
 export default async function TopNav({ me, supabase, current, extra = null }) {
-  const apps = appsFor(me.department, me.level);
+  const apps = appsFor(me.department, me.level, !!me.wildlife_access);
   // Both lookups at once (they don't depend on each other)
   const isSales = me.department === 'sales';
   const [payCheck, links] = await Promise.all([
@@ -33,7 +33,7 @@ export default async function TopNav({ me, supabase, current, extra = null }) {
         {bonusLinks?.bonus && link('bonus', '/bonus', 'Bonus')}
         {link('compete', '/compete', 'Compete')}
         {extra}
-        {me.rank >= 2 && link('settings', '/admin', 'Settings')}
+        {me.rank >= 2 && me.department !== 'wildlife' && link('settings', '/admin', 'Settings')}
         <SignOut />
       </nav>
     </header>

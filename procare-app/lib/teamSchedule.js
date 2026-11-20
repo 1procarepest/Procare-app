@@ -1,7 +1,7 @@
 import { clock, fromMinutes, toMinutes } from './labels';
 
 /** Who may open the team schedule (matches team_schedule_depts() in the database). */
-export const canSeeTeamSchedule = (me) => me && (me.rank >= 3 || me.department === 'sales');
+export const canSeeTeamSchedule = (me) => me && (me.rank >= 3 || me.department === 'sales' || me.department === 'wildlife' || !!me.wildlife_access);
 
 /**
  * One person's day: their usual hours minus approved time off; requested time off is flagged.

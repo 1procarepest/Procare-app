@@ -16,7 +16,7 @@ const loadMe = cache(async () => {
   const user = { id: claims.sub, email: claims.email || '' };
   const { data: me } = await supabase
     .from('employees')
-    .select('id, first_name, last_name, photo_url, office, department, level, hr_approver, offices(name)')
+    .select('*, offices(name)')   // * so new columns (e.g. wildlife_access, change 63) never break sign-in
     .eq('auth_user_id', user.id)
     .eq('active', true)
     .maybeSingle();

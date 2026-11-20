@@ -1737,3 +1737,15 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 
 /* Operations tabs: Suite, AR & job pool, Route plan side by side */
 .ops-tabs { max-width: 1320px; }
+
+/* Wildlife (change 63): critter tiles from the brand's wildlife icon set */
+.wl-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; }
+.wl-head .brand-head-bug { opacity: 0.1; }
+.wl-tiles { display: flex; gap: 8px; flex-wrap: wrap; }
+.wl-sales { margin: 18px 0 26px; }
+.wl-sales h2 { font-size: 20px; margin: 0 0 10px; }
+.wl-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.wl-card { display: flex; gap: 12px; align-items: center; background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.wl-card h3 { margin: 0; font-size: 16px; }
+.wl-card p { margin: 2px 0 0; }
+.wl-table td .cell-sub { display: block; color: var(--muted); font-size: 12px; }

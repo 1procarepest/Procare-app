@@ -7,6 +7,7 @@ import { APPS, appsFor } from '@/lib/apps';
 import { photoSrc } from '@/lib/photo';
 import ProfileActions from './ProfileActions';
 import { BugTile } from './Bug';
+import { CritterTile } from './Critter';
 import TodayRoute from './TodayRoute';
 import RepCard from './reps/RepCard';
 import { buildCards, measure, periodRange, todayYmd as atlantaToday } from '@/lib/repcards';
@@ -59,7 +60,8 @@ export default async function Home({ searchParams }) {
   // (they used to run one after another). `start` kicks off a Supabase query without waiting for it.
   const start = (q) => Promise.resolve(q);
   const none = Promise.resolve({ data: null });
-  const isTech = me.department === 'technician';
+  // Wildlife techs (change 63) run routes like technicians: same route and feedback on their home page
+  const isTech = me.department === 'technician' || me.department === 'wildlife';
   const isSales = me.department === 'sales';
   // Office staff: their office's numbers this month (same data as the Operations card)
   const isOffice = me.department === 'administrative';
@@ -362,11 +364,11 @@ export default async function Home({ searchParams }) {
         <section className="section" aria-labelledby="apps-heading">
           <h2 id="apps-heading">Your apps</h2>
           <ul className="apps">
-            {appsFor(me.department, me.level).map((key) => (
+            {appsFor(me.department, me.level, !!me.wildlife_access).map((key) => (
               <li key={key}>
                 {APPS[key].href ? (
                   <Link className="app app-link" href={APPS[key].href}>
-                    <BugTile kind={APPS[key].bug} tone={APPS[key].tone} />
+                    {APPS[key].critter ? <CritterTile kind={APPS[key].critter} tone={APPS[key].tone} /> : <BugTile kind={APPS[key].bug} tone={APPS[key].tone} />}
                     <div className="app-text">
                       <h3>{APPS[key].name}</h3>
                       <p>{APPS[key].blurb}</p>

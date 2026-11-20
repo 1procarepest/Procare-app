@@ -6,7 +6,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - John Ely, President of Procare Pest (3 Atlanta offices: East, West, South). Not technical: short, plain answers, one step and one question at a time.
 - Repo `1procarepest/Procare-app`; the app is in `procare-app/` (Next.js 14 App Router, plain JS, Supabase). Vercel deploys from `main`.
 - Check with `npm run build` before pushing. Commit and push only your own files; end commit messages with the Co-Authored-By line.
-- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-19-62-scorecard-refresh.sql`, so the next is 63). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
+- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-19-63b-wildlife-department.sql`, run after 63a; the next is 64). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
 - Supabase cuts a request off after about 8 s. Time heavy queries on real data first.
 - SQL tests run in PGlite (`@electric-sql/pglite`); there's no local Postgres. The new Mac (2026-11-16) had no Node.js or Homebrew at first.
 - **UI rules from John**: use toggle switches (`app/Toggle.js`), never checkboxes. Use the brand look: `.brand-head` patterned headers, bug art from `app/Bug.js` (bugs anywhere; wildlife icons only on future wildlife pages), colors ink/forest/green/lime/sage.
@@ -69,21 +69,24 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 2. Inventory section (with manager bonuses), after the rest works.
 3. Tech bonus payouts on the Technician Performance Card (waiting on bonus amounts and whether to use a driving-score gate; could share the Earnings box and Cash out).
 4. Podium reviews credited to techs; sales pay through Everee (API enabled; token goes straight into Vercel/Supabase secrets, never into chat).
-5. **Wildlife section** (John, 2026-11-17). The wildlife team (today Samuel Scott and Bryan Koons) is split out from regular
-   team members.
-   - **Access:** two new roles, wildlife manager and wildlife team leader. Both see everything a team member sees, plus a
-     Wildlife section. Today both men would be wildlife managers; the two roles matter as the team grows. Likely an extra
-     "wildlife" access marker on the person (department or flag) rather than a whole new department, so they keep their
-     technician pages, scorecard and Samsara setup.
-   - **Wildlife P&L:** revenue and direct costs from QuickBooks, plus the overhead that belongs to the wildlife department.
-     Needs a QuickBooks Online connection (OAuth; tokens go straight into secrets, never into chat). Easiest if wildlife is
-     its own Class or Location in QuickBooks. Overhead split is the tricky part: agree with John how shared costs are
-     divided (e.g. by revenue share, headcount or a fixed %).
-   - **Wildlife inventory:** they keep a separate inventory system; give them a page in the Wildlife section to update it.
-     Plan alongside item 2 (general inventory) so the two share one design.
-   - Wildlife icons already exist in `public/icons/wildlife` (reserved for these pages).
-   - Open questions: how QuickBooks tracks wildlife today (Class, Location, separate accounts?), what the wildlife
-     inventory holds and where it lives now, and who else may see the Wildlife P&L (C-Suite, President, Ally?).
+5. **Wildlife** (John, 2026-11-17 and 2026-11-19). Decided 2026-11-19: a separate **Wildlife department** (enum
+   value 'wildlife', change 63a/63b). Bryan Koons and Sam Scott are Wildlife managers with **Wildlife-only access** (no
+   Operations Suite, Settings or tech leaderboard; they keep route, schedule, time off). Jessica Bowles (office) handles
+   Wildlife admin: `employees.wildlife_access` lets her see the Wildlife side. guard_employee keeps 'wildlife' once set
+   (it otherwise derives department from the FieldRoutes employee type). Wildlife icons: `app/Critter.js`.
+   - **Phase 1 (built 2026-11-19)**: /wildlife: Wildlife Performance Card (tech scorecard calc copied for the Wildlife
+     department, `wildlife_scorecard`), wildlife services sold/done (`wildlife_sales`: Exclusion Service(s), Wildlife
+     Warranty, Trapping, Insulation via `wildlife_line()`), both in the 10-minute background refresh.
+   - **Phase 2, pay**: move the sales Pay section into the Sales app as a tab. Wildlife pay page, adjustable per person:
+     full commission (defaults 10% for selling, 25% for doing the work) or salary + bonus per job; list of customers
+     they sold. Referrals: FieldRoutes Sales Rep 2 (`fr_subscriptions.sold_by_2`, already synced) gets $100 when a tech
+     or sales rep refers a wildlife job; the wildlife tech is Sales Rep 1. John asked about paying "as we get paid"
+     (today they're paid the day the job is completed): needs FieldRoutes payments synced (Procare Sync has no payments
+     table yet, only customer balance). Open: when the 25% is earned on multi-visit jobs.
+   - **Phase 3, finance**: QuickBooks Online (OAuth; tokens only in secrets). Each office is a QuickBooks Class and
+     Wildlife is its own Class. P&L per office and Wildlife, marketing costs, cost per customer by lead source
+     (door-to-door, Google Ads/leads, Yelp, other lead services) including wildlife customers.
+   - **Phase 4**: wildlife inventory, designed with item 2 (general inventory).
 6. **Truck and driver sheet** (John, 2026-11-17): one place in the app to keep vehicle information up to date, so it
    no longer lives in a separate spreadsheet.
    - Each truck and who drives it, built on what's already synced: Samsara vehicles, `tech_vehicles` (tech ↔ truck,
