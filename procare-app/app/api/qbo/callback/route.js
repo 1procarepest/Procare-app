@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { connect, syncPl } from '@/lib/qbo';
+import { hasSecondStep } from '@/lib/mfa';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -10,8 +11,9 @@ export const maxDuration = 60;
 export async function GET(request) {
   const url = new URL(request.url);
   const back = (q) => NextResponse.redirect(`${url.origin}/finance/settings?${q}`);
-  const { me } = await getMe(createClient());
-  if (!me || me.rank < 4) return NextResponse.redirect(`${url.origin}/`);
+  const supabase = createClient();
+  const { me } = await getMe(supabase);
+  if (!me || me.rank < 4 || !(await hasSecondStep(supabase))) return NextResponse.redirect(`${url.origin}/`);
   const state = request.cookies.get('qbo_state')?.value;
   if (url.searchParams.get('error')) return back(`qbo=declined`);
   if (!state || state !== url.searchParams.get('state')) return back('qbo=expired');
