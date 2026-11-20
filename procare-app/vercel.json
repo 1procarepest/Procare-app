@@ -1,5 +1,12 @@
 {
   "crons": [
-    { "path": "/api/qbo/sync", "schedule": "0 10 * * *" }
+    {
+      "path": "/api/qbo/sync",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/gads/sync",
+      "schedule": "30 10 * * *"
+    }
   ]
 }

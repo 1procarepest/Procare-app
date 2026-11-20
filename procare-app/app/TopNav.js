@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { APPS, appsFor } from '@/lib/apps';
+import { APPS, appsOf } from '@/lib/apps';
 import SignOut from './SignOut';
 import { canSeeTeamSchedule } from '@/lib/teamSchedule';
 
@@ -8,7 +8,7 @@ import { canSeeTeamSchedule } from '@/lib/teamSchedule';
  * Compete (everyone), Settings (leads and up), and Sign out. `extra` adds a page's own sub-links.
  */
 export default async function TopNav({ me, supabase, current, extra = null }) {
-  const apps = appsFor(me.department, me.level, !!me.wildlife_access);
+  const apps = appsOf(me);
   // Reports (ride-alongs and follow-behinds) and Bonus: only for the people they're for (change 47).
   // Pay moved into the Sales app as a tab (2026-11-19), so the bar no longer checks pay access.
   const { data: bonusLinks } = me.rank >= 2 || me.hr_approver ? await supabase.rpc('my_bonus_links') : { data: null };

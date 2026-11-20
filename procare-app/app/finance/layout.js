@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
-import { appsFor } from '@/lib/apps';
+import { appsOf } from '@/lib/apps';
 import { hasSecondStep, verifyHref } from '@/lib/mfa';
 import TopNav from '../TopNav';
 import FinanceTabs from './FinanceTabs';
@@ -13,7 +13,7 @@ export default async function FinanceLayout({ children }) {
   const supabase = createClient();
   const { user, me } = await getMe(supabase);
   if (!user) redirect('/login');
-  if (!me || !appsFor(me.department, me.level, !!me.wildlife_access).includes('finance')) redirect('/');
+  if (!me || !appsOf(me).includes('finance')) redirect('/');
   // Finance needs the second sign-in step (authenticator code); the database checks it too (change 67)
   if (!(await hasSecondStep(supabase))) redirect(verifyHref('/finance'));
   return (

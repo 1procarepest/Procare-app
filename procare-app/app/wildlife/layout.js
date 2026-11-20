@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
-import { appsFor } from '@/lib/apps';
+import { appsOf } from '@/lib/apps';
 import TopNav from '../TopNav';
 import WildlifeTabs from './WildlifeTabs';
 
@@ -12,7 +12,7 @@ export default async function WildlifeLayout({ children }) {
   const supabase = createClient();
   const { user, me } = await getMe(supabase);
   if (!user) redirect('/login');
-  if (!me || !appsFor(me.department, me.level, !!me.wildlife_access).includes('wildlife')) redirect('/');
+  if (!me || !appsOf(me).includes('wildlife')) redirect('/');
   return (
     <>
       <TopNav me={me} supabase={supabase} current="wildlife" />

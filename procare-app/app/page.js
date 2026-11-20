@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { DAY_NAMES, WEEK_ORDER, clock, fromMinutes, roleTitle, shortDate, toMinutes } from '@/lib/labels';
-import { APPS, appsFor } from '@/lib/apps';
+import { APPS, appsOf } from '@/lib/apps';
 import { photoSrc } from '@/lib/photo';
 import ProfileActions from './ProfileActions';
 import { BugTile } from './Bug';
@@ -367,7 +367,7 @@ export default async function Home({ searchParams }) {
         <section className="section" aria-labelledby="apps-heading">
           <h2 id="apps-heading">Your apps</h2>
           <ul className="apps">
-            {appsFor(me.department, me.level, !!me.wildlife_access).map((key) => (
+            {appsOf(me).map((key) => (
               <li key={key}>
                 {APPS[key].href ? (
                   <Link className="app app-link" href={APPS[key].href}>

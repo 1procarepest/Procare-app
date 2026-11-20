@@ -5,11 +5,11 @@ import { PERIODS } from '@/lib/finance';
  * Period picker shared by the Finance pages: presets (?p=…) plus a custom month range (?from=YYYY-MM&to=YYYY-MM).
  * The month boxes are a plain form, so they work without any page code.
  */
-export default function PeriodNav({ base, range }) {
+export default function PeriodNav({ base, range, periods = PERIODS }) {
   return (
     <div className="fin-periods">
       <nav className="tabs tabs-inline sticky-bar" aria-label="Period">
-        {PERIODS.map((p) => (
+        {periods.map((p) => (
           <Link key={p.key} href={`${base}?p=${p.key}`} className={`tab${p.key === range.key ? ' active' : ''}`} aria-current={p.key === range.key ? 'page' : undefined}>{p.label}</Link>
         ))}
       </nav>

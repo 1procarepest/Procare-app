@@ -1812,3 +1812,9 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .fin-custom label { margin: 0; font-weight: 400; color: var(--muted); }
 .fin-custom input[type="month"] { width: auto; }
 .wl-sub { font-size: 16px; margin: 16px 0 6px; }
+
+/* Ads (change 71) */
+.ads-acct { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.ads-acct select { width: auto; min-width: 180px; }
+.ads-find { max-width: 320px; margin: 6px 0 10px; }
+.fin-tile small { display: block; margin-top: 2px; }
