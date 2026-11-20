@@ -6,7 +6,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - John Ely, President of Procare Pest (3 Atlanta offices: East, West, South). Not technical: short, plain answers, one step and one question at a time.
 - Repo `1procarepest/Procare-app`; the app is in `procare-app/` (Next.js 14 App Router, plain JS, Supabase). Vercel deploys from `main`.
 - Check with `npm run build` before pushing. Commit and push only your own files; end commit messages with the Co-Authored-By line.
-- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-19-63b-wildlife-department.sql`, run after 63a; the next is 64). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
+- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-19-64-wildlife-no-reservices.sql`, so the next is 65). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
 - Supabase cuts a request off after about 8 s. Time heavy queries on real data first.
 - SQL tests run in PGlite (`@electric-sql/pglite`); there's no local Postgres. The new Mac (2026-11-16) had no Node.js or Homebrew at first.
 - **UI rules from John**: use toggle switches (`app/Toggle.js`), never checkboxes. Use the brand look: `.brand-head` patterned headers, bug art from `app/Bug.js` (bugs anywhere; wildlife icons only on future wildlife pages), colors ink/forest/green/lime/sage.
@@ -82,7 +82,11 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
      they sold. Referrals: FieldRoutes Sales Rep 2 (`fr_subscriptions.sold_by_2`, already synced) gets $100 when a tech
      or sales rep refers a wildlife job; the wildlife tech is Sales Rep 1. John asked about paying "as we get paid"
      (today they're paid the day the job is completed): needs FieldRoutes payments synced (Procare Sync has no payments
-     table yet, only customer balance). Open: when the 25% is earned on multi-visit jobs.
+     table yet, only customer balance). Open: when the 25% is earned on multi-visit jobs; whether Insulation pays.
+     **Pay rules (John 2026-11-19):** exclusion pays on the initial job only (Initial Exclusion Service / the first
+     service), never warranty renewals or the recurring part; trapping pays for the entire job; Wildlife Warranty doesn't
+     pay; reservices (Exclusion Reservice, Trapping Reservice) never pay and don't count as wildlife jobs (change 64).
+     Every wildlife service type still counts as revenue (QuickBooks will show revenue by line item).
    - **Phase 3, finance**: QuickBooks Online (OAuth; tokens only in secrets). Each office is a QuickBooks Class and
      Wildlife is its own Class. P&L per office and Wildlife, marketing costs, cost per customer by lead source
      (door-to-door, Google Ads/leads, Yelp, other lead services) including wildlife customers.

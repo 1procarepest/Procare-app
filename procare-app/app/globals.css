@@ -1749,3 +1749,4 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .wl-card h3 { margin: 0; font-size: 16px; }
 .wl-card p { margin: 2px 0 0; }
 .wl-table td .cell-sub { display: block; color: var(--muted); font-size: 12px; }
+.wl-note { font-style: italic; }

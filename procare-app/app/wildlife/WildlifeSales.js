@@ -4,7 +4,7 @@ import { CritterTile } from '../Critter';
 /** Wildlife services: sold (by who sold it in FieldRoutes) and done (by who serviced it), count and dollars. */
 const LINES = [
   { key: 'exclusion', label: 'Exclusions', critter: 'squirrel', tone: 'forest' },
-  { key: 'warranty', label: 'Wildlife Warranty', critter: 'bat', tone: 'ink' },
+  { key: 'warranty', label: 'Wildlife Warranty', critter: 'bat', tone: 'ink', note: 'Revenue only, not paid as commission' },
   { key: 'trapping', label: 'Trapping', critter: 'raccoon', tone: 'sage' },
   { key: 'insulation', label: 'Insulation', critter: 'mice', tone: 'lime' },
 ];
@@ -34,6 +34,7 @@ export default function WildlifeSales({ people, data }) {
                 <h3>{l.label}</h3>
                 <p><b>{s.n}</b> sold · {money0(s.amt)}</p>
                 <p className="note">{d.n} done · {money0(d.amt)} · before: {p.n} sold</p>
+                {l.note && <p className="note wl-note">{l.note}</p>}
               </div>
             </div>
           );
@@ -60,6 +61,7 @@ export default function WildlifeSales({ people, data }) {
       )}
       <p className="calc-hint">
         Sold counts jobs where they’re the sales rep in FieldRoutes (contract value); done counts completed visits they serviced (production value).
+        Reservices aren’t counted: they’re unpaid return trips (they still show in the Reservices column below).
         {names.length > 0 && <> Counted service types: {names.join(', ')}.</>}
       </p>
     </section>
