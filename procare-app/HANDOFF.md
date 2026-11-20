@@ -90,7 +90,8 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
    - **Phase 2a built (2026-11-19, change 65)**: Wildlife → Pay (`app/wildlife/pay`, `lib/wildlifePay.js`,
      `wildlife_pay_data`): per pay period, jobs whose first visit was done, commission or salary + job bonus per person
      (`wildlife_pay_plans`, set by C-Suite/President/HR approver), referrals to pay (Sales Rep 2, `wildlife_pay_settings`).
-     Still to do in Phase 2: move the sales Pay section into the Sales app as a tab; referral $ on the referrer's own
+     Sales Pay moved into the Sales app as a tab (`app/reps/pay`, `app/reps/SalesTabs.js`; /pay forwards there;
+     top-bar Pay link removed), 2026-11-19. Still to do in Phase 2: referral $ on the referrer's own
      pay/earnings; "pay as we get paid" (needs payments synced).
    - **Phase 3, finance**: QuickBooks Online (OAuth; tokens only in secrets). Each office is a QuickBooks Class and
      Wildlife is its own Class. P&L per office and Wildlife, marketing costs, cost per customer by lead source

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { GROUPS, GROUP_LABEL, n } from '@/lib/comp';
-import { BugTile } from '../Bug';
+import { BugTile } from '../../Bug';
 
 const numOrNull = (v) => (v === '' || v === null || v === undefined ? null : Number(v));
 

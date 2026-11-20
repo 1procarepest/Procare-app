@@ -279,7 +279,7 @@ export default async function Home({ searchParams }) {
           <section className="section my-pay" aria-labelledby="pay-heading">
             <div className="my-card-head">
               <h2 id="pay-heading">Your pay</h2>
-              <Link href="/pay">Statement and calculator ›</Link>
+              <Link href="/reps/pay">Statement and calculator ›</Link>
             </div>
             {myPay.st.plan ? (
               <div className="my-pay-box">
@@ -288,7 +288,7 @@ export default async function Home({ searchParams }) {
                   ? <div><small>Q{myPay.q.q} check, {nice(myPay.q.payDate)}</small><strong>{money0(myPay.q.paidOut)}</strong><small>{myPay.q.rate}% · so far</small></div>
                   : <div><small>Up front this year</small><strong>{money0(myPay.st.upfrontYtd)}</strong><small>flat rate plan</small></div>}
               </div>
-            ) : <p className="note">Your pay plan isn’t set up in the app yet. Try the <Link href="/pay?tab=calc">pay calculator</Link>.</p>}
+            ) : <p className="note">Your pay plan isn’t set up in the app yet. Try the <Link href="/reps/pay?tab=calc">pay calculator</Link>.</p>}
           </section>
         )}
 

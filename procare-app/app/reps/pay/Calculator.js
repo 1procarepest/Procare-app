@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Bug, { BugTile } from '../Bug';
+import Bug, { BugTile } from '../../Bug';
 import { GROUPS, GROUP_LABEL, PLAN_LABEL, money0, n, perDayFor, planOf, project } from '@/lib/comp';
 
 const MIX_COLOR = { pest: 'var(--forest)', termite: 'var(--ink)', mosquito: 'var(--green)' };

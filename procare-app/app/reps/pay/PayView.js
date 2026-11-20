@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import {
   GROUP_LABEL, PLAN_LABEL, customers, money, money0, nextMonday, nice, rateAt, statement,
 } from '@/lib/comp';
-import Bug, { BugTile } from '../Bug';
+import Bug, { BugTile } from '../../Bug';
 import Calculator from './Calculator';
 import PlanSettings from './PlanSettings';
 
