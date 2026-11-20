@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { todayYmd } from '@/lib/repcards';
 import { gadsConfigured } from '@/lib/gads';
+import { listProperties, NEEDS_RECONNECT } from '@/lib/ga';
 import AdsSettings from './AdsSettings';
 
 export const dynamic = 'force-dynamic';
@@ -23,6 +24,17 @@ export default async function AdsSettingsPage({ searchParams }) {
   const today = todayYmd();
   const { data, error } = await supabase.rpc('ads_data', { p_from: today, p_to: today });
   if (error) return <p className="error">Ads settings couldn’t load: {error.message}</p>;
+  // The website's Analytics property: the ones this Google sign-in can see
+  let properties = [];
+  let propError = '';
+  const { data: web } = await supabase.rpc('website_data', { p_from: today, p_to: today });
+  if (data?.connection?.connected) {
+    try {
+      properties = await listProperties();
+    } catch (e) {
+      propError = String(e.message || e) === NEEDS_RECONNECT ? NEEDS_RECONNECT : String(e.message || e);
+    }
+  }
   const q = searchParams?.gads;
   const notice = q === 'error' ? { ok: false, text: `Google Ads couldn’t connect: ${searchParams?.msg || 'unknown error'}` } : NOTICE[q] || null;
   return (
@@ -34,6 +46,9 @@ export default async function AdsSettingsPage({ searchParams }) {
       sources={(data?.all_sources || []).slice().sort()}
       picked={data?.fr_sources || []}
       people={data?.people || []}
+      properties={properties}
+      property={web?.property || {}}
+      propError={propError}
       notice={notice}
     />
   );

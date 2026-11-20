@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
-import { gadsConnect, syncAds } from '@/lib/gads';
+import { gadsConnect } from '@/lib/gads';
+import { syncGoogle } from '@/lib/ga';
 import { hasSecondStep } from '@/lib/mfa';
 
 export const dynamic = 'force-dynamic';
@@ -25,7 +26,7 @@ export async function GET(request) {
     return back(`gads=error&msg=${encodeURIComponent(String(e.message || e).slice(0, 200))}`);
   }
   try {
-    await syncAds(90);
+    await syncGoogle(90);
   } catch { /* the connection is saved; the error shows in Settings and the daily sync retries */ }
   const res = back('gads=connected');
   res.cookies.set('gads_state', '', { path: '/api/gads', maxAge: 0 });

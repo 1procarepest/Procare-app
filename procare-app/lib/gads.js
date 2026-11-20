@@ -14,7 +14,8 @@ import { appUrl } from './qbo';
 const VERSION = () => process.env.GADS_API_VERSION || 'v23';
 const digits = (s) => String(s || '').replace(/\D/g, '');
 const LOGIN = () => digits(process.env.GADS_LOGIN_CUSTOMER_ID);
-const SCOPE = 'https://www.googleapis.com/auth/adwords openid email';
+// Google Ads and (change 72) read-only Google Analytics for Ads -> Website
+const SCOPE = 'https://www.googleapis.com/auth/adwords https://www.googleapis.com/auth/analytics.readonly openid email';
 
 export const gadsRedirectUri = () => `${appUrl()}/api/gads/callback`;
 export const gadsConfigured = () => !!(process.env.GADS_CLIENT_ID && process.env.GADS_CLIENT_SECRET);
@@ -74,7 +75,7 @@ export async function gadsConnect(code, employeeId) {
 }
 
 let cached = null;   // the short-lived access token, per server instance
-async function accessToken() {
+export async function accessToken() {
   if (cached && cached.until > Date.now()) return cached.token;
   const a = admin();
   const { data: c } = await a.from('gads_connection').select('refresh_token').eq('id', 1).maybeSingle();

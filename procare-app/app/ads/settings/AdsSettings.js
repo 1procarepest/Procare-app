@@ -35,7 +35,7 @@ function Connection({ c, configured }) {
         </>
       ) : (
         <>
-          <p>Not connected. Connecting opens Google: sign in with the login that manages the Procare manager account (100-402-6960). Your Google password never comes to this app, and the app only reads numbers: it can’t change ads or budgets.</p>
+          <p>Not connected. Connecting opens Google: sign in with the login that manages the Procare manager account (100-402-6960). Your Google password never comes to this app, and the app only reads numbers (ads and website): it can’t change ads, budgets or the website.</p>
           {!configured && <p className="error">The app’s Google keys aren’t set in Vercel yet (GADS_CLIENT_ID, GADS_CLIENT_SECRET), so Connect won’t work until they are.</p>}
           <div className="panel-buttons"><a className="btn" href="/api/gads/connect">Connect Google Ads</a></div>
         </>
@@ -99,6 +99,34 @@ function Sources({ sources, picked: start }) {
   );
 }
 
+function Website({ properties, property, error, connected }) {
+  const router = useRouter();
+  const [msg, setMsg] = useState(null);
+  const pick = async (id) => {
+    const p = properties.find((x) => x.id === id);
+    const { error: err } = await createClient().rpc('set_ga_property', { p_id: id, p_name: p ? p.name : null });
+    setMsg(err ? { ok: false, text: err.message } : { ok: true, text: 'Saved. Click Sync now to copy its numbers.' });
+    if (!err) router.refresh();
+  };
+  if (!connected) return <p className="note">Connect Google first.</p>;
+  if (error) return <p className="error">{error}</p>;
+  if (!properties.length) return <p className="note">This Google login can’t see any Google Analytics property. Sign in at analytics.google.com to check, or add john@procarepest.com as a Viewer on the website’s property.</p>;
+  return (
+    <>
+      <ul className="switches">
+        <li className="ads-acct">
+          <span><b>{property.name || 'Not picked yet'}</b>{property.id && <small className="note"> · property {property.id}</small>}</span>
+          <select value={property.id || ''} onChange={(e) => pick(e.target.value)} aria-label="Website Analytics property">
+            <option value="">Pick the website…</option>
+            {properties.map((p) => <option key={p.id} value={p.id}>{p.name}{p.account ? ` (${p.account})` : ''}</option>)}
+          </select>
+        </li>
+      </ul>
+      {msg && <p className={msg.ok ? 'ok' : 'error'} role="status">{msg.text}</p>}
+    </>
+  );
+}
+
 function People({ people: start }) {
   const [people, setPeople] = useState(start);
   const [q, setQ] = useState('');
@@ -135,7 +163,7 @@ function People({ people: start }) {
   );
 }
 
-export default function AdsSettings({ connection, configured, accounts, offices, sources, picked, people, notice }) {
+export default function AdsSettings({ properties, property, propError, connection, configured, accounts, offices, sources, picked, people, notice }) {
   return (
     <section className="section">
       <div className="admin-head">
@@ -148,6 +176,10 @@ export default function AdsSettings({ connection, configured, accounts, offices,
       <h2 className="fin-h2">Ad accounts</h2>
       <p className="note">Every account linked under the Procare manager account. If an account only advertises for one office, pick the office so its cost per customer uses that office’s new customers.</p>
       <Accounts accounts={accounts} offices={offices} />
+
+      <h2 className="fin-h2">Website (Google Analytics)</h2>
+      <p className="note">Which Google Analytics property is procarepest.com. Its visits, sources, top pages and website leads show in Ads → Website.</p>
+      <Website properties={properties} property={property} error={propError} connected={!!connection.connected} />
 
       <h2 className="fin-h2">Google lead sources in FieldRoutes</h2>
       <p className="note">New customers whose purchase came in under these lead sources count as Google customers (for cost per customer).</p>

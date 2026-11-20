@@ -13,8 +13,11 @@ export default function SyncNow({ days = 7, label = 'Sync now', quiet = false })
     const res = await fetch('/api/gads/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ days }) });
     const j = await res.json().catch(() => ({}));
     setBusy(false);
+    const parts = [];
+    if (j.accounts !== undefined) parts.push(`${j.accounts} ad account${j.accounts === 1 ? '' : 's'}, ${j.leads} lead${j.leads === 1 ? '' : 's'}`);
+    if (j.website) parts.push(`${Number(j.website.sessions || 0).toLocaleString('en-US')} website visits`);
     setMsg(j.ok
-      ? { ok: !(j.notes || []).length, text: `Copied ${j.days} days from ${j.accounts} account${j.accounts === 1 ? '' : 's'}: ${j.leads} lead${j.leads === 1 ? '' : 's'}.${(j.notes || []).length ? ` ${j.notes.join(' ')}` : ''}` }
+      ? { ok: !(j.notes || []).length, text: `Copied the last ${j.days} days${parts.length ? `: ${parts.join('; ')}` : ''}.${(j.notes || []).length ? ` ${j.notes.join(' ')}` : ''}` }
       : { ok: false, text: j.error || `Error ${res.status}` });
     router.refresh();
   };

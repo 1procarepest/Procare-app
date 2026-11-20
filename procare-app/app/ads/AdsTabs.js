@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-/** Ads sections: Overview, Leads and (C-Suite / President) Settings. */
+/** Ads sections: Overview, Leads, Website and (C-Suite / President) Settings. */
 export default function AdsTabs({ manage }) {
   const path = usePathname();
   const tabs = [
     { href: '/ads', label: 'Overview', match: (p) => p === '/ads' },
     { href: '/ads/leads', label: 'Leads' },
+    { href: '/ads/website', label: 'Website' },
     ...(manage ? [{ href: '/ads/settings', label: 'Settings' }] : []),
   ];
   return (

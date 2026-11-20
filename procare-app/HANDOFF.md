@@ -6,7 +6,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - John Ely, President of Procare Pest (3 Atlanta offices: East, West, South). Not technical: short, plain answers, one step and one question at a time.
 - Repo `1procarepest/Procare-app`; the app is in `procare-app/` (Next.js 14 App Router, plain JS, Supabase). Vercel deploys from `main`.
 - Check with `npm run build` before pushing. Commit and push only your own files; end commit messages with the Co-Authored-By line.
-- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-20-71-google-ads.sql`, so the next is 72). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
+- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-20-72-website-analytics.sql`, so the next is 73). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
 - Supabase cuts a request off after about 8 s. Time heavy queries on real data first.
 - SQL tests run in PGlite (`@electric-sql/pglite`); there's no local Postgres. The new Mac (2026-11-16) had no Node.js or Homebrew at first.
 - **UI rules from John**: use toggle switches (`app/Toggle.js`), never checkboxes. Use the brand look: `.brand-head` patterned headers, bug art from `app/Bug.js` (bugs anywhere; wildlife icons only on future wildlife pages), colors ink/forest/green/lime/sage.
@@ -124,6 +124,10 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
      (305029250433), OAuth client (Internal), redirect `/api/gads/callback`. Vercel: GADS_CLIENT_ID,
      GADS_CLIENT_SECRET, GADS_LOGIN_CUSTOMER_ID (1004026960), optional GADS_DEVELOPER_TOKEN (Google dropped the requirement in 2026), optional GADS_API_VERSION
      (default v23; Google retires versions about yearly). Access level is managed on the Cloud project: Explorer (daily limit, enough for the daily copy) as of 2026-11-20; Basic not needed yet.
+   - **Ads -> Website (change 72, 2026-11-20)**: Google Analytics 4 for procarepest.com (visits by channel/source,
+     top pages, key events = website leads), copied with the ads by `syncGoogle()` in `lib/ga.js`. Same Google sign-in,
+     now also asking for analytics.readonly (connections made before change 72 need Disconnect + Connect once).
+     Property picked in Ads -> Settings (`gads_connection.ga_property`); auto-picked when the login sees only one.
    - **Phase 3, finance**: QuickBooks Online (OAuth; tokens only in secrets). Each office is a QuickBooks Class and
      Wildlife is its own Class. P&L per office and Wildlife, marketing costs, cost per customer by lead source
      (door-to-door, Google Ads/leads, Yelp, other lead services) including wildlife customers.
