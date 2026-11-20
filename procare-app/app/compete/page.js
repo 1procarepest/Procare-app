@@ -14,7 +14,7 @@ const STAGES = [
   { key: 'upcoming', title: 'Coming up', bug: 'cricket', tag: 'Coming up', tone: 'forest' },
   { key: 'final', title: 'Finished', bug: 'stinging', tag: 'Final', tone: 'sage' },
 ];
-const deptNames = (list) => (list.length === 3 ? 'Company-wide' : list.map((k) => DEPTS.find((d) => d.key === k)?.label || k).join(' + '));
+const deptNames = (list) => (list.length >= DEPTS.length ? 'Company-wide' : list.map((k) => DEPTS.find((d) => d.key === k)?.label || k).join(' + '));
 
 export default async function CompetePage() {
   const supabase = createClient();

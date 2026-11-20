@@ -14,7 +14,8 @@ export const DEFAULT_POINTS = { sale: 3, service: 1, autopay: 2, review: 1, revi
  * What each group competes on. One department: its own KPIs. More than one (company-wide):
  * only what every department shares, office vs. office.
  */
-const BY_DEPT = { sales: ['sale', 'autopay'], technician: ['service', 'autopay', 'review', 'sale'], administrative: [] };
+// Wildlife (change 69) competes on what technicians do: their jobs, reviews, auto-pay and sales
+const BY_DEPT = { sales: ['sale', 'autopay'], technician: ['service', 'autopay', 'review', 'sale'], wildlife: ['service', 'autopay', 'review', 'sale'], administrative: [] };
 export function kindsFor(depts = []) {
   const keys = depts.length === 1 ? BY_DEPT[depts[0]] || [] : ['sale', 'autopay', 'review'];
   return keys.map((k) => KINDS.find((x) => x.key === k));
@@ -34,6 +35,7 @@ export const DEPTS = [
   { key: 'technician', label: 'Technicians' },
   { key: 'sales', label: 'Sales' },
   { key: 'administrative', label: 'Office' },
+  { key: 'wildlife', label: 'Wildlife' },
 ];
 
 const ymd = (d) => String(d).slice(0, 10);
