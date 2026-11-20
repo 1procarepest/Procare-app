@@ -76,7 +76,7 @@ export default async function Home({ searchParams }) {
   // Competition prizes: pay out anything that just finished first, then this person's earnings
   const pEarnings = settleCompetitions(supabase, atlantaToday()).then(() => Promise.all([
     supabase.from('competition_awards').select('id, amount, reason, payout_id, created_at').eq('employee_id', me.id).order('created_at', { ascending: false }),
-    supabase.from('payout_requests').select('id, amount, status, requested_at, paid_at').eq('employee_id', me.id).order('requested_at', { ascending: false }),
+    supabase.from('payout_requests').select('id, amount, status, requested_at, paid_at, note').eq('employee_id', me.id).order('requested_at', { ascending: false }),
   ]));
   const pRest = Promise.all([
     myLiveCompetitions(supabase, me, atlantaToday()),

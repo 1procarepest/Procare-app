@@ -10,7 +10,14 @@ const money = (n) => `$${Number(n || 0).toLocaleString('en-US', { minimumFractio
 const day = (ts) => new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' });
 
 /** Competition prize money and approved quarterly bonuses on the profile: what's waiting, cash out, and past payouts. */
-export default function Earnings({ awards, requests }) {
+// Balances cleared before payouts went live in the app (supabase/imports/2026-11-20-clear-earnings.sql) were paid
+// outside the app, so they don't show here: neither in "paid so far" nor in the list.
+const CLEARED = 'Cleared before launch';
+
+export default function Earnings({ awards: allAwards, requests: allRequests }) {
+  const clearedIds = new Set(allRequests.filter((r) => (r.note || '').startsWith(CLEARED)).map((r) => r.id));
+  const requests = allRequests.filter((r) => !clearedIds.has(r.id));
+  const awards = allAwards.filter((a) => !clearedIds.has(a.payout_id));
   const router = useRouter();
   const sb = useMemo(() => createClient(), []);
   const [busy, setBusy] = useState(false);
@@ -30,6 +37,9 @@ export default function Earnings({ awards, requests }) {
     setBusy(false);
     router.refresh();
   };
+
+  // Nothing left once cleared balances are hidden: no Earnings box (it comes back with the next prize or bonus)
+  if (!awards.length && !requests.length) return null;
 
   return (
     <section className="section earn" aria-labelledby="earn-heading">
