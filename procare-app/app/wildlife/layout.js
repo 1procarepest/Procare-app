@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { appsFor } from '@/lib/apps';
 import TopNav from '../TopNav';
+import WildlifeTabs from './WildlifeTabs';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,7 @@ export default async function WildlifeLayout({ children }) {
   return (
     <>
       <TopNav me={me} supabase={supabase} current="wildlife" />
+      <WildlifeTabs />
       <main className="admin scorecard wildlife">{children}</main>
     </>
   );

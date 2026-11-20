@@ -1750,3 +1750,22 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .wl-card p { margin: 2px 0 0; }
 .wl-table td .cell-sub { display: block; color: var(--muted); font-size: 12px; }
 .wl-note { font-style: italic; }
+
+/* Wildlife pay (change 65) */
+.wp-step { margin: 14px 0 6px; }
+.wp-person { background: var(--white); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; margin: 14px 0; }
+.wp-person header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 16px; }
+.wp-person h2 { margin: 0; font-size: 20px; }
+.wp-total { text-align: right; }
+.wp-total strong { display: block; font-size: 24px; color: var(--forest); }
+.wp-sum { margin: 8px 0; }
+.wp-table td small, .wp-table th small { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
+.wp-job { text-align: left !important; white-space: nowrap; }
+.wp-job .bug-tile { vertical-align: middle; margin-right: 4px; }
+.wp-plan-form { display: grid; gap: 10px; margin: 10px 0; padding: 12px; background: var(--paper); border-radius: 12px; max-width: 520px; }
+.wp-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.wp-fields input { width: 100%; }
+.wp-referrals { margin: 22px 0; }
+.wp-referrals h2 { font-size: 20px; margin: 0 0 4px; }
+.wp-ref-list { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 8px; }
+.wp-ref-list small { display: block; color: var(--muted); }
