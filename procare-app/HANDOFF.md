@@ -109,6 +109,12 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
      -1 production values. OPEN: Bryan gets almost all wildlife sales; change 68's check shows FieldRoutes' rep name
      per (office, ID) vs the app person. If they differ, FieldRoutes IDs collide across offices and `tech_fr_ids()`
      (matches by ID only, used in ~26 changes) needs to match on (office, ID).
+   - **Sale credits (change 70, 2026-11-20)**: techs $100 per sale (Sales Rep 1), office $100 per "Office upsell" sale,
+     wildlife referral $100 (Sales Rep 2), into Earnings when the first service is done on/after
+     `pay_settings.sale_credit_start` (Nov 16); cash out needs `pay_settings.cashout_min` ($100). Change 70 ran up to
+     its cron line: **pg_cron was not enabled**, so change 61's background refresh was never scheduled either.
+     Fix: enable pg_cron (Supabase → Database → Extensions), run `imports/2026-11-20-enable-background-jobs.sql`; on
+     payout launch day run `imports/2026-11-20-launch-sale-credits.sql`. Old prize balances: `imports/2026-11-20-clear-earnings.sql`.
    - **Phase 3, finance**: QuickBooks Online (OAuth; tokens only in secrets). Each office is a QuickBooks Class and
      Wildlife is its own Class. P&L per office and Wildlife, marketing costs, cost per customer by lead source
      (door-to-door, Google Ads/leads, Yelp, other lead services) including wildlife customers.
