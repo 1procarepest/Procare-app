@@ -36,6 +36,19 @@ async function endpoints() {
   }
 }
 
+/**
+ * Error log for Intuit support: every failed QuickBooks call is written to the server log (Vercel → Logs) with
+ * Intuit's intuit_tid reference from the response headers, the status and Intuit's error details (never tokens).
+ */
+function logQbo(what, res, json) {
+  console.error('[quickbooks]', JSON.stringify({
+    at: new Date().toISOString(), call: what, status: res.status, intuit_tid: res.headers.get('intuit_tid') || null,
+    error: json?.error || json?.Fault?.Error?.[0]?.Message || null,
+    detail: json?.error_description || json?.Fault?.Error?.[0]?.Detail || null,
+    code: json?.Fault?.Error?.[0]?.code || null,
+  }));
+}
+
 /** QuickBooks no longer accepts the saved sign-in (expired or revoked refresh token): needs Connect again. */
 export class ReconnectNeeded extends Error {}
 const apiBase = () => (process.env.QBO_ENV === 'sandbox' ? 'https://sandbox-quickbooks.api.intuit.com' : 'https://quickbooks.api.intuit.com');
@@ -62,6 +75,7 @@ async function tokenRequest(body) {
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
+    logQbo('token', res, json);
     if (json.error === 'invalid_grant') throw new ReconnectNeeded('QuickBooks no longer accepts the saved connection. Connect QuickBooks again.');
     throw new Error(`QuickBooks sign-in failed (${res.status}): ${json.error_description || json.error || 'no details'}`);
   }
@@ -128,8 +142,10 @@ async function api(path, params = {}, retried = false) {
     return api(path, params, true);
   }
   if (!res.ok) {
+    logQbo(path, res, json);
     const msg = json?.Fault?.Error?.[0]?.Detail || json?.Fault?.Error?.[0]?.Message || res.statusText;
-    throw new Error(`QuickBooks said: ${msg} (${res.status})`);
+    const tid = res.headers.get('intuit_tid');
+    throw new Error(`QuickBooks said: ${msg} (${res.status}${tid ? `, intuit_tid ${tid}` : ''})`);
   }
   return json;
 }
