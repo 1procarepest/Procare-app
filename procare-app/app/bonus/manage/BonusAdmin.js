@@ -7,7 +7,7 @@ import { OFFICES, OFFICE_NAME, RANK, roleTitle, shortDate } from '@/lib/labels';
 import { KINDS, KIND_ORDER, equalWeights, fmt, money0, money2, quarterName, whereName } from '@/lib/bonus';
 import Toggle from '../../Toggle';
 import Picker from '../../Picker';
-import GoalCard from '../../bonus/GoalCard';
+import GoalCard from '../GoalCard';
 
 const fullName = (p) => `${p?.first_name || ''} ${p?.last_name || ''}`.trim();
 const num = (v) => (v === '' || v === null || v === undefined ? null : Number(v));

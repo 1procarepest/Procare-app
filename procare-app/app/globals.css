@@ -1463,7 +1463,7 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .fb-note { font-style: italic; }
 .fb-note small { font-style: normal; color: var(--muted); }
 
-/* ---------- Quarterly bonuses (app/bonus, Settings → Bonuses) ---------- */
+/* ---------- Quarterly bonuses (app/bonus and Bonus → Manage bonuses, app/bonus/manage) ---------- */
 .bn-hero { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
 .bn-hero span { display: grid; gap: 2px; background: var(--ink); color: var(--white); border-radius: 14px; padding: 12px 16px; }
 .bn-hero span:first-child { background: var(--forest); }

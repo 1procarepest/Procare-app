@@ -60,6 +60,10 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
   (AR & job pool, ops_snapshot only), /ops/route-plan (`app/ops/OpsTabs.js`). New heavy pages: give them a saved copy
   and add them to refresh_saved_reports().
 
+- **Bonus management moved (2026-11-19)**: Settings → Bonuses is now Bonus → Manage bonuses (`app/bonus/manage`), a
+  sub-tab beside Your goals (`app/bonus/BonusTabs.js`). /admin/bonuses forwards there (old links and approval emails).
+  Bonus runners with no goals of their own go straight to Manage bonuses before the quarter loads.
+
 ## Next up (John's list)
 1. ~~Manager bonuses~~: live since 2026-11-16 (changes 47–49). Setup left for Ally: Ryan as report recipient, yearly amounts, Q4 goals, past reports.
 2. Inventory section (with manager bonuses), after the rest works.

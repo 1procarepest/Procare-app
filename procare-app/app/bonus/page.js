@@ -27,13 +27,14 @@ export default async function BonusPage({ searchParams }) {
   const { me } = await getMe(supabase);
   const today = todayYmd();
   const at = askedQuarter(searchParams?.q, today);
+  // Runs bonuses but has no goals of their own: straight to Manage bonuses, before loading the quarter
+  const [{ data: links }, { count }] = await Promise.all([
+    supabase.rpc('my_bonus_links'),
+    supabase.from('bonus_members').select('set_id', { count: 'exact', head: true }).eq('employee_id', me.id),
+  ]);
+  if (links?.manage && !count) redirect('/bonus/manage');
   const { sets, error, from, to } = await loadQuarter(supabase, at.year, at.quarter, today);
-  const { data: links } = await supabase.rpc('my_bonus_links');
   if (error) return <p className="error">Bonuses couldn’t load: {error.message}</p>;
-  if (links?.manage) {
-    const { count } = await supabase.from('bonus_members').select('set_id', { count: 'exact', head: true }).eq('employee_id', me.id);
-    if (!count) redirect('/admin/bonuses');   // runs bonuses but has no goals of their own
-  }
   const mine = sets.filter((s) => s.members.some((m) => m.employee_id === me.id));
   const prev = step(at, -1);
   const next = step(at, 1);
@@ -55,7 +56,7 @@ export default async function BonusPage({ searchParams }) {
         </nav>
       </div>
 
-      {links?.manage && <p className="cp-me">You run bonuses. Set goals and approve proof in <Link href="/admin/bonuses">Settings → Bonuses</Link>.</p>}
+      {links?.manage && <p className="cp-me">You run bonuses. Set goals and approve proof under <Link href="/bonus/manage">Manage bonuses</Link>.</p>}
 
       {mine.length === 0 && (
         <div className="rc-panel"><div className="rc-panel-body cp-empty">

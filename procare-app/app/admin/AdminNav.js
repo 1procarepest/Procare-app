@@ -13,7 +13,6 @@ export default function AdminNav({ showSettings, showPayouts, showReviews }) {
   // Payroll time off and year reviews (change 60)
   if (showPayouts) tabs.push({ href: '/admin/payroll', label: 'Payroll' });
   if (showReviews) tabs.push({ href: '/admin/reviews', label: 'Reviews' });
-  if (showPayouts) tabs.push({ href: '/admin/bonuses', label: 'Bonuses' });
   if (showPayouts) tabs.push({ href: '/admin/payouts', label: 'Prize payouts' });
   if (showSettings) tabs.push({ href: '/admin/notifications', label: 'Email settings' });
   if (showSettings) tabs.push({ href: '/admin/holidays', label: 'Holidays' });

@@ -362,7 +362,7 @@ export async function POST(request) {
         ...(e.link ? [`Proof: ${e.link}`] : []), ...(e.note ? [`Note: ${e.note}`] : []),
         'It counts toward their bonus once you approve it.',
       ],
-      link: { href: `${origin}/admin/bonuses?tab=approve`, label: 'Approve or turn down' },
+      link: { href: `${origin}/bonus/manage?tab=approve`, label: 'Approve or turn down' },
     });
     return reply(200, { sent, problem });
   }

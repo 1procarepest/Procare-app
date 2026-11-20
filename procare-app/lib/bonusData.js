@@ -1,4 +1,4 @@
-// Loads a quarter's bonus goal sets with everything needed to score them (server pages: /bonus and Settings → Bonuses).
+// Loads a quarter's bonus goal sets with everything needed to score them (server pages: /bonus and /bonus/manage).
 // Row level security decides which sets come back: the person's own, or all of them for bonus managers.
 import { DEFAULT_SCALE, prevQuarter, quarterRange, scoreSet } from './bonus';
 
