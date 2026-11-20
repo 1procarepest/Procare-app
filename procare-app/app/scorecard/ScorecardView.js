@@ -81,7 +81,8 @@ function Avatar({ t, size = 40 }) {
     : <span className="face face-initials" style={{ width: size, height: size }} aria-hidden="true">{initials(t.name)}</span>;
 }
 
-export default function ScorecardView({ techs, R, per, period, meId }) {
+/** officeTab: false hides the Offices comparison (Wildlife: those numbers go by the customer's office instead). */
+export default function ScorecardView({ techs, R, per, period, meId, officeTab = true }) {
   const scale = num(per.scale);
   const bonusesOn = !!R.bonuses_on;
   const [tab, setTab] = useState('techs');
@@ -142,12 +143,14 @@ export default function ScorecardView({ techs, R, per, period, meId }) {
 
   return (
     <>
+      {officeTab && (
       <nav className="tabs tabs-inline" aria-label="View">
         <button type="button" className={`tab${tab === 'techs' ? ' active' : ''}`} onClick={() => setTab('techs')}>Technicians</button>
         <button type="button" className={`tab${tab === 'offices' ? ' active' : ''}`} onClick={() => setTab('offices')}>Offices</button>
       </nav>
+      )}
 
-      {tab === 'techs' ? (
+      {tab === 'techs' || !officeTab ? (
         <div className="sc-layout">
           <section className="sc-board" aria-labelledby="board-heading">
             <div className="sc-board-head">

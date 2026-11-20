@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { todayYmd } from '@/lib/repcards';
 import { shortDate } from '@/lib/labels';
-import { PERIODS, buildMarketing, financeRange, money } from '@/lib/finance';
+import { buildMarketing, money, pickRange } from '@/lib/finance';
 import PeriodNav from '../PeriodNav';
 
 export const dynamic = 'force-dynamic';
@@ -13,12 +13,10 @@ const cpc = (x) => (x === null ? '–' : money(x));
 export default async function MarketingPage({ searchParams }) {
   const supabase = createClient();
   const today = todayYmd();
-  const key = PERIODS.some((p) => p.key === searchParams?.p) ? searchParams.p : 'thisMonth';
-  const range = financeRange(key, today);
+  const range = pickRange(searchParams, today);
   const { data, error } = await supabase.rpc('finance_data', { p_from: range.from, p_to: range.to });
   if (error) return <p className="error">Marketing couldn’t load: {error.message}</p>;
   const m = buildMarketing(data);
-  const label = PERIODS.find((p) => p.key === key).label;
   const anyUnset = m.rows.some((r) => !r.set);
 
   return (
@@ -27,10 +25,10 @@ export default async function MarketingPage({ searchParams }) {
         <div>
           <p className="rc-kicker">Finance · Marketing</p>
           <h1 className="rc-title">Cost per <em>customer</em></h1>
-          <p className="note">{label}: {shortDate(range.from)} – {shortDate(range.to)}. Spend from QuickBooks ÷ new customers from FieldRoutes, by channel.</p>
+          <p className="note">{range.label}: {shortDate(range.from)} – {shortDate(range.to)}. Spend from QuickBooks ÷ new customers from FieldRoutes, by channel.</p>
         </div>
       </div>
-      <PeriodNav base="/finance/marketing" current={key} />
+      <PeriodNav base="/finance/marketing" range={range} />
 
       <div className="fin-tiles">
         <div className="fin-tile"><span className="rc-label">Marketing spend</span><strong>{money(m.total.spend)}</strong></div>

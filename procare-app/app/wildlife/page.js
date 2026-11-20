@@ -64,7 +64,7 @@ export default async function WildlifePage({ searchParams }) {
 
       {people.length === 0
         ? <p className="note">Nobody is in the Wildlife department yet.</p>
-        : <ScorecardView techs={people} R={NO_INCENTIVES} per={per} period={period} meId={me.id} />}
+        : <ScorecardView techs={people} R={NO_INCENTIVES} per={per} period={period} meId={me.id} officeTab={false} />}
     </>
   );
 }

@@ -6,14 +6,38 @@ const pad = (n) => String(n).padStart(2, '0');
 const lastDay = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
 const ymd = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
 
+// QuickBooks is only complete through last month (books close monthly), so Last month is the default (John, 2026-11-19)
 export const PERIODS = [
-  { key: 'thisMonth', label: 'This month' },
   { key: 'lastMonth', label: 'Last month' },
-  { key: 'thisQuarter', label: 'This quarter' },
+  { key: 'closedYtd', label: 'Year through last month' },
   { key: 'lastQuarter', label: 'Last quarter' },
-  { key: 'ytd', label: 'Year to date' },
   { key: 'lastYear', label: 'Last year' },
+  { key: 'thisMonth', label: 'This month (so far)' },
+  { key: 'ytd', label: 'Year to date (so far)' },
 ];
+export const DEFAULT_PERIOD = 'lastMonth';
+const MONTH = /^(\d{4})-(\d{2})$/;
+
+/**
+ * The range a Finance page shows: a preset (?p=…) or a custom month range (?from=2026-01&to=2026-10).
+ * Returns { key, from, to, label }.
+ */
+export function pickRange(searchParams, today) {
+  const f = MONTH.exec(searchParams?.from || '');
+  const t = MONTH.exec(searchParams?.to || searchParams?.from || '');
+  if (f && t) {
+    let [fy, fm, ty, tm] = [Number(f[1]), Number(f[2]), Number(t[1]), Number(t[2])];
+    if (fy * 12 + fm > ty * 12 + tm) [fy, fm, ty, tm] = [ty, tm, fy, fm];
+    if (fm >= 1 && fm <= 12 && tm >= 1 && tm <= 12) {
+      const from = ymd(fy, fm, 1);
+      const to = ymd(ty, tm, lastDay(ty, tm));
+      return { key: 'custom', from, to, label: 'Custom range', fromMonth: `${fy}-${pad(fm)}`, toMonth: `${ty}-${pad(tm)}` };
+    }
+  }
+  const key = PERIODS.some((p) => p.key === searchParams?.p) ? searchParams.p : DEFAULT_PERIOD;
+  const r = financeRange(key, today);
+  return { key, ...r, label: PERIODS.find((p) => p.key === key).label, fromMonth: r.from.slice(0, 7), toMonth: r.to.slice(0, 7) };
+}
 
 /** { from, to, label } for a period key, in Atlanta's calendar (today = YYYY-MM-DD). */
 export function financeRange(key, today) {
@@ -29,6 +53,8 @@ export function financeRange(key, today) {
       return { from: ymd(yy, qq * 3 + 1, 1), to: ymd(yy, qq * 3 + 3, lastDay(yy, qq * 3 + 3)) };
     }
     case 'ytd': return { from: ymd(y, 1, 1), to: today };
+    // January: last month is December, so "year through last month" is all of last year
+    case 'closedYtd': return m === 1 ? { from: ymd(y - 1, 1, 1), to: ymd(y - 1, 12, 31) } : { from: ymd(y, 1, 1), to: ymd(y, m - 1, lastDay(y, m - 1)) };
     case 'lastYear': return { from: ymd(y - 1, 1, 1), to: ymd(y - 1, 12, 31) };
     default: return month(y, m);
   }

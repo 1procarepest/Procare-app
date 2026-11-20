@@ -1807,3 +1807,8 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .verify-secret code { word-break: break-all; font-size: 13px; }
 .verify-form { display: grid; gap: 8px; }
 .verify-form input { font-size: 22px; letter-spacing: 0.3em; text-align: center; }
+.fin-periods { display: grid; gap: 8px; margin-bottom: 8px; }
+.fin-custom { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.fin-custom label { margin: 0; font-weight: 400; color: var(--muted); }
+.fin-custom input[type="month"] { width: auto; }
+.wl-sub { font-size: 16px; margin: 16px 0 6px; }

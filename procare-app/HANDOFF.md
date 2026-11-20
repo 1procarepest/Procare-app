@@ -6,7 +6,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - John Ely, President of Procare Pest (3 Atlanta offices: East, West, South). Not technical: short, plain answers, one step and one question at a time.
 - Repo `1procarepest/Procare-app`; the app is in `procare-app/` (Next.js 14 App Router, plain JS, Supabase). Vercel deploys from `main`.
 - Check with `npm run build` before pushing. Commit and push only your own files; end commit messages with the Co-Authored-By line.
-- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-19-67-finance-mfa.sql`, so the next is 68). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
+- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-19-68-wildlife-by-office.sql`, so the next is 69). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
 - Supabase cuts a request off after about 8 s. Time heavy queries on real data first.
 - SQL tests run in PGlite (`@electric-sql/pglite`); there's no local Postgres. The new Mac (2026-11-16) had no Node.js or Homebrew at first.
 - **UI rules from John**: use toggle switches (`app/Toggle.js`), never checkboxes. Use the brand look: `.brand-head` patterned headers, bug art from `app/Bug.js` (bugs anywhere; wildlife icons only on future wildlife pages), colors ink/forest/green/lime/sage.
@@ -103,6 +103,12 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
    - **Finance MFA (change 67)**: Finance needs a second sign-in step (Supabase TOTP authenticator app): /verify sets it up
      or asks for the code (`lib/mfa.js`); finance layout and /api/qbo/* require aal2; `can_see_finance()` requires
      `auth.jwt()->>'aal' = 'aal2'`. Lost phone: Supabase → Authentication → Users → remove the person's MFA factor.
+   - **2026-11-19 follow-ups**: Finance defaults to Last month (QuickBooks closes monthly) with Year through last month and
+     a custom month range (`pickRange` in lib/finance.js). Wildlife sales are also totaled by the customer's office
+     (change 68; the tech-office comparison is hidden on /wildlife) and "done" dollars no longer use FieldRoutes'
+     -1 production values. OPEN: Bryan gets almost all wildlife sales; change 68's check shows FieldRoutes' rep name
+     per (office, ID) vs the app person. If they differ, FieldRoutes IDs collide across offices and `tech_fr_ids()`
+     (matches by ID only, used in ~26 changes) needs to match on (office, ID).
    - **Phase 3, finance**: QuickBooks Online (OAuth; tokens only in secrets). Each office is a QuickBooks Class and
      Wildlife is its own Class. P&L per office and Wildlife, marketing costs, cost per customer by lead source
      (door-to-door, Google Ads/leads, Yelp, other lead services) including wildlife customers.
