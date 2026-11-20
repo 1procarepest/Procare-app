@@ -82,7 +82,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
      they sold. Referrals: FieldRoutes Sales Rep 2 (`fr_subscriptions.sold_by_2`, already synced) gets $100 when a tech
      or sales rep refers a wildlife job; the wildlife tech is Sales Rep 1. John asked about paying "as we get paid"
      (today they're paid the day the job is completed): needs FieldRoutes payments synced (Procare Sync has no payments
-     table yet, only customer balance). Open: when the 25% is earned on multi-visit jobs; whether Insulation pays.
+     table yet, only customer balance). Open: when the 25% is earned on multi-visit jobs. Insulation pays commission on the initial job (one-time job, no warranty or recurring part).
      **Pay rules (John 2026-11-19):** exclusion pays on the initial job only (Initial Exclusion Service / the first
      service), never warranty renewals or the recurring part; trapping pays for the entire job; Wildlife Warranty doesn't
      pay; reservices (Exclusion Reservice, Trapping Reservice) never pay and don't count as wildlife jobs (change 64).
