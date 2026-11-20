@@ -12,7 +12,7 @@ export async function GET(request) {
   if (!me || me.rank < 4) return NextResponse.redirect(`${origin}/`);
   if (!qboConfigured()) return NextResponse.redirect(`${origin}/finance/settings?qbo=not-configured`);
   const state = crypto.randomUUID();
-  const res = NextResponse.redirect(authorizeUrl(`${origin}/api/qbo/callback`, state));
+  const res = NextResponse.redirect(await authorizeUrl(`${origin}/api/qbo/callback`, state));
   res.cookies.set('qbo_state', state, { httpOnly: true, secure: true, sameSite: 'lax', path: '/api/qbo', maxAge: 600 });
   return res;
 }

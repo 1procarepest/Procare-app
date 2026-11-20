@@ -8,15 +8,43 @@
  */
 import { createAdminClient } from './supabase/admin';
 
-const AUTH_URL = 'https://appcenter.intuit.com/connect/oauth2';
-const TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer';
-const REVOKE_URL = 'https://developer.api.intuit.com/v2/oauth2/tokens/revoke';
+// Sign-in addresses come from Intuit's discovery document (Intuit asks apps to use it); these are the fallbacks.
+const DISCOVERY = {
+  production: 'https://developer.api.intuit.com/.well-known/openid_configuration',
+  sandbox: 'https://developer.api.intuit.com/.well-known/openid_sandbox_configuration',
+};
+const FALLBACK = {
+  authorization_endpoint: 'https://appcenter.intuit.com/connect/oauth2',
+  token_endpoint: 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer',
+  revocation_endpoint: 'https://developer.api.intuit.com/v2/oauth2/tokens/revoke',
+};
+let discovered = null;
+async function endpoints() {
+  if (discovered && discovered.at > Date.now() - 24 * 3600 * 1000) return discovered.ep;
+  try {
+    const res = await fetch(DISCOVERY[process.env.QBO_ENV === 'sandbox' ? 'sandbox' : 'production'], { cache: 'no-store' });
+    const j = await res.json();
+    const ep = {
+      authorization_endpoint: j.authorization_endpoint || FALLBACK.authorization_endpoint,
+      token_endpoint: j.token_endpoint || FALLBACK.token_endpoint,
+      revocation_endpoint: j.revocation_endpoint || FALLBACK.revocation_endpoint,
+    };
+    discovered = { at: Date.now(), ep };
+    return ep;
+  } catch {
+    return FALLBACK;
+  }
+}
+
+/** QuickBooks no longer accepts the saved sign-in (expired or revoked refresh token): needs Connect again. */
+export class ReconnectNeeded extends Error {}
 const apiBase = () => (process.env.QBO_ENV === 'sandbox' ? 'https://sandbox-quickbooks.api.intuit.com' : 'https://quickbooks.api.intuit.com');
 
 export const qboConfigured = () => !!(process.env.QBO_CLIENT_ID && process.env.QBO_CLIENT_SECRET);
 const basic = () => `Basic ${Buffer.from(`${process.env.QBO_CLIENT_ID}:${process.env.QBO_CLIENT_SECRET}`).toString('base64')}`;
 
-export function authorizeUrl(redirectUri, state) {
+export async function authorizeUrl(redirectUri, state) {
+  const { authorization_endpoint: AUTH_URL } = await endpoints();
   const q = new URLSearchParams({
     client_id: process.env.QBO_CLIENT_ID, response_type: 'code', scope: 'com.intuit.quickbooks.accounting',
     redirect_uri: redirectUri, state,
@@ -25,6 +53,7 @@ export function authorizeUrl(redirectUri, state) {
 }
 
 async function tokenRequest(body) {
+  const { token_endpoint: TOKEN_URL } = await endpoints();
   const res = await fetch(TOKEN_URL, {
     method: 'POST',
     headers: { Authorization: basic(), 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
@@ -32,7 +61,10 @@ async function tokenRequest(body) {
     cache: 'no-store',
   });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(`QuickBooks sign-in failed (${res.status}): ${json.error_description || json.error || 'no details'}`);
+  if (!res.ok) {
+    if (json.error === 'invalid_grant') throw new ReconnectNeeded('QuickBooks no longer accepts the saved connection. Connect QuickBooks again.');
+    throw new Error(`QuickBooks sign-in failed (${res.status}): ${json.error_description || json.error || 'no details'}`);
+  }
   return json;
 }
 
@@ -64,7 +96,17 @@ async function session() {
   const { data: c } = await admin.from('qbo_connection').select('*').eq('id', 1).maybeSingle();
   if (!c?.refresh_token) throw new Error('QuickBooks isn’t connected yet.');
   if (c.access_token && new Date(c.access_expires_at).getTime() - Date.now() > 5 * 60 * 1000) return c;
-  const t = await tokenRequest({ grant_type: 'refresh_token', refresh_token: c.refresh_token });
+  let t;
+  try {
+    t = await tokenRequest({ grant_type: 'refresh_token', refresh_token: c.refresh_token });
+  } catch (e) {
+    // Expired or revoked refresh token (invalid grant): forget it so Finance → Settings shows Connect again
+    if (e instanceof ReconnectNeeded) {
+      await admin.from('qbo_connection').update({ access_token: null, refresh_token: null, access_expires_at: null,
+        refresh_expires_at: null, last_sync_error: e.message }).eq('id', 1);
+    }
+    throw e;
+  }
   const upd = {
     access_token: t.access_token, refresh_token: t.refresh_token || c.refresh_token,
     access_expires_at: expiry(t.expires_in), refresh_expires_at: expiry(t.x_refresh_token_expires_in),
@@ -73,13 +115,18 @@ async function session() {
   return { ...c, ...upd };
 }
 
-async function api(path, params = {}) {
+async function api(path, params = {}, retried = false) {
   const c = await session();
   const q = new URLSearchParams({ minorversion: '75', ...params });
   const res = await fetch(`${apiBase()}/v3/company/${c.realm_id}${path}?${q}`, {
     headers: { Authorization: `Bearer ${c.access_token}`, Accept: 'application/json' }, cache: 'no-store',
   });
   const json = await res.json().catch(() => ({}));
+  if (res.status === 401 && !retried) {
+    // Access token rejected early (e.g. revoked): refresh once and try again
+    await createAdminClient()?.from('qbo_connection').update({ access_expires_at: new Date(0).toISOString() }).eq('id', 1);
+    return api(path, params, true);
+  }
   if (!res.ok) {
     const msg = json?.Fault?.Error?.[0]?.Detail || json?.Fault?.Error?.[0]?.Message || res.statusText;
     throw new Error(`QuickBooks said: ${msg} (${res.status})`);
@@ -167,6 +214,7 @@ export async function disconnect() {
   if (!admin) return;
   const { data: c } = await admin.from('qbo_connection').select('refresh_token').eq('id', 1).maybeSingle();
   if (c?.refresh_token && qboConfigured()) {
+    const { revocation_endpoint: REVOKE_URL } = await endpoints();
     await fetch(REVOKE_URL, {
       method: 'POST',
       headers: { Authorization: basic(), 'Content-Type': 'application/json', Accept: 'application/json' },
