@@ -3,6 +3,8 @@
 --  * Waiting cash-out requests are marked paid, with a note.
 --  * Each person's unpaid prizes and approved bonuses are grouped into one payout marked paid, with a note.
 --  * Nothing is deleted and nobody is emailed. The note makes these easy to find: "Cleared before launch".
+--  * Sale credits (tech sales, office upsells, wildlife referrals from change 70) are NOT cleared: they're
+--    real pay for sales serviced since Nov 16 that hasn't been paid outside the app.
 -- The result shows each person whose balance was cleared and how much.
 
 begin;
@@ -22,7 +24,8 @@ from r join public.employees e on e.id = r.employee_id;
 
 -- 2. Unpaid prizes and bonuses -> one paid payout per person
 with owed as (
-  select employee_id, sum(amount) as amount from public.competition_awards where payout_id is null group by employee_id
+  select employee_id, sum(amount) as amount from public.competition_awards
+  where payout_id is null and award_key !~ '^(sale|upsell|wl-referral):' group by employee_id
 ),
 p as (
   insert into public.payout_requests (employee_id, amount, status, requested_at, paid_at, note)
@@ -31,7 +34,7 @@ p as (
 ),
 linked as (
   update public.competition_awards a set payout_id = p.id
-  from p where a.employee_id = p.employee_id and a.payout_id is null
+  from p where a.employee_id = p.employee_id and a.payout_id is null and a.award_key !~ '^(sale|upsell|wl-referral):'
   returning a.id
 )
 insert into cleared select e.first_name || ' ' || e.last_name, 'unpaid prizes and bonuses', p.amount

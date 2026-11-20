@@ -14,7 +14,8 @@ const day = (ts) => new Date(ts).toLocaleDateString('en-US', { month: 'short', d
 // outside the app, so they don't show here: neither in "paid so far" nor in the list.
 const CLEARED = 'Cleared before launch';
 
-export default function Earnings({ awards: allAwards, requests: allRequests }) {
+/** minimum: cash out needs at least this much waiting (pay_settings.cashout_min, change 70), so HR isn't paying out many small amounts. */
+export default function Earnings({ awards: allAwards, requests: allRequests, minimum = 100 }) {
   const clearedIds = new Set(allRequests.filter((r) => (r.note || '').startsWith(CLEARED)).map((r) => r.id));
   const requests = allRequests.filter((r) => !clearedIds.has(r.id));
   const awards = allAwards.filter((a) => !clearedIds.has(a.payout_id));
@@ -52,9 +53,10 @@ export default function Earnings({ awards: allAwards, requests: allRequests }) {
         <div className="earn-main">
           <span className="earn-label">Ready to cash out</span>
           <span className="earn-val">{money(balance)}</span>
-          <span className="earn-sub">{paidTotal > 0 ? `${money(paidTotal)} paid so far` : 'Competition prizes and bonuses'}</span>
+          <span className="earn-sub">{paidTotal > 0 ? `${money(paidTotal)} paid so far` : 'Prizes, sales and bonuses'}</span>
+          {balance > 0 && balance < minimum && <span className="earn-sub">Cash out opens at {money(minimum)}: {money(minimum - balance)} to go</span>}
         </div>
-        <button type="button" className="btn earn-btn" disabled={busy || balance <= 0} onClick={cashOut}>{busy ? 'Sending…' : 'Cash out'}</button>
+        <button type="button" className="btn earn-btn" disabled={busy || balance <= 0 || balance < minimum} onClick={cashOut}>{busy ? 'Sending…' : 'Cash out'}</button>
       </div>
       {msg && <p className="ok" role="status">{msg}</p>}
       {waiting.length > 0 && (

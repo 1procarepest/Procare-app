@@ -75,6 +75,8 @@ export default async function Home({ searchParams }) {
   const salesYear = Number(atlantaToday().slice(0, 4));
   // Competition prizes: pay out anything that just finished first, then this person's earnings
   const pEarnings = settleCompetitions(supabase, atlantaToday()).then(() => Promise.all([
+    // Cash-out minimum (change 70); empty until that change has run
+    supabase.from('pay_settings').select('cashout_min').eq('id', 1).maybeSingle(),
     supabase.from('competition_awards').select('id, amount, reason, payout_id, created_at').eq('employee_id', me.id).order('created_at', { ascending: false }),
     supabase.from('payout_requests').select('id, amount, status, requested_at, paid_at, note').eq('employee_id', me.id).order('requested_at', { ascending: false }),
   ]));
@@ -104,7 +106,7 @@ export default async function Home({ searchParams }) {
     ? start(supabase.from('bonus_members').select('set_id', { count: 'exact', head: true }).eq('employee_id', me.id))
     : Promise.resolve({ count: 0 });
 
-  const [{ data: awards }, { data: payouts }] = await pEarnings;
+  const [{ data: paySet }, { data: awards }, { data: payouts }] = await pEarnings;
   const [myComps, opsSuite, opsSnap] = await pRest;
   const officeStats = opsSuite?.data && opsSnap?.data ? { stats: buildOps(opsSuite.data), snap: buildSnapshot(opsSnap.data) } : null;
   const { data: feedback } = await pFeedback;
@@ -263,7 +265,7 @@ export default async function Home({ searchParams }) {
           </Link>
         )}
 
-        {(awards || []).length > 0 && <Earnings awards={awards} requests={payouts || []} />}
+        {(awards || []).length > 0 && <Earnings awards={awards} requests={payouts || []} minimum={Number(paySet?.cashout_min ?? 100)} />}
 
         {myCard && (
           <section className="section my-card" aria-labelledby="card-heading">
