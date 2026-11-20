@@ -1792,3 +1792,9 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .fin-picker input[type="search"] { max-width: 280px; }
 .fin-add { display: flex; gap: 8px; margin: 14px 0; max-width: 480px; }
 .fin-add input { flex: 1; }
+
+/* Public legal pages (/legal/terms, /legal/privacy) */
+.legal { max-width: 760px; }
+.legal h1 { margin-bottom: 4px; }
+.legal h2 { font-size: 18px; margin: 22px 0 6px; }
+.legal p, .legal li { line-height: 1.55; }

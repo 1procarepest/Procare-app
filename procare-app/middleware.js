@@ -29,6 +29,8 @@ export async function middleware(request) {
 
   // The daily QuickBooks sync (Vercel cron) checks its own secret instead of a sign-in
   if (path === '/api/qbo/sync' && request.method === 'GET') return response;
+  // Public: the terms and privacy pages Intuit requires to connect QuickBooks
+  if (path.startsWith('/legal/')) return response;
   if (!user && !path.startsWith('/login')) {
     const to = request.nextUrl.clone();
     to.pathname = '/login';
