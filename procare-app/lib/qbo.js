@@ -53,6 +53,13 @@ function logQbo(what, res, json) {
 export class ReconnectNeeded extends Error {}
 const apiBase = () => (process.env.QBO_ENV === 'sandbox' ? 'https://sandbox-quickbooks.api.intuit.com' : 'https://quickbooks.api.intuit.com');
 
+/**
+ * The app's one main address. QuickBooks must send people back to exactly the redirect URI saved in the Intuit app,
+ * so connecting always uses this address (APP_URL in Vercel if set), whatever address the browser is on.
+ */
+export const appUrl = () => (process.env.APP_URL || 'https://procare-app.vercel.app').replace(/\/+$/, '');
+export const redirectUri = () => `${appUrl()}/api/qbo/callback`;
+
 export const qboConfigured = () => !!(process.env.QBO_CLIENT_ID && process.env.QBO_CLIENT_SECRET);
 const basic = () => `Basic ${Buffer.from(`${process.env.QBO_CLIENT_ID}:${process.env.QBO_CLIENT_SECRET}`).toString('base64')}`;
 

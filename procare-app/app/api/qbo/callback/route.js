@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
-import { connect, syncPl } from '@/lib/qbo';
+import { connect, redirectUri, syncPl } from '@/lib/qbo';
 import { hasSecondStep } from '@/lib/mfa';
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +21,7 @@ export async function GET(request) {
   const realmId = url.searchParams.get('realmId');
   if (!code || !realmId) return back('qbo=missing');
   try {
-    await connect(code, realmId, `${url.origin}/api/qbo/callback`, me.id);
+    await connect(code, realmId, redirectUri(), me.id);
   } catch (e) {
     return back(`qbo=error&msg=${encodeURIComponent(String(e.message || e).slice(0, 200))}`);
   }
