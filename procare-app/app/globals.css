@@ -1769,3 +1769,26 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .wp-referrals h2 { font-size: 20px; margin: 0 0 4px; }
 .wp-ref-list { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 8px; }
 .wp-ref-list small { display: block; color: var(--muted); }
+
+/* Finance (change 66) */
+.fin-table th[scope="row"] { white-space: nowrap; }
+.fin-table .fin-total { font-weight: 600; }
+.fin-section th button { font-weight: 600; padding: 0; }
+.fin-account th { font-weight: 400; padding-left: 26px; }
+.fin-parent { color: var(--muted); }
+.fin-sum th, .fin-sum td { font-weight: 700; background: var(--paper); }
+.fin-net th, .fin-net td { color: var(--forest); font-size: 15px; }
+.fin-margin th, .fin-margin td { color: var(--muted); font-size: 12.5px; }
+.fin-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 14px 0; }
+.fin-tile { background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; }
+.fin-tile strong { display: block; font-size: 26px; color: var(--forest); }
+.fin-unset { display: block; color: var(--muted); font-weight: 400; font-size: 12px; }
+.fin-conn { max-width: 720px; margin-bottom: 22px; }
+.fin-conn h2, .fin-h2 { font-size: 20px; margin: 0 0 6px; }
+.fin-channel { background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 12px 0; display: grid; gap: 10px; }
+.fin-channel-head { display: flex; gap: 10px; align-items: center; }
+.fin-channel-head input { flex: 1; font-weight: 600; }
+.fin-picker { display: grid; gap: 6px; }
+.fin-picker input[type="search"] { max-width: 280px; }
+.fin-add { display: flex; gap: 8px; margin: 14px 0; max-width: 480px; }
+.fin-add input { flex: 1; }

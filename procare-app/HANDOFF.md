@@ -6,7 +6,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - John Ely, President of Procare Pest (3 Atlanta offices: East, West, South). Not technical: short, plain answers, one step and one question at a time.
 - Repo `1procarepest/Procare-app`; the app is in `procare-app/` (Next.js 14 App Router, plain JS, Supabase). Vercel deploys from `main`.
 - Check with `npm run build` before pushing. Commit and push only your own files; end commit messages with the Co-Authored-By line.
-- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-19-65-wildlife-pay.sql`, so the next is 66). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
+- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-19-66-finance-quickbooks.sql`, so the next is 67). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
 - Supabase cuts a request off after about 8 s. Time heavy queries on real data first.
 - SQL tests run in PGlite (`@electric-sql/pglite`); there's no local Postgres. The new Mac (2026-11-16) had no Node.js or Homebrew at first.
 - **UI rules from John**: use toggle switches (`app/Toggle.js`), never checkboxes. Use the brand look: `.brand-head` patterned headers, bug art from `app/Bug.js` (bugs anywhere; wildlife icons only on future wildlife pages), colors ink/forest/green/lime/sage.
@@ -93,6 +93,13 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
      Sales Pay moved into the Sales app as a tab (`app/reps/pay`, `app/reps/SalesTabs.js`; /pay forwards there;
      top-bar Pay link removed), 2026-11-19. Still to do in Phase 2: referral $ on the referrer's own
      pay/earnings; "pay as we get paid" (needs payments synced).
+   - **Finance built (2026-11-19, change 66)**: /finance for C-Suite and the President (app 'finance'): P&L by QuickBooks
+     class (`qbo_pl_monthly`, whole months, `lib/finance.js`), Marketing cost per customer (`marketing_channels`: QuickBooks
+     accounts = cost, FieldRoutes lead sources = customers; Wildlife class / wildlife customers broken out), Settings
+     (connect, sync now, copy 2 years, disconnect; channel matching). QuickBooks OAuth in `lib/qbo.js` and `app/api/qbo/*`;
+     tokens in `qbo_connection` (no RLS policies: server/secret key only). Daily sync: Vercel cron `/api/qbo/sync`
+     (vercel.json, needs CRON_SECRET; middleware lets that GET through). Vercel env: QBO_CLIENT_ID, QBO_CLIENT_SECRET,
+     QBO_ENV (production|sandbox), CRON_SECRET. Intuit app redirect URI: https://<app domain>/api/qbo/callback.
    - **Phase 3, finance**: QuickBooks Online (OAuth; tokens only in secrets). Each office is a QuickBooks Class and
      Wildlife is its own Class. P&L per office and Wildlife, marketing costs, cost per customer by lead source
      (door-to-door, Google Ads/leads, Yelp, other lead services) including wildlife customers.

@@ -27,6 +27,8 @@ export async function middleware(request) {
   const user = data?.claims?.sub ? data.claims : null;
   const path = request.nextUrl.pathname;
 
+  // The daily QuickBooks sync (Vercel cron) checks its own secret instead of a sign-in
+  if (path === '/api/qbo/sync' && request.method === 'GET') return response;
   if (!user && !path.startsWith('/login')) {
     const to = request.nextUrl.clone();
     to.pathname = '/login';
