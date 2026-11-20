@@ -2,14 +2,13 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { todayYmd } from '@/lib/repcards';
-import { gadsConfigured, gadsTokenReady } from '@/lib/gads';
+import { gadsConfigured } from '@/lib/gads';
 import AdsSettings from './AdsSettings';
 
 export const dynamic = 'force-dynamic';
 
 const NOTICE = {
   connected: { ok: true, text: 'Google Ads is connected. The last 90 days were copied; it refreshes every morning.' },
-  'connected-no-token': { ok: true, text: 'Google Ads is connected. Numbers start copying once the developer token is in Vercel (GADS_DEVELOPER_TOKEN).' },
   declined: { ok: false, text: 'Google Ads wasn’t connected (the sign-in was cancelled).' },
   expired: { ok: false, text: 'That sign-in took too long or came from another window. Try Connect again.' },
   missing: { ok: false, text: 'Google didn’t send back a sign-in. Try Connect again.' },
@@ -30,7 +29,6 @@ export default async function AdsSettingsPage({ searchParams }) {
     <AdsSettings
       connection={data?.connection || {}}
       configured={gadsConfigured()}
-      tokenReady={gadsTokenReady()}
       accounts={data?.accounts || []}
       offices={data?.offices || []}
       sources={(data?.all_sources || []).slice().sort()}

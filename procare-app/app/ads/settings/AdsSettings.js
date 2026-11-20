@@ -9,7 +9,7 @@ import SyncNow from '../SyncNow';
 const when = (t) => (t ? new Date(t).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '');
 const fmtId = (id) => String(id).replace(/^(\d{3})(\d{3})(\d{4})$/, '$1-$2-$3');
 
-function Connection({ c, configured, tokenReady }) {
+function Connection({ c, configured }) {
   const router = useRouter();
   const [msg, setMsg] = useState(null);
   const disconnect = async () => {
@@ -26,7 +26,6 @@ function Connection({ c, configured, tokenReady }) {
         <>
           <p><b>Connected</b>{c.email ? ` as ${c.email}` : ''} on {when(c.connected_at)}.</p>
           <p className="note">Last copied {c.last_sync_at ? when(c.last_sync_at) : 'never'}. Refreshes every morning (the last 30 days, for credited leads and late spend).</p>
-          {!tokenReady && <p className="error">The developer token isn’t in Vercel yet (GADS_DEVELOPER_TOKEN), so nothing can be copied until it is.</p>}
           {c.last_sync_error && <p className="error">Last copy had a problem: {c.last_sync_error}</p>}
           <div className="panel-buttons">
             <SyncNow days={30} label="Sync now" />
@@ -136,7 +135,7 @@ function People({ people: start }) {
   );
 }
 
-export default function AdsSettings({ connection, configured, tokenReady, accounts, offices, sources, picked, people, notice }) {
+export default function AdsSettings({ connection, configured, accounts, offices, sources, picked, people, notice }) {
   return (
     <section className="section">
       <div className="admin-head">
@@ -144,7 +143,7 @@ export default function AdsSettings({ connection, configured, tokenReady, accoun
         <p className="note">C-Suite and the President only.</p>
       </div>
       {notice && <p className={notice.ok ? 'ok' : 'error'} role="status">{notice.text}</p>}
-      <Connection c={connection} configured={configured} tokenReady={tokenReady} />
+      <Connection c={connection} configured={configured} />
 
       <h2 className="fin-h2">Ad accounts</h2>
       <p className="note">Every account linked under the Procare manager account. If an account only advertises for one office, pick the office so its cost per customer uses that office’s new customers.</p>

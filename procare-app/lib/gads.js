@@ -3,7 +3,8 @@
  * leads, for every ad account under the Procare manager account. The Google sign-in (refresh token) lives in
  * gads_connection, which only the secret-key Supabase client can read. Keys live in Vercel env vars:
  *   GADS_CLIENT_ID, GADS_CLIENT_SECRET (Google Cloud project "Procare App", OAuth client),
- *   GADS_DEVELOPER_TOKEN (Google Ads manager account -> Admin -> API Center),
+ *   GADS_DEVELOPER_TOKEN (optional: Google stopped requiring developer tokens in 2026 and now manages access levels
+ *     on the Google Cloud project; sent only if set),
  *   GADS_LOGIN_CUSTOMER_ID (the manager account, digits only: 1004026960),
  *   GADS_API_VERSION (optional, e.g. v23: Google retires each version about a year after it comes out).
  */
@@ -17,7 +18,6 @@ const SCOPE = 'https://www.googleapis.com/auth/adwords openid email';
 
 export const gadsRedirectUri = () => `${appUrl()}/api/gads/callback`;
 export const gadsConfigured = () => !!(process.env.GADS_CLIENT_ID && process.env.GADS_CLIENT_SECRET);
-export const gadsTokenReady = () => !!process.env.GADS_DEVELOPER_TOKEN;
 
 /** Google no longer accepts the saved sign-in (revoked or expired): needs Connect again. */
 export class GadsReconnectNeeded extends Error {}
@@ -91,14 +91,14 @@ async function accessToken() {
 
 /** One GAQL query against an account, every page. Rows come back in the API's camelCase shape. */
 export async function gaql(customerId, query) {
-  if (!gadsTokenReady()) throw new Error('The Google Ads developer token isn’t in Vercel yet (GADS_DEVELOPER_TOKEN).');
   const rows = [];
   let pageToken;
   do {
     const res = await fetch(`https://googleads.googleapis.com/${VERSION()}/customers/${digits(customerId)}/googleAds:search`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${await accessToken()}`, 'developer-token': process.env.GADS_DEVELOPER_TOKEN,
+        Authorization: `Bearer ${await accessToken()}`,
+        ...(process.env.GADS_DEVELOPER_TOKEN ? { 'developer-token': process.env.GADS_DEVELOPER_TOKEN } : {}),
         ...(LOGIN() ? { 'login-customer-id': LOGIN() } : {}), 'Content-Type': 'application/json',
       },
       body: JSON.stringify(pageToken ? { query, pageToken } : { query }),

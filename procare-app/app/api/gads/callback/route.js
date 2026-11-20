@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
-import { gadsConnect, gadsTokenReady, syncAds } from '@/lib/gads';
+import { gadsConnect, syncAds } from '@/lib/gads';
 import { hasSecondStep } from '@/lib/mfa';
 
 export const dynamic = 'force-dynamic';
@@ -24,13 +24,10 @@ export async function GET(request) {
   } catch (e) {
     return back(`gads=error&msg=${encodeURIComponent(String(e.message || e).slice(0, 200))}`);
   }
-  let note = 'gads=connected';
-  if (gadsTokenReady()) {
-    try {
-      await syncAds(90);
-    } catch { /* the connection is saved; the error shows in Settings and the daily sync retries */ }
-  } else note = 'gads=connected-no-token';
-  const res = back(note);
+  try {
+    await syncAds(90);
+  } catch { /* the connection is saved; the error shows in Settings and the daily sync retries */ }
+  const res = back('gads=connected');
   res.cookies.set('gads_state', '', { path: '/api/gads', maxAge: 0 });
   return res;
 }

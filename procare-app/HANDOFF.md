@@ -122,8 +122,8 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
      charged leads (credited leads drop out); cost per customer = spend ÷ new FieldRoutes customers whose lead source
      is in `ads_settings.fr_sources`. Accounts can be tied to an office. Google Cloud project "Procare App"
      (305029250433), OAuth client (Internal), redirect `/api/gads/callback`. Vercel: GADS_CLIENT_ID,
-     GADS_CLIENT_SECRET, GADS_LOGIN_CUSTOMER_ID (1004026960), GADS_DEVELOPER_TOKEN, optional GADS_API_VERSION
-     (default v23; Google retires versions about yearly). Basic access applied for; Test access can't read real accounts.
+     GADS_CLIENT_SECRET, GADS_LOGIN_CUSTOMER_ID (1004026960), optional GADS_DEVELOPER_TOKEN (Google dropped the requirement in 2026), optional GADS_API_VERSION
+     (default v23; Google retires versions about yearly). Access level is managed on the Cloud project: Explorer (daily limit, enough for the daily copy) as of 2026-11-20; Basic not needed yet.
    - **Phase 3, finance**: QuickBooks Online (OAuth; tokens only in secrets). Each office is a QuickBooks Class and
      Wildlife is its own Class. P&L per office and Wildlife, marketing costs, cost per customer by lead source
      (door-to-door, Google Ads/leads, Yelp, other lead services) including wildlife customers.
