@@ -265,7 +265,8 @@ export default async function Home({ searchParams }) {
           </Link>
         )}
 
-        {(awards || []).length > 0 && <Earnings awards={awards} requests={payouts || []} minimum={Number(paySet?.cashout_min ?? 100)} />}
+        {/* Always shown, even at $0, so everyone sees where prizes, sales pay and bonuses land (John, 2026-11-20) */}
+        <Earnings awards={awards || []} requests={payouts || []} minimum={Number(paySet?.cashout_min ?? 100)} />
 
         {myCard && (
           <section className="section my-card" aria-labelledby="card-heading">

@@ -39,9 +39,6 @@ export default function Earnings({ awards: allAwards, requests: allRequests, min
     router.refresh();
   };
 
-  // Nothing left once cleared balances are hidden: no Earnings box (it comes back with the next prize or bonus)
-  if (!awards.length && !requests.length) return null;
-
   return (
     <section className="section earn" aria-labelledby="earn-heading">
       <div className="my-card-head">
@@ -53,8 +50,8 @@ export default function Earnings({ awards: allAwards, requests: allRequests, min
         <div className="earn-main">
           <span className="earn-label">Ready to cash out</span>
           <span className="earn-val">{money(balance)}</span>
-          <span className="earn-sub">{paidTotal > 0 ? `${money(paidTotal)} paid so far` : 'Prizes, sales and bonuses'}</span>
-          {balance > 0 && balance < minimum && <span className="earn-sub">Cash out opens at {money(minimum)}: {money(minimum - balance)} to go</span>}
+          <span className="earn-sub">{paidTotal > 0 ? `${money(paidTotal)} paid so far` : 'Prizes, sales and bonuses land here'}</span>
+          {balance < minimum && <span className="earn-sub">Cash out opens at {money(minimum)}{balance > 0 ? `: ${money(minimum - balance)} to go` : ''}</span>}
         </div>
         <button type="button" className="btn earn-btn" disabled={busy || balance <= 0 || balance < minimum} onClick={cashOut}>{busy ? 'Sending…' : 'Cash out'}</button>
       </div>
