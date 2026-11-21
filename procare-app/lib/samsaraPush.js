@@ -85,7 +85,7 @@ export async function syncSamsara(admin, { ids = null, apply = false } = {}) {
   const { data: people } = driverIds.length ? await admin.from('employees').select('id, first_name, last_name, department').in('id', driverIds) : { data: [] };
   const person = Object.fromEntries((people || []).map((p) => [p.id, p]));
 
-  const lines = [], problems = [], missing = [];
+  const lines = [], problems = [], missing = [], same = [];
   let changed = 0;
   const now = new Date().toISOString();
   if (Object.keys(officeTagIds).length < 3) {
@@ -113,6 +113,8 @@ export async function syncSamsara(admin, { ids = null, apply = false } = {}) {
       const what = [patch.name && `name "${v.name}" → "${patch.name}"`, patch.licensePlate && `plate ${v.licensePlate || '–'} → ${patch.licensePlate}`,
         patch.tagIds && 'office tag', patch.notes && 'sold note'].filter(Boolean).join(', ');
       lines.push(`${label}: ${what}`);
+    } else {
+      same.push(`${label}: “${v.name}”${v.licensePlate ? `, plate ${v.licensePlate}` : ''}`);
     }
     if (!apply) continue;
     try {
@@ -132,7 +134,7 @@ export async function syncSamsara(admin, { ids = null, apply = false } = {}) {
     }
   }
   if (missing.length) lines.push(`Not in Samsara (no vehicle with that VIN): ${missing.join(', ')}`);
-  return { lines, changed, missing, problems };
+  return { lines, changed, missing, problems, same, matched: same.length + lines.filter((l) => l.startsWith('Truck ')).length, vehicles: vehicles.length };
 }
 
 /**

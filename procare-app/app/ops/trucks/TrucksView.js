@@ -600,6 +600,11 @@ function SamsaraPanel({ auto }) {
         <div className="tr-ss-out">
           <p className={out.problems?.length ? 'error' : 'ok'}>{out.action === 'preview' ? `${(out.lines || []).filter((l) => /^Truck /.test(l)).length} trucks would change.` : `Updated ${out.changed} trucks in Samsara.`}{out.problems?.length ? ` Problems: ${out.problems.join(' · ')}` : ''}</p>
           <ul className="tr-ss-lines">{(out.lines || []).map((l) => <li key={l}>{l}</li>)}</ul>
+          {out.matched !== undefined && <p className="note">Matched {out.matched} trucks to Samsara’s {out.vehicles} vehicles by VIN.</p>}
+          {(out.same || []).length > 0 && (
+            <details><summary className="note">{out.same.length} already right in Samsara (tap to see)</summary>
+              <ul className="tr-ss-lines">{out.same.map((l) => <li key={l}>{l}</li>)}</ul></details>
+          )}
         </div>
       ))}
     </section>
