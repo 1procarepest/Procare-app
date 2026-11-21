@@ -6,7 +6,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - John Ely, President of Procare Pest (3 Atlanta offices: East, West, South). Not technical: short, plain answers, one step and one question at a time.
 - Repo `1procarepest/Procare-app`; the app is in `procare-app/` (Next.js 14 App Router, plain JS, Supabase). Vercel deploys from `main`.
 - Check with `npm run build` before pushing. Commit and push only your own files; end commit messages with the Co-Authored-By line.
-- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-21-75-truck-sheet.sql`, so the next is 76). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
+- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-21-76-debt-schedule.sql`, so the next is 77). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
 - Supabase cuts a request off after about 8 s. Time heavy queries on real data first.
 - SQL tests run in PGlite (`@electric-sql/pglite`); there's no local Postgres. The new Mac (2026-11-16) had no Node.js or Homebrew at first.
 - **UI rules from John**: use toggle switches (`app/Toggle.js`), never checkboxes. Use the brand look: `.brand-head` patterned headers, bug art from `app/Bug.js` (bugs anywhere; wildlife icons only on future wildlife pages), colors ink/forest/green/lime/sage.
@@ -73,6 +73,15 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
   the page's Email settings; Jared Sobelson prefilled, Ekaterina's email to be added). Data from John's two sheet
   photos: `imports/2026-11-21-trucks.sql` (matched by VIN). Next: debt schedule + QuickBooks balance sheet in
   Finance, Samsara mileage, insurance/bookkeeper notices for plates.
+
+- **Debt schedule (change 76, 2026-11-21)**: Finance → Debt (`app/finance/debt`, `lib/debt.js`). Truck loans
+  (truck_loans) + `debts` (SBA loan, other loans, credit cards / lines). Balances come from the QuickBooks balance
+  sheet (`qbo_bs_monthly`, copied every morning with the P&L by `syncBalanceSheet` in `lib/qbo.js`, 13 month-ends)
+  once each loan is linked to its QuickBooks account (Picker on the page; "Link N I could match" by truck # / VIN /
+  card digits). Tiles: monthly payments, total owed (and QuickBooks' own total), average net profit of the last 12
+  full months, payments as a share of profit. "In QuickBooks, not on the schedule" lists unlinked loan/card accounts.
+  Data: `imports/2026-11-21-debts.sql` (John's debt sheet photos, balances about July 2026). John will send loan
+  agreements later for rates / terms.
 
 ## Next up (John's list)
 1. ~~Manager bonuses~~: live since 2026-11-16 (changes 47–49). Setup left for Ally: Ryan as report recipient, yearly amounts, Q4 goals, past reports.

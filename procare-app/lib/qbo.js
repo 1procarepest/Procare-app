@@ -4,7 +4,8 @@
  *   QBO_CLIENT_ID, QBO_CLIENT_SECRET (from the Intuit Developer app), QBO_ENV ('production' default, or 'sandbox'),
  *   CRON_SECRET (Vercel sends it to the daily sync).
  * P&L comes from the ProfitAndLoss report, one month at a time, summarized by class (each office is a class and
- * Wildlife is its own class), and is saved to qbo_pl_monthly.
+ * Wildlife is its own class), and is saved to qbo_pl_monthly. The balance sheet (change 76) comes from the BalanceSheet
+ * report by month and is saved to qbo_bs_monthly (loan and card balances for Finance → Debt).
  */
 import { createAdminClient } from './supabase/admin';
 
@@ -228,6 +229,86 @@ export async function syncPl(months = 3) {
   } catch (e) {
     await admin.from('qbo_connection').update({ last_sync_error: String(e.message || e).slice(0, 500) }).eq('id', 1);
     throw e;
+  }
+}
+
+// Balance sheet groups QuickBooks uses (Row.group); the nearest one names the line's group
+const BS_GROUPS = new Set(['BankAccounts', 'AR', 'OtherCurrentAssets', 'FixedAssets', 'OtherAssets', 'AP', 'CreditCards',
+  'OtherCurrentLiabilities', 'LongTermLiabilities', 'Equity']);
+const monthKey = (col) => {
+  const meta = Object.fromEntries((col.MetaData || []).map((m) => [m.Name, m.Value]));
+  const d = meta.EndDate || meta.StartDate;
+  if (d) return `${d.slice(0, 7)}-01`;
+  const t = new Date(`1 ${col.ColTitle}`);   // "Nov 2026"
+  return Number.isNaN(t.getTime()) ? null : `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-01`;
+};
+
+/**
+ * A BalanceSheet report summarized by month → rows { month, account_id, section, grp, account_name, parent_name, amount }.
+ * Each column is the balance at the end of that month. Only account lines are kept.
+ */
+export function parseBs(report) {
+  const cols = (report?.Columns?.Column || []).map((c, i) => ({ i, month: i > 0 && !/^total$/i.test(c.ColTitle || '') ? monthKey(c) : null }))
+    .filter((c) => c.month);
+  const out = [];
+  const walk = (rows, section, grp, parent) => {
+    (rows || []).forEach((r) => {
+      if (r.type === 'Section' || r.Rows) {
+        const g = r.group || '';
+        const sec = g === 'TotalAssets' ? 'Assets' : g === 'Liabilities' ? 'Liabilities' : g === 'Equity' ? 'Equity' : section;
+        const head = r.Header?.ColData?.[0];
+        const named = BS_GROUPS.has(g) ? g : grp;
+        // A header with an account id is a parent account holding sub-accounts
+        walk(r.Rows?.Row, sec, named, head?.id ? head.value : parent);
+        // The parent account's own balance (QuickBooks puts it on the header line)
+        if (head?.id) {
+          cols.forEach((c) => {
+            const amt = Number(String(r.Header.ColData[c.i]?.value ?? '').replace(/,/g, ''));
+            if (amt) out.push({ month: c.month, account_id: String(head.id), section: sec || 'Other', grp: named || null, account_name: head.value, parent_name: parent || null, amount: Math.round(amt * 100) / 100 });
+          });
+        }
+        return;
+      }
+      const cd = r.ColData || [];
+      const acct = cd[0];
+      if (!acct?.value || !acct.id) return;
+      cols.forEach((c) => {
+        const amt = Number(String(cd[c.i]?.value ?? '').replace(/,/g, ''));
+        if (!amt) return;
+        out.push({ month: c.month, account_id: String(acct.id), section: section || 'Other', grp: grp || null,
+          account_name: acct.value, parent_name: parent || null, amount: Math.round(amt * 100) / 100 });
+      });
+    });
+  };
+  walk(report?.Rows?.Row, null, null, null);
+  // One line per month and account (a parent's header and total can repeat it)
+  const seen = new Map();
+  for (const r of out) seen.set(`${r.month}|${r.account_id}`, r);
+  return [...seen.values()];
+}
+
+/** Copy the balance sheet at the end of each of the last `months` months into qbo_bs_monthly (one report call). */
+export async function syncBalanceSheet(months = 13) {
+  const admin = createAdminClient();
+  if (!admin) throw new Error('The server is missing SUPABASE_SECRET_KEY.');
+  const now = new Date();
+  const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (months - 1), 1));
+  try {
+    const report = await api('/reports/BalanceSheet', {
+      start_date: ymd(first), end_date: ymd(now), summarize_column_by: 'Month', accounting_method: 'Accrual',
+    });
+    const rows = parseBs(report).map((r) => ({ ...r, synced_at: new Date().toISOString() }));
+    const del = await admin.from('qbo_bs_monthly').delete().gte('month', ymd(first));
+    if (del.error) throw new Error(del.error.message);
+    for (let k = 0; k < rows.length; k += 500) {
+      const ins = await admin.from('qbo_bs_monthly').insert(rows.slice(k, k + 500));
+      if (ins.error) throw new Error(ins.error.message);
+    }
+    await admin.from('qbo_connection').update({ bs_sync_error: null }).eq('id', 1);
+    return { bsLines: rows.length };
+  } catch (e) {
+    await admin.from('qbo_connection').update({ bs_sync_error: String(e.message || e).slice(0, 500) }).eq('id', 1);
+    return { bsLines: 0, bsError: String(e.message || e) };
   }
 }
 

@@ -6,10 +6,11 @@ import { usePathname } from 'next/navigation';
 const TABS = [
   { href: '/finance', label: 'P&L', match: (p) => p === '/finance' },
   { href: '/finance/marketing', label: 'Marketing' },
+  { href: '/finance/debt', label: 'Debt' },
   { href: '/finance/settings', label: 'Settings' },
 ];
 
-/** Finance sections: P&L, Marketing (cost per customer) and Settings (QuickBooks link and channel matching). */
+/** Finance sections: P&L, Marketing (cost per customer), Debt (the debt schedule) and Settings (QuickBooks link and channel matching). */
 export default function FinanceTabs() {
   const path = usePathname();
   return (

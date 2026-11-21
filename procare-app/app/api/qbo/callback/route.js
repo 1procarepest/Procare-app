@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
-import { connect, redirectUri, syncPl } from '@/lib/qbo';
+import { connect, redirectUri, syncBalanceSheet, syncPl } from '@/lib/qbo';
 import { hasSecondStep } from '@/lib/mfa';
 
 export const dynamic = 'force-dynamic';
@@ -27,6 +27,7 @@ export async function GET(request) {
   }
   try {
     await syncPl(13);
+    await syncBalanceSheet(13);
   } catch { /* the connection is saved; the error shows in Settings and the daily sync retries */ }
   const res = back('qbo=connected');
   res.cookies.set('qbo_state', '', { path: '/api/qbo', maxAge: 0 });
