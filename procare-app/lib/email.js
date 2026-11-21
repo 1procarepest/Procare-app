@@ -29,13 +29,14 @@ export function normalizeFrom(raw) {
  * { href, label } for a button. Returns { ok, problem }: ok is true when Resend
  * accepted it; otherwise problem says why in plain words.
  */
-export async function sendEmail({ to, subject, heading, lines, link }) {
+export async function sendEmail({ to, cc, subject, heading, lines, link, replyTo: replyOverride, footer }) {
   // Trim stray spaces or quotes that sneak in when pasting into Vercel
   const clean = (v) => (v || '').trim().replace(/^["']|["']$/g, '').trim();
   const key = clean(process.env.RESEND_API_KEY);
   const fromRaw = clean(process.env.EMAIL_FROM);
   const from = normalizeFrom(fromRaw);
-  const replyTo = clean(process.env.EMAIL_REPLY_TO);
+  const replyTo = clean(replyOverride) || clean(process.env.EMAIL_REPLY_TO);
+  const copies = [...new Set((cc || []).filter(Boolean))];
   const recipients = [...new Set((to || []).filter(Boolean))];
   if (fromRaw && !from) {
     const problem = `Email not sent: EMAIL_FROM in Vercel is “${fromRaw}”, which has no email address in it. Set it to Procare Team <team@procarepest.com> and redeploy.`;
@@ -61,7 +62,7 @@ export async function sendEmail({ to, subject, heading, lines, link }) {
       ${lines.map((l) => `<p style="font-size:15px;line-height:1.5;margin:0 0 8px">${escapeHtml(l)}</p>`).join('')}
       ${link ? `<p style="margin:20px 0 0"><a href="${escapeHtml(link.href)}" style="display:inline-block;background:#025F49;color:#FFFFFF;text-decoration:none;font-family:'IBM Plex Mono','Courier New',monospace;font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:12px 18px;border-radius:10px">${escapeHtml(link.label)}</a></p>` : ''}
     </div>
-    <p style="font-size:12px;color:#4A6366;margin:14px 4px 0">Procare Team app. Automatic email; C-Suite can turn it off under Settings → Email settings.</p>
+    <p style="font-size:12px;color:#4A6366;margin:14px 4px 0">${escapeHtml(footer || 'Procare Team app. Automatic email; C-Suite can turn it off under Settings → Email settings.')}</p>
   </div>
 </body></html>`;
 
@@ -69,7 +70,7 @@ export async function sendEmail({ to, subject, heading, lines, link }) {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to: recipients, subject, text, html, ...(replyTo ? { reply_to: replyTo } : {}) }),
+      body: JSON.stringify({ from, to: recipients, subject, text, html, ...(copies.length ? { cc: copies } : {}), ...(replyTo ? { reply_to: replyTo } : {}) }),
     });
     if (!res.ok) {
       const body = await res.text();

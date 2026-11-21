@@ -6,7 +6,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - John Ely, President of Procare Pest (3 Atlanta offices: East, West, South). Not technical: short, plain answers, one step and one question at a time.
 - Repo `1procarepest/Procare-app`; the app is in `procare-app/` (Next.js 14 App Router, plain JS, Supabase). Vercel deploys from `main`.
 - Check with `npm run build` before pushing. Commit and push only your own files; end commit messages with the Co-Authored-By line.
-- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-20-74-wildlife-split-and-assist.sql`, so the next is 75). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
+- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-21-75-truck-sheet.sql`, so the next is 76). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
 - Supabase cuts a request off after about 8 s. Time heavy queries on real data first.
 - SQL tests run in PGlite (`@electric-sql/pglite`); there's no local Postgres. The new Mac (2026-11-16) had no Node.js or Homebrew at first.
 - **UI rules from John**: use toggle switches (`app/Toggle.js`), never checkboxes. Use the brand look: `.brand-head` patterned headers, bug art from `app/Bug.js` (bugs anywhere; wildlife icons only on future wildlife pages), colors ink/forest/green/lime/sage.
@@ -63,6 +63,16 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - **Bonus management moved (2026-11-19)**: Settings → Bonuses is now Bonus → Manage bonuses (`app/bonus/manage`), a
   sub-tab beside Your goals (`app/bonus/BonusTabs.js`). /admin/bonuses forwards there (old links and approval emails).
   Bonus runners with no goals of their own go straight to Manage bonuses before the quarter loads.
+
+- **Trucks (change 75, 2026-11-21)**: Operations → Trucks (`app/ops/trucks`, `lib/trucks.js`), the truck sheet.
+  Managers and up see every truck, set the driver (Picker, or a "why no driver" note) and office, edit everyday
+  fields and add notes / maintenance (`truck_log`). C-Suite / the President with the authenticator step
+  (`can_see_finance`) also see loans (`truck_loans`, no account numbers), value and price, add trucks, flip For sale,
+  and mark Sold / Off the fleet: sold trucks drop off the sheet (Toggle "Sold & off the fleet" shows them). Adding or
+  removing emails the insurance agent and the bookkeeper (`/api/fleet-notice`, addresses in `fleet_settings`, set in
+  the page's Email settings; Jared Sobelson prefilled, Ekaterina's email to be added). Data from John's two sheet
+  photos: `imports/2026-11-21-trucks.sql` (matched by VIN). Next: debt schedule + QuickBooks balance sheet in
+  Finance, Samsara mileage, insurance/bookkeeper notices for plates.
 
 ## Next up (John's list)
 1. ~~Manager bonuses~~: live since 2026-11-16 (changes 47–49). Setup left for Ally: Ryan as report recipient, yearly amounts, Q4 goals, past reports.

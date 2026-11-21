@@ -1824,3 +1824,43 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .rv-rides { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 8px; }
 .rv-rides li { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
 .rv-rides p { margin: 4px 0 0; }
+
+/* ---------- Operations → Trucks (change 75) ---------- */
+.tr-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 6px 0 12px; }
+.tr-search { max-width: 260px; }
+.tr-verify { margin: 4px 0 10px; }
+.tr-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tr-table { min-width: 760px; }
+.tr-table td, .tr-table th { text-align: left; }
+.tr-row { cursor: pointer; }
+.tr-row:hover td, .tr-row:hover th, .tr-row.open td, .tr-row.open th { background: var(--paper); }
+.tr-vin { display: block; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.tr-st-for_sale { border-color: #D9A400; color: #8A6A00; }
+.tr-st-active { border-color: var(--green); color: var(--forest); }
+.tr-st-sold, .tr-st-gone { color: var(--muted); }
+.tr-open > td { background: var(--paper); padding: 0 !important; }
+.tr-card { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; padding: 12px; text-align: left; }
+.tr-sec { background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 10px; align-content: start; }
+.tr-sec h3 { font-size: 16px; margin: 0; }
+.tr-log { grid-column: 1 / -1; }
+.tr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 10px; }
+.tr-field { margin: 0; font-weight: 400; display: grid; gap: 3px; }
+.tr-field > span { font-size: 12px; color: var(--muted); }
+.tr-field input, .tr-field textarea { padding: 7px 9px; font-size: 14px; }
+.tr-wide { grid-column: 1 / -1; }
+.tr-loan { border-top: 1px solid var(--line); padding-top: 8px; display: grid; gap: 2px; }
+.tr-loan p { margin: 0; }
+.tr-loan .btn { justify-self: start; margin-top: 4px; }
+.tr-loan-form, .tr-sold { display: grid; gap: 10px; }
+.tr-entries { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.tr-entries li { display: flex; gap: 8px; align-items: flex-start; border-top: 1px solid var(--line); padding-top: 6px; font-size: 14px; }
+.tr-entry-main { flex: 1; min-width: 0; }
+.tr-email { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
+.tr-email .error { font-size: 12.5px; }
+.tr-x { border: 0; background: none; font-size: 18px; line-height: 1; color: var(--muted); cursor: pointer; padding: 0 4px; }
+.tr-kind-maintenance { border-color: var(--forest); color: var(--forest); }
+.tr-kind-removed, .tr-kind-added { border-color: var(--ink); }
+.tr-add, .tr-settings { max-width: 900px; margin-bottom: 14px; display: grid; gap: 10px; }
+.tr-add h2, .tr-settings h2 { font-size: 20px; margin: 0; }
+@media (max-width: 640px) { .tr-card { grid-template-columns: 1fr; padding: 8px; } }
+.linklike { border: 0; background: none; padding: 0; font: inherit; font-weight: 600; color: var(--forest); text-decoration: underline; cursor: pointer; }

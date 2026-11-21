@@ -16,7 +16,7 @@ export default async function OpsLayout({ children }) {
   return (
     <>
       <TopNav me={me} supabase={supabase} current="operations" />
-      <OpsTabs />
+      <OpsTabs trucks={me.rank >= 3} />
       <main className="admin scorecard reps ops">{children}</main>
     </>
   );
