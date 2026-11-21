@@ -62,6 +62,29 @@ insert into d_in values
 ('933','1FTBR1Y82SKB26933','Ford Finance',      1108.36,'2026-06-01','2031-06-16', 52910, 52909.59, 51652.23, 7.69,   null, null, null),
 ('483','1N6ED1CL8TN673483','Nissan Finance (P)', 670.61,'2026-08-13','2032-08-25', 36940, 36940.30, 36940.30, 9.12,   null, null, null);
 
+-- John 2026-11-21: fixes before the loans go on
+-- * 122 and 124: the loan sheet's VINs pass the VIN check digit; the fleet sheet's don't (typo in the 9th character)
+update public.trucks set vin = '3TYRX5GN6PT072284', updated_at = now() where vin = '3TYRX5GN5PT072284'
+  and not exists (select 1 from public.trucks where vin = '3TYRX5GN6PT072284');
+update public.trucks set vin = '3TYRX5GN6PT076724', updated_at = now() where vin = '3TYRX5GN7PT076724'
+  and not exists (select 1 from public.trucks where vin = '3TYRX5GN6PT076724');
+-- * The 2019 Tacoma (#14 on the loan sheet, 347 by the new last-3-of-the-VIN numbering): company-owned, paid off,
+--   insured by the company, loaned to Dylan Barron (sales rep) for now
+insert into public.trucks (truck_no, vin, year, make, model, office, driver_note, status, purchase_price, value, value_on, mileage, mileage_on, notes)
+select '347', '5TFRX5GN8KX138347', 2019, 'Toyota', 'Tacoma',
+       (select e.office from public.employees e where e.active and lower(e.first_name) = 'dylan' and lower(e.last_name) = 'barron' limit 1),
+       'Dylan Barron', 'active', null, 15660, '2026-10-01', 107462, '2026-10-01',
+       'Paid off. Was #14 on the loan sheet. Loaned to Dylan Barron (sales rep) for now; not a technician truck.'
+where not exists (select 1 from public.trucks where vin = '5TFRX5GN8KX138347');
+update public.trucks t set driver_id = e.id, driver_note = null
+from public.employees e
+where t.vin = '5TFRX5GN8KX138347' and t.driver_id is null and e.active and lower(e.first_name) = 'dylan' and lower(e.last_name) = 'barron';
+-- * 796, the Transit John just bought: an "added" entry in its history, so the insurance + bookkeeper email can be
+--   sent from the truck once the purchase agreement is entered (Email insurance & bookkeeper button)
+insert into public.truck_log (truck_id, kind, text)
+select t.id, 'added', 'Added to the fleet (new purchase)' from public.trucks t
+where t.vin = '1FTBR1Y8XVKA27796' and not exists (select 1 from public.truck_log g where g.truck_id = t.id and g.kind = 'added');
+
 -- Which truck each row is: VIN first, then truck # (on the sheet)
 create temporary table d_match as
 select d.*, coalesce(
