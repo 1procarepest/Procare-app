@@ -1,5 +1,5 @@
 /**
- * Google Ads API (server only), change 71. Read-only: spend by day and campaign, and Google Guaranteed (Local Services)
+ * Google Ads API (server only), change 71. Read-only: spend by day and campaign, and Local Services Ads (formerly Google Guaranteed)
  * leads, for every ad account under the Procare manager account. The Google sign-in (refresh token) lives in
  * gads_connection, which only the secret-key Supabase client can read. Keys live in Vercel env vars:
  *   GADS_CLIENT_ID, GADS_CLIENT_SECRET (Google Cloud project "Procare App", OAuth client),
@@ -132,7 +132,7 @@ async function listAccounts() {
 }
 
 /**
- * Copy the last `days` days (today included) of spend and Google Guaranteed leads for every account.
+ * Copy the last `days` days (today included) of spend and Local Services leads for every account.
  * Returns { accounts, days, campaigns, leads, notes }.
  */
 export async function syncAds(days = 30) {
@@ -150,7 +150,7 @@ export async function syncAds(days = 30) {
       if (up.error) throw new Error(up.error.message);
     }
     for (const acct of accounts) {
-      // Spend by day and campaign (Google Guaranteed shows up as a LOCAL_SERVICES campaign)
+      // Spend by day and campaign (Local Services Ads show up as a LOCAL_SERVICES campaign)
       const spend = await gaql(acct.customer_id, `SELECT segments.date, campaign.id, campaign.name, campaign.advertising_channel_type,
         metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions FROM campaign
         WHERE segments.date BETWEEN '${ymd(from)}' AND '${ymd(to)}'`);
@@ -173,7 +173,7 @@ export async function syncAds(days = 30) {
       }
       campaigns += rows.length;
 
-      // Google Guaranteed leads (an account without Local Services Ads just has none)
+      // Local Services leads (an account without Local Services Ads just has none)
       let lsa = [];
       try {
         lsa = await gaql(acct.customer_id, `SELECT local_services_lead.id, local_services_lead.lead_type, local_services_lead.category_id,

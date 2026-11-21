@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 const at = (t) => new Date(`${String(t).replace(' ', 'T')}Z`).toLocaleString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
-/** Ads → Leads: every Google Guaranteed lead in the dates, newest first. */
+/** Ads → Leads: every Local Services lead in the dates, newest first. */
 export default async function AdsLeadsPage({ searchParams }) {
   const supabase = createClient();
   const range = pickAdsRange(searchParams, todayYmd());
@@ -22,13 +22,13 @@ export default async function AdsLeadsPage({ searchParams }) {
     <>
       <div className="rc-top brand-head bug-band">
         <div>
-          <p className="rc-kicker">Ads · Google Guaranteed</p>
+          <p className="rc-kicker">Ads · Local Services</p>
           <h1 className="rc-title">Every <em>lead</em></h1>
           <p className="note">{range.label}: {shortDate(range.from)} – {shortDate(range.to)}. {leads.length} lead{leads.length === 1 ? '' : 's'}, newest first.</p>
         </div>
       </div>
       <PeriodNav base="/ads/leads" range={range} periods={ADS_PERIODS} />
-      {leads.length === 0 ? <p className="note">No Google Guaranteed leads in these dates.</p> : (
+      {leads.length === 0 ? <p className="note">No Local Services leads in these dates.</p> : (
         <div className="pay-scroll">
           <table className="ops-table fin-table">
             <thead>

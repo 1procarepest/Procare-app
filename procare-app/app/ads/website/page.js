@@ -108,7 +108,7 @@ export default async function WebsitePage({ searchParams }) {
       <p className="calc-hint">
         Visitors = people (by device); visits = sessions. Leads = Google Analytics key events (e.g. a form sent or a phone
         number tapped), so they depend on what’s marked as a key event in Analytics. Channels are Google’s grouping:
-        Paid Search is Google Ads clicks; Google Guaranteed calls mostly don’t visit the website and show on the Overview instead.
+        Paid Search is Google Ads clicks; Local Services calls mostly don’t visit the website and show on the Overview instead.
       </p>
     </>
   );

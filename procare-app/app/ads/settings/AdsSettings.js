@@ -53,7 +53,7 @@ function Accounts({ accounts, offices }) {
     const { error } = await createClient().rpc('set_ads_account_office', { p_customer: id, p_office: office });
     if (error) setErr(error.message); else router.refresh();
   };
-  if (!accounts.length) return <p className="note">No ad accounts yet. Link the Google Guaranteed account to the manager account, then Sync now.</p>;
+  if (!accounts.length) return <p className="note">No ad accounts yet. Link the Local Services account to the manager account, then Sync now.</p>;
   return (
     <>
       <ul className="switches">
