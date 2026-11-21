@@ -15,10 +15,10 @@ create temporary table t_in (
 insert into t_in values
 -- ===== Atlanta West =====
 ('119','3TYAX5GN8NT035960',2022,'Toyota','Tacoma','west','Spare','for_sale','CSX6908','December','Gwinnett','Acuity',5586,'119',null,null,true,'2887994',null),
-('121','3TYRX5GN6NT053425',2022,'Toyota','Tacoma','west','No driver','for_sale','CUD9856','August','Cobb','Acuity',5586,'121',null,null,true,'2887996',null),
+('121','3TYRX5GN6NT053425',2022,'Toyota','Tacoma','west','No driver','for_sale','CUD9856','August','Cobb','Acuity',5586,'121',null,null,true,null,null),
 ('122','3TYRX5GN5PT072284',2023,'Toyota','Tacoma','west','No driver','active','CWF4306','August','Cobb','Acuity',5612,'122','B010',null,true,'2887997',null),
 ('124','3TYRX5GN7PT076724',2023,'Toyota','Tacoma','west','Shiron Cook','active','CWP2510','August','Cobb','Acuity',5612,'124',null,null,true,'2887999',null),
-('128','1GCNCPEC5EZ309619',2014,'Chevrolet','Silverado (rig)','west','Liquids rig, no tech assigned','for_sale','TEA2540','October','Paulding','Acuity',4348,'128',null,null,true,null,null),
+('128','1GCNCPEC5EZ309619',2014,'Chevrolet','Silverado (rig)','west','Liquids rig, no tech assigned','active','TEA2540','October','Paulding','Acuity',4348,'128',null,null,true,null,null),
 ('129','7G2CEHED8RA015590',2024,'Tesla','Cybertruck','west','Shiron Cook','active','DAI8200','August',null,'Acuity',7393,'129','No toolbox','No toolbox',false,'3309916',null),
 ('130','1N6ED1CL9RN668849',2024,'Nissan','Frontier','west','Robert King','active','DAI7414',null,null,'Acuity',5977,'130','B013','B013',true,'3309917',null),
 ('210','3TYRX5GN5PT076195',2023,'Toyota','Tacoma','west','Zach Fonticoba','active','CWP3065','August','Cobb','Acuity',5854,'210',null,null,true,'3309921',null),
@@ -31,7 +31,7 @@ insert into t_in values
 ('445','1N6ED1CM1RN656445',2024,'Nissan','Frontier','west','No driver','active','DDX1923','August',null,'Acuity',6153,null,null,null,true,null,null),
 ('002','3TYJDAHN3ST023002',2025,'Toyota','Tacoma','west','No driver','active',null,'August',null,'Acuity',6167,null,null,null,true,null,'Sheet says model "Toyota"'),
 ('746','1N6ED1CL1SN659746',2025,'Nissan','Frontier','west','Brandon Byram','active','DEE5441','August',null,'Acuity',5996,null,null,null,true,null,null),
-('213','3TYRX5GN0PT076430',2023,'Toyota','Tacoma','west','Miles Massengill','active','CWX7478','August','Cobb','Acuity',5612,'213','K775','K775',true,'33099','Peach Pass number looks cut off on the sheet'),
+('213','3TYRX5GN0PT076430',2023,'Toyota','Tacoma','west','Miles Massengill','active','CWX7478','August','Cobb','Acuity',5612,'213','K775','K775',true,null,null),
 ('933','1FTBR1Y82SKB26933',2026,'Ford','Transit','west','Samuel Scott','active','DGR6264','August','Cobb','Acuity',6452,null,null,null,true,null,null),
 ('979','1N6ED1CM6RN654979',2024,'Nissan','Frontier','west','No driver','active','SMC9914','August','Cobb','Acuity',6153,null,null,null,true,null,null),
 ('394','1N6ED1CL7TN655394',2026,'Nissan','Frontier','west','Adam Townsend','active','DHC3056',null,null,'Acuity',6167,null,null,null,true,null,null),
@@ -43,7 +43,7 @@ insert into t_in values
 -- ===== Atlanta East =====
 ('117','3TYRZ5CN8MT011935',2021,'Toyota','Tacoma','east','No driver','for_sale','CSM2884','August','Cobb','Acuity',5552,null,null,null,false,'2887992',null),
 ('118','3TYRZ5CN9MT011877',2021,'Toyota','Tacoma','east','Adin Sanford','for_sale','CSM1510','August','Cobb','Acuity',5586,'XXJ028','S1257','S1257',true,'2887993',null),
-('120','3TYRX5GN3NT056248',2022,'Toyota','Tacoma','east','No driver','for_sale','CUG4259','March','Gwinnett','USAA',5703,null,'B030','B030',true,'2887996',null),
+('120','3TYRX5GN3NT056248',2022,'Toyota','Tacoma','east','No driver','for_sale','CUG4259','March','Gwinnett','USAA',5703,null,'B030','B030',true,null,null),
 ('125','3TYRX5GN2PT078793',2023,'Toyota','Tacoma','east','Juwon Williams','active','SCV0368','August','Cobb','Acuity',5612,'XXJ060','B024','B024',true,'2888000',null),
 ('207','3TYRX5GN9NT047652',2022,'Toyota','Tacoma','east','No driver','for_sale','CTX5057','December','Gwinnett','Acuity',5586,null,null,null,false,'3309904',null),
 ('212','3TYRX5GN1PT076744',2023,'Toyota','Tacoma','east','Drake (old truck)','active','CWS4270','August','Cobb','Acuity',5612,null,'B047','B047',true,'3309906',null),
@@ -90,6 +90,7 @@ where t.vin = i.vin and e.active
   and (select count(*) from public.employees x where x.active and lower(trim(x.first_name) || ' ' || trim(x.last_name)) = lower(i.driver)) = 1;
 update public.trucks set driver_note = null where driver_note = 'No driver';
 
+-- John 2026-11-21: every loan on the for-sale sheet is paid off; titles are on the way.
 -- ===== Mileage, price and value (loan sheet, as of Oct 1, 2026) and the loans =====
 create temporary table l_in (
   vin text, miles int, price numeric, value numeric, lender text, payment numeric, start_on date, end_on date,
@@ -97,15 +98,15 @@ create temporary table l_in (
 ) on commit drop;
 insert into l_in values
 ('3TYAX5GN8NT035960', 95939, 37800, 22810, 'Santander',          770.66, '2022-01-01', '2027-12-14', 37799.89, 13.75, 0),
-('3TYRX5GN6NT053425', 80584, 35625, 21030, 'Renasant',           459.02, '2022-05-02', '2029-04-30', 21637.77, 5.25,  0),
-('3TYRX5GN4NT061023', 71771, 30503, 22610, 'Ally',               533.62, '2023-03-24', '2028-03-22', 25503.47, 9.34,  0),
-('3TYRZ5CN8MT011935', 74377, 35689, 24740, 'Chase',              595.34, '2021-10-31', '2026-10-30', 35688.78, 6.14,  0),
-('3TYRX5GN9NT047652', 82086, 36006, 21550, 'USAA',               649.67, '2022-04-21', '2027-04-20', 36006.18, 4.89,  0),
-('3TYRX5GN0NT061018', 67897, 30503, 23010, 'Ally',               533.62, '2023-03-24', '2028-03-22', 25503.47, 9.34,  0),
-('3TYRX5GN3NT056248', 74690, 33243, 21360, 'USAA',               649.67, '2022-06-03', '2027-06-02', 33243.17, 4.89,  10994.46),
+('3TYRX5GN6NT053425', 80584, 35625, 21030, 'Renasant',           459.02, '2022-05-02', '2029-04-30', 21637.77, 5.25, 0),
+('3TYRX5GN4NT061023', 71771, 30503, 22610, 'Ally',               533.62, '2023-03-24', '2028-03-22', 25503.47, 9.34, 0),
+('3TYRZ5CN8MT011935', 74377, 35689, 24740, 'Chase',              595.34, '2021-10-31', '2026-10-30', 35688.78, 6.14, 0),
+('3TYRX5GN9NT047652', 82086, 36006, 21550, 'USAA',               649.67, '2022-04-21', '2027-04-20', 36006.18, 4.89, 0),
+('3TYRX5GN0NT061018', 67897, 30503, 23010, 'Ally',               533.62, '2023-03-24', '2028-03-22', 25503.47, 9.34, 0),
+('3TYRX5GN3NT056248', 74690, 33243, 21360, 'USAA',               649.67, '2022-06-03', '2027-06-02', 33243.17, 4.89, 0),
 ('1GCNCPEC5EZ309619', 222718, null, 4000,  null,                 null,   null,         null,         null,     null,  null),
-('3TYRZ5CN9MT011877', 98814, 31490, 23040, 'Chase',              714.70, '2021-10-18', '2026-10-17', 31490.00, 5.99,  0),
-('1N6ED1EJ9NN661955', 70605, 33889, 19030, 'Nissan Finance',     546.74, '2022-04-30', '2027-04-29', 33889.10, 4.99,  9769.69);
+('3TYRZ5CN9MT011877', 98814, 31490, 23040, 'Chase',              714.70, '2021-10-18', '2026-10-17', 31490.00, 5.99, 0),
+('1N6ED1EJ9NN661955', 70605, 33889, 19030, 'Nissan Finance',     546.74, '2022-04-30', '2027-04-29', 33889.10, 4.99,  0);
 
 update public.trucks t set mileage = l.miles, mileage_on = '2026-10-01', purchase_price = l.price, value = l.value, value_on = '2026-10-01'
 from l_in l where t.vin = l.vin;
@@ -114,6 +115,10 @@ insert into public.truck_loans (truck_id, lender, payment, start_on, end_on, fin
 select t.id, l.lender, l.payment, l.start_on, l.end_on, l.financed, l.rate, l.balance, '2026-10-01', coalesce(l.balance, 0) = 0
 from l_in l join public.trucks t on t.vin = l.vin
 where l.lender is not null and not exists (select 1 from public.truck_loans x where x.truck_id = t.id);
+
+-- The bookkeeper for the sold / added truck emails (John, 2026-11-21)
+update public.fleet_settings set bookkeeper_name = coalesce(bookkeeper_name, 'Ekaterina Kotlyar (PCO Bookkeepers)'),
+  bookkeeper_email = 'ekaterina.kotlyar@pcobookkeepers.com' where id = 1 and bookkeeper_email is null;
 
 commit;
 

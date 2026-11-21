@@ -86,8 +86,8 @@ create table if not exists public.fleet_settings (
   id               integer primary key default 1 check (id = 1),
   insurance_name   text default 'Jared Sobelson',
   insurance_email  text default 'jaredsobelson@pninsurance.com',
-  bookkeeper_name  text default 'Ekaterina (PCO Bookkeepers)',
-  bookkeeper_email text,
+  bookkeeper_name  text default 'Ekaterina Kotlyar (PCO Bookkeepers)',
+  bookkeeper_email text default 'ekaterina.kotlyar@pcobookkeepers.com',
   reply_to         text default 'john@procarepest.com'
 );
 insert into public.fleet_settings (id) values (1) on conflict (id) do nothing;
