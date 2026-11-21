@@ -4,6 +4,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { OFFICES, OFFICE_NAME } from '@/lib/labels';
+import { SERVICE } from '@/lib/maintenance';
 import { DOC_KIND, LOG_KIND, MONTHS, ON_SHEET, STATUS, dollars, fleetTotals, monthsLeft, openLoan, truckName, usDate } from '@/lib/trucks';
 import Toggle from '../../Toggle';
 import Picker from '../../Picker';
@@ -222,13 +223,14 @@ function Status({ t, today, settings }) {
 /* ---------- History: notes, maintenance, changes ---------- */
 function Log({ t, today, money }) {
   const router = useRouter();
-  const [f, setF] = useState({ kind: 'maintenance', day: today, text: '', cost: '', miles: '' });
+  const [f, setF] = useState({ kind: 'maintenance', service: 'oil', day: today, text: '', cost: '', miles: '' });
   const [m, setM] = useState(null);
   const [sending, setSending] = useState(null);
   const add = async () => {
     const { error } = await rpc('add_truck_log', {
       p_truck: t.id, p_kind: f.kind, p_day: f.day, p_text: f.text,
       p_cost: f.cost ? Number(String(f.cost).replace(/[$,\s]/g, '')) : null, p_miles: f.miles ? Number(String(f.miles).replace(/[,\s]/g, '')) : null,
+      p_service: f.kind === 'maintenance' ? f.service : null,
     });
     if (error) { setM({ ok: false, text: error.message }); return; }
     setF({ ...f, text: '', cost: '', miles: '' }); setM(null);
@@ -251,12 +253,15 @@ function Log({ t, today, money }) {
       <div className="chips">
         {['maintenance', 'note'].map((k) => <button key={k} type="button" className={`chip${f.kind === k ? ' on' : ''}`} onClick={() => setF({ ...f, kind: k })}>{LOG_KIND[k]}</button>)}
       </div>
+      {f.kind === 'maintenance' && <div className="chips">
+        {Object.entries(SERVICE).map(([k, label]) => <button key={k} type="button" className={`chip${f.service === k ? ' on' : ''}`} onClick={() => setF({ ...f, service: k })}>{label}</button>)}
+      </div>}
       <div className="tr-grid">
         <Field label="Date"><input type="date" value={f.day} max={today} onChange={(e) => setF({ ...f, day: e.target.value })} /></Field>
         {f.kind === 'maintenance' && <Field label="Cost ($)"><input inputMode="decimal" value={f.cost} onChange={(e) => setF({ ...f, cost: e.target.value })} /></Field>}
         <Field label="Miles"><input inputMode="numeric" value={f.miles} onChange={(e) => setF({ ...f, miles: e.target.value })} /></Field>
         <Field label={f.kind === 'maintenance' ? 'What was done' : 'Note'} wide>
-          <textarea rows={2} value={f.text} onChange={(e) => setF({ ...f, text: e.target.value })} placeholder={f.kind === 'maintenance' ? 'Oil change, tires, windshield, ...' : ''} />
+          <textarea rows={2} value={f.text} onChange={(e) => setF({ ...f, text: e.target.value })} placeholder={f.kind === 'maintenance' ? 'Shop, parts, anything to remember (optional)' : ''} />
         </Field>
       </div>
       <div className="panel-buttons"><button type="button" className="btn btn-small" onClick={add}>Add</button></div>

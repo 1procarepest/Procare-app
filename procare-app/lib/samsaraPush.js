@@ -134,3 +134,37 @@ export async function syncSamsara(admin, { ids = null, apply = false } = {}) {
   if (missing.length) lines.push(`Not in Samsara (no vehicle with that VIN): ${missing.join(', ')}`);
   return { lines, changed, missing, problems };
 }
+
+/**
+ * Change 82: each truck's odometer from Samsara (needs Read Vehicle Statistics on the key). Read only: changes nothing
+ * in Samsara. Matched like the push: the linked vehicle, else the VIN. The sheet's miles follow when newer.
+ */
+export async function syncOdometers(admin) {
+  const vehicles = await all('/fleet/vehicles');
+  const vinOf = Object.fromEntries(vehicles.map((v) => [String(v.id), String(v.vin || '').toUpperCase()]));
+  const stats = [];
+  let after = '';
+  do {
+    const r = await ss(`/fleet/vehicles/stats?types=obdOdometerMeters,gpsOdometerMeters${after ? `&after=${encodeURIComponent(after)}` : ''}`)
+      .catch((e) => { throw /refused \(40[13]\)/.test(e.message) ? new Error('Samsara refused the odometer read: add Read Vehicle Statistics to the Samsara key (Samsara → Settings → API Tokens), then update SAMSARA_API_TOKEN in Vercel and redeploy.') : e; });
+    stats.push(...(r.data || []));
+    after = r.pagination?.hasNextPage ? r.pagination.endCursor : '';
+  } while (after);
+  const { data: trucks } = await admin.from('trucks').select('id, vin, samsara_vehicle_id, mileage_on').in('status', ['active', 'for_sale']);
+  const byLink = Object.fromEntries((trucks || []).filter((t) => t.samsara_vehicle_id).map((t) => [t.samsara_vehicle_id, t]));
+  const byVin = Object.fromEntries((trucks || []).filter((t) => t.vin).map((t) => [String(t.vin).toUpperCase(), t]));
+  let updated = 0;
+  for (const s of stats) {
+    const reading = s.obdOdometerMeters?.value ? s.obdOdometerMeters : s.gpsOdometerMeters?.value ? s.gpsOdometerMeters : null;
+    const t = byLink[String(s.id)] || byVin[vinOf[String(s.id)]];
+    if (!reading || !t) continue;
+    const miles = Math.round(Number(reading.value) / 1609.344);
+    const at = reading.time || new Date().toISOString();
+    const day = new Date(at).toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    const upd = { odometer: miles, odometer_at: at };
+    if (!t.mileage_on || t.mileage_on <= day) Object.assign(upd, { mileage: miles, mileage_on: day });
+    await admin.from('trucks').update(upd).eq('id', t.id);
+    updated += 1;
+  }
+  return { odometers: updated };
+}

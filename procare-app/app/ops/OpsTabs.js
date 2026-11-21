@@ -10,6 +10,7 @@ const TABS = [
   { href: '/ops/route-plan', label: 'Route Plan for Next Month' },
   { href: '/ops/trucks', label: 'Trucks', trucks: true },
   { href: '/ops/drivers', label: 'Drivers', drivers: true },
+  { href: '/ops/maintenance', label: 'Maintenance', trucks: true },
 ];
 
 export default function OpsTabs({ trucks = false, drivers = false }) {

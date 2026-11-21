@@ -5,7 +5,8 @@ import { hasSecondStep } from '@/lib/mfa';
 import { syncBalanceSheet, syncPl } from '@/lib/qbo';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendPendingDriverNotices } from '@/lib/driverNotice';
-import { samsaraConfigured, syncSamsara } from '@/lib/samsaraPush';
+import { samsaraConfigured, syncOdometers, syncSamsara } from '@/lib/samsaraPush';
+import { sendOilReminders } from '@/lib/maintenanceReminder';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -28,6 +29,12 @@ export async function GET(request) {
       drivers = { ...drivers, samsaraChanged: r.changed, samsaraProblems: r.problems.length };
     }
   } catch (e) { drivers = { ...drivers, samsaraError: String(e.message || e) }; }
+  // Odometers from Samsara (read only, change 82), then Monday's oil-change reminders
+  try { if (samsaraConfigured()) drivers = { ...drivers, ...(await syncOdometers(createAdminClient())) }; } catch (e) { drivers = { ...drivers, odometerError: String(e.message || e) }; }
+  try {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    if (new Date(`${today}T12:00:00Z`).getUTCDay() === 1) drivers = { ...drivers, ...(await sendOilReminders(createAdminClient(), today, new URL(request.url).origin)) };
+  } catch (e) { drivers = { ...drivers, oilError: String(e.message || e) }; }
   try {
     const pl = await syncPl(3);
     return NextResponse.json({ ok: true, ...drivers, ...pl, ...(await syncBalanceSheet(13)) });

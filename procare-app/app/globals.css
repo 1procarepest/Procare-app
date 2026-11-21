@@ -1885,3 +1885,9 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .admin-driver { margin-top: 18px; max-width: 760px; }
 .tr-ss { font-size: 12.5px; }
 .tr-ss-lines { margin: 6px 0 0; padding-left: 18px; font-size: 13px; max-height: 320px; overflow: auto; }
+
+/* ---------- Operations → Maintenance (change 82) ---------- */
+.mt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; margin-top: 18px; }
+.mt-rules { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-top: 18px; max-width: 640px; }
+.mt-rules .tr-field { width: 180px; }
+.mt-log { margin: 8px 0; }

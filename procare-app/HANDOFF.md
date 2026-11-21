@@ -6,7 +6,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - John Ely, President of Procare Pest (3 Atlanta offices: East, West, South). Not technical: short, plain answers, one step and one question at a time.
 - Repo `1procarepest/Procare-app`; the app is in `procare-app/` (Next.js 14 App Router, plain JS, Supabase). Vercel deploys from `main`.
 - Check with `npm run build` before pushing. Commit and push only your own files; end commit messages with the Co-Authored-By line.
-- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-21-81-samsara-push.sql`, so the next is 82). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
+- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-21-82-maintenance.sql`, so the next is 83). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
 - Supabase cuts a request off after about 8 s. Time heavy queries on real data first.
 - SQL tests run in PGlite (`@electric-sql/pglite`); there's no local Postgres. The new Mac (2026-11-16) had no Node.js or Homebrew at first.
 - **UI rules from John**: use toggle switches (`app/Toggle.js`), never checkboxes. Use the brand look: `.brand-head` patterned headers, bug art from `app/Bug.js` (bugs anywhere; wildlife icons only on future wildlife pages), colors ink/forest/green/lime/sage.
@@ -119,6 +119,13 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
   `fleet_settings.samsara_auto` after the preview (Operations → Trucks → Samsara); then each sheet change pushes and
   the daily QuickBooks cron also runs it. Needs `SAMSARA_API_TOKEN` in Vercel (Read + Write Vehicles, Read Tags),
   separate from Procare Sync's SAMSARA_TOKEN.
+
+- **Maintenance (change 82, 2026-11-21)**: Operations → Maintenance (`app/ops/maintenance`, `lib/maintenance.js`).
+  `truck_log.service` (oil, tires, brakes, inspection, other); oil changes drive the due list (every
+  `fleet_settings.oil_every_miles` / `oil_every_months`, default 5,000 / 6; due soon = 500 mi / 14 days). Odometers
+  come from Samsara daily (`syncOdometers`, needs Read Vehicle Statistics on SAMSARA_API_TOKEN; also "Refresh
+  miles"). Monday reminder email to each office's technician managers (`lib/maintenanceReminder.js`, switch
+  oil_change_reminder), from the daily QuickBooks cron. Cost by truck / office / service for 12 months.
 
 ## Next up (John's list)
 1. ~~Manager bonuses~~: live since 2026-11-16 (changes 47–49). Setup left for Ally: Ryan as report recipient, yearly amounts, Q4 goals, past reports.
