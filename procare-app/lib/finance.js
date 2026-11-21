@@ -8,12 +8,12 @@ const ymd = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
 
 // QuickBooks is only complete through last month (books close monthly), so Last month is the default (John, 2026-11-19)
 export const PERIODS = [
-  { key: 'lastMonth', label: 'Last month' },
-  { key: 'closedYtd', label: 'Year through last month' },
-  { key: 'lastQuarter', label: 'Last quarter' },
-  { key: 'lastYear', label: 'Last year' },
-  { key: 'thisMonth', label: 'This month (so far)' },
-  { key: 'ytd', label: 'Year to date (so far)' },
+  { key: 'lastMonth', label: 'Last Month' },
+  { key: 'closedYtd', label: 'Year Through Last Month' },
+  { key: 'lastQuarter', label: 'Last Quarter' },
+  { key: 'lastYear', label: 'Last Year' },
+  { key: 'thisMonth', label: 'This Month (So Far)' },
+  { key: 'ytd', label: 'Year to Date (So Far)' },
 ];
 export const DEFAULT_PERIOD = 'lastMonth';
 const MONTH = /^(\d{4})-(\d{2})$/;
@@ -31,7 +31,7 @@ export function pickRange(searchParams, today) {
     if (fm >= 1 && fm <= 12 && tm >= 1 && tm <= 12) {
       const from = ymd(fy, fm, 1);
       const to = ymd(ty, tm, lastDay(ty, tm));
-      return { key: 'custom', from, to, label: 'Custom range', fromMonth: `${fy}-${pad(fm)}`, toMonth: `${ty}-${pad(tm)}` };
+      return { key: 'custom', from, to, label: 'Custom Range', fromMonth: `${fy}-${pad(fm)}`, toMonth: `${ty}-${pad(tm)}` };
     }
   }
   const key = PERIODS.some((p) => p.key === searchParams?.p) ? searchParams.p : DEFAULT_PERIOD;

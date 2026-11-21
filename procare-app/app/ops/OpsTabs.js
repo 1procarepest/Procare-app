@@ -6,8 +6,8 @@ import { usePathname } from 'next/navigation';
 /** Operations sections side by side: the Suite, AR & job pool, and next month's route plan. */
 const TABS = [
   { href: '/ops', label: 'Operations Suite', match: (p) => p === '/ops' },
-  { href: '/ops/accounts', label: 'AR & job pool' },
-  { href: '/ops/route-plan', label: 'Route plan for next month' },
+  { href: '/ops/accounts', label: 'AR & Job Pool' },
+  { href: '/ops/route-plan', label: 'Route Plan for Next Month' },
 ];
 
 export default function OpsTabs() {

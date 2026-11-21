@@ -2,11 +2,11 @@
 
 export const PERIODS = [
   { key: 'today', label: 'Today', prior: 'the same day last week' },
-  { key: 'thisWeek', label: 'This week', prior: 'same point last week' },
-  { key: 'lastWeek', label: 'Last week', prior: 'the week before' },
-  { key: 'thisMonth', label: 'This month', prior: 'same point last month' },
-  { key: 'lastMonth', label: 'Last month', prior: 'the month before' },
-  { key: 'thisYear', label: 'This year', prior: 'same point last year' },
+  { key: 'thisWeek', label: 'This Week', prior: 'same point last week' },
+  { key: 'lastWeek', label: 'Last Week', prior: 'the week before' },
+  { key: 'thisMonth', label: 'This Month', prior: 'same point last month' },
+  { key: 'lastMonth', label: 'Last Month', prior: 'the month before' },
+  { key: 'thisYear', label: 'This Year', prior: 'same point last year' },
 ];
 
 export const num = (v) => (v === null || v === undefined || v === '' ? 0 : Number(v));

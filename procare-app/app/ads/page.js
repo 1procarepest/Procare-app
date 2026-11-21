@@ -26,7 +26,7 @@ export default async function AdsPage({ searchParams }) {
     <>
       <div className="rc-top brand-head bug-band">
         <div>
-          <p className="rc-kicker">Ads · Google</p>
+          <p className="rc-kicker">Marketing · Google</p>
           <h1 className="rc-title">Cost per <em>lead</em></h1>
           <p className="note">{range.label}: {shortDate(range.from)} – {shortDate(range.to)}. Local Services Ads (pay per lead) and search ads (pay per click), with new customers from FieldRoutes.
             {conn.last_sync_at ? ` Updated from Google ${when(conn.last_sync_at)}.` : ''}</p>
@@ -37,7 +37,7 @@ export default async function AdsPage({ searchParams }) {
       {empty ? (
         <p className="panel">
           {conn.connected ? 'Google Ads is connected, but no numbers have been copied yet. ' : 'Google Ads isn’t connected yet. '}
-          {data?.manage ? <Link href="/ads/settings">Open Settings</Link> : 'Ask John to connect it in Ads → Settings.'}
+          {data?.manage ? <Link href="/ads/settings">Open Settings</Link> : 'Ask John to connect it in Marketing → Settings.'}
         </p>
       ) : (
         <>

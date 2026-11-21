@@ -22,7 +22,7 @@ export default async function AdsLeadsPage({ searchParams }) {
     <>
       <div className="rc-top brand-head bug-band">
         <div>
-          <p className="rc-kicker">Ads · Local Services</p>
+          <p className="rc-kicker">Marketing · Local Services</p>
           <h1 className="rc-title">Every <em>lead</em></h1>
           <p className="note">{range.label}: {shortDate(range.from)} – {shortDate(range.to)}. {leads.length} lead{leads.length === 1 ? '' : 's'}, newest first.</p>
         </div>

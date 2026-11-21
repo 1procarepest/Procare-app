@@ -11,12 +11,12 @@ const MONTH = /^(\d{4})-(\d{2})$/;
 
 // Google numbers are daily, so the presets include rolling days (unlike Finance, which is whole months)
 export const ADS_PERIODS = [
-  { key: 'last30', label: 'Last 30 days' },
-  { key: 'last7', label: 'Last 7 days' },
-  { key: 'thisMonth', label: 'This month' },
-  { key: 'lastMonth', label: 'Last month' },
-  { key: 'last90', label: 'Last 90 days' },
-  { key: 'ytd', label: 'Year to date' },
+  { key: 'last30', label: 'Last 30 Days' },
+  { key: 'last7', label: 'Last 7 Days' },
+  { key: 'thisMonth', label: 'This Month' },
+  { key: 'lastMonth', label: 'Last Month' },
+  { key: 'last90', label: 'Last 90 Days' },
+  { key: 'ytd', label: 'Year to Date' },
 ];
 
 /** { key, from, to, label, fromMonth, toMonth } from ?p=… or a custom month range (?from=YYYY-MM&to=YYYY-MM). */
@@ -27,7 +27,7 @@ export function pickAdsRange(searchParams, today) {
     let [fy, fm, ty, tm] = [Number(f[1]), Number(f[2]), Number(t[1]), Number(t[2])];
     if (fy * 12 + fm > ty * 12 + tm) [fy, fm, ty, tm] = [ty, tm, fy, fm];
     if (fm >= 1 && fm <= 12 && tm >= 1 && tm <= 12) {
-      return { key: 'custom', label: 'Custom range', from: `${fy}-${pad(fm)}-01`, to: `${ty}-${pad(tm)}-${pad(lastDay(ty, tm))}`,
+      return { key: 'custom', label: 'Custom Range', from: `${fy}-${pad(fm)}-01`, to: `${ty}-${pad(tm)}-${pad(lastDay(ty, tm))}`,
         fromMonth: `${fy}-${pad(fm)}`, toMonth: `${ty}-${pad(tm)}` };
     }
   }

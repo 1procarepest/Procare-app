@@ -7,14 +7,14 @@ export default function AdminNav({ showSettings, showPayouts, showReviews }) {
   const path = usePathname();
   const tabs = [
     { href: '/admin', label: 'People', match: (p) => p === '/admin' || p.startsWith('/admin/people') },
-    { href: '/admin/time-off', label: 'Time off' },
-    { href: '/admin/issues', label: 'Schedule issues' },
+    { href: '/admin/time-off', label: 'Time Off' },
+    { href: '/admin/issues', label: 'Schedule Issues' },
   ];
   // Payroll time off and year reviews (change 60)
   if (showPayouts) tabs.push({ href: '/admin/payroll', label: 'Payroll' });
   if (showReviews) tabs.push({ href: '/admin/reviews', label: 'Reviews' });
-  if (showPayouts) tabs.push({ href: '/admin/payouts', label: 'Prize payouts' });
-  if (showSettings) tabs.push({ href: '/admin/notifications', label: 'Email settings' });
+  if (showPayouts) tabs.push({ href: '/admin/payouts', label: 'Prize Payouts' });
+  if (showSettings) tabs.push({ href: '/admin/notifications', label: 'Email Settings' });
   if (showSettings) tabs.push({ href: '/admin/holidays', label: 'Holidays' });
 
   return (

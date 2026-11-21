@@ -70,7 +70,7 @@ function ReviewForm({ person, start, onDone }) {
       ))}
       <Toggle checked={f.shared} onChange={set('shared')}>
         <span>Share with {person.first_name}</span>
-        <span className="note">{f.shared ? 'They can read it on their My profile page' : 'Only reviewers can see it'}</span>
+        <span className="note">{f.shared ? 'They can read it on their My Profile page' : 'Only reviewers can see it'}</span>
       </Toggle>
       <div className="panel-buttons">
         <button className="btn" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save review'}</button>
@@ -79,6 +79,31 @@ function ReviewForm({ person, start, onDone }) {
       </div>
       {msg && <p className="error" role="alert">{msg}</p>}
     </form>
+  );
+}
+
+// 6-month check-ins and yearly reviews (change 73): share or unshare, or delete
+function ShareButton({ r, name }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const flip = async () => {
+    setBusy(true); setErr('');
+    const { error } = await createClient().from('employee_reviews').update({ shared: !r.shared, updated_at: new Date().toISOString() }).eq('id', r.id);
+    setBusy(false);
+    if (error) setErr(error.message); else router.refresh();
+  };
+  const remove = async () => {
+    if (!window.confirm(`Delete this for ${name}? This can’t be undone.`)) return;
+    const { error } = await createClient().from('employee_reviews').delete().eq('id', r.id);
+    if (error) setErr(error.message); else router.refresh();
+  };
+  return (
+    <>
+      <Toggle small checked={!!r.shared} disabled={busy} onChange={flip}><span>Shared with {name}</span></Toggle>
+      <button type="button" className="link" onClick={remove}>Delete</button>
+      {err && <span className="error">{err}</span>}
+    </>
   );
 }
 
@@ -99,14 +124,20 @@ export default function ReviewsView({ people, pick, reviews, today }) {
         {editing ? (
           <ReviewForm key={editing.id || 'new'} person={person} start={editing} onDone={() => setEditing(null)} />
         ) : (
-          <button type="button" className="btn btn-small" onClick={() => setEditing(blank(today))}>+ New year review</button>
+          <div className="panel-buttons">
+            <Link className="btn btn-small" href={`/reports/review?kind=checkin&person=${person.id}`}>+ 6 Month Check-In</Link>
+            <Link className="btn btn-small" href={`/reports/review?kind=yearly&person=${person.id}`}>+ Yearly Review</Link>
+            <button type="button" className="btn btn-small btn-quiet" onClick={() => setEditing(blank(today))}>+ G.R.E.E.N. ratings</button>
+          </div>
         )}
         <div className="rv-list">
           {reviews.length === 0 && <p className="note">No reviews yet.</p>}
           {reviews.map((r) => (
             <ReviewCard key={r.id} r={r}>
               <span className={`badge${r.shared ? '' : ' badge-warn'}`}>{r.shared ? 'Shared' : 'Not shared yet'}</span>
-              <button type="button" className="link" onClick={() => setEditing({ ...blank(today), ...r, strengths: r.strengths || '', growth: r.growth || '', goals: r.goals || '', notes: r.notes || '', ratings: r.ratings || {} })}>Edit</button>
+              {r.kind === 'checkin' || r.kind === 'yearly'
+                ? <ShareButton r={r} name={person.first_name} />
+                : <button type="button" className="link" onClick={() => setEditing({ ...blank(today), ...r, strengths: r.strengths || '', growth: r.growth || '', goals: r.goals || '', notes: r.notes || '', ratings: r.ratings || {} })}>Edit</button>}
             </ReviewCard>
           ))}
         </div>
@@ -117,8 +148,8 @@ export default function ReviewsView({ people, pick, reviews, today }) {
   return (
     <section className="section reviews">
       <div className="admin-head">
-        <h1>Year reviews</h1>
-        <p className="note">Rate each person on the G.R.E.E.N. values and keep notes, saved in the app. Turn on “Share” and they can read it on their My profile page.</p>
+        <h1>Reviews</h1>
+        <p className="note">6-month check-ins, yearly reviews (start them in Forms) and G.R.E.E.N. ratings, saved in the app. Turn on “Share” and they can read it on their My Profile page.</p>
       </div>
       <input type="search" className="rv-search" placeholder="Find a person…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find a person" />
       <ul className="people">

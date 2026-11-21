@@ -152,11 +152,11 @@ function People({ people: start }) {
           <li key={p.id}>
             <Toggle className="switch" checked={always(p) || p.ads_access} disabled={always(p)} onChange={(v) => set(p.id, v)}>
               <span>{p.name}</span>
-              <span className="note">{always(p) ? 'Always (C-Suite / President)' : p.ads_access ? 'Sees Ads' : 'No access'}</span>
+              <span className="note">{always(p) ? 'Always (C-Suite / President)' : p.ads_access ? 'Sees Marketing' : 'No access'}</span>
             </Toggle>
           </li>
         ))}
-        {shown.length === 0 && <li className="note">{term ? 'No one by that name.' : 'No one else has Ads access yet. Search for a name to add them.'}</li>}
+        {shown.length === 0 && <li className="note">{term ? 'No one by that name.' : 'No one else has Marketing access yet. Search for a name to add them.'}</li>}
       </ul>
       {err && <p className="error" role="alert">{err}</p>}
     </>
@@ -167,7 +167,7 @@ export default function AdsSettings({ properties, property, propError, connectio
   return (
     <section className="section">
       <div className="admin-head">
-        <h1>Ads settings</h1>
+        <h1>Marketing settings</h1>
         <p className="note">C-Suite and the President only.</p>
       </div>
       {notice && <p className={notice.ok ? 'ok' : 'error'} role="status">{notice.text}</p>}
@@ -178,15 +178,15 @@ export default function AdsSettings({ properties, property, propError, connectio
       <Accounts accounts={accounts} offices={offices} />
 
       <h2 className="fin-h2">Website (Google Analytics)</h2>
-      <p className="note">Which Google Analytics property is procarepest.com. Its visits, sources, top pages and website leads show in Ads → Website.</p>
+      <p className="note">Which Google Analytics property is procarepest.com. Its visits, sources, top pages and website leads show in Marketing → Website.</p>
       <Website properties={properties} property={property} error={propError} connected={!!connection.connected} />
 
       <h2 className="fin-h2">Google lead sources in FieldRoutes</h2>
       <p className="note">New customers whose purchase came in under these lead sources count as Google customers (for cost per customer).</p>
       <Sources key={picked.join('|')} sources={sources} picked={picked} />
 
-      <h2 className="fin-h2">Who sees Ads</h2>
-      <p className="note">Turn this on for the people who run the ads. They see Ads (spend, leads, cost per lead and customer) and nothing in Finance.</p>
+      <h2 className="fin-h2">Who sees Marketing</h2>
+      <p className="note">Turn this on for the people who run the ads. They see Marketing (spend, leads, cost per lead and customer) and nothing in Finance.</p>
       <People people={people} />
     </section>
   );

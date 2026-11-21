@@ -4,7 +4,7 @@ export const APPS = {
   sales: { name: 'Sales Performance Card', short: 'Sales', blurb: 'Doors, sales and rep standings.', href: '/reps', bug: 'ant', tone: 'lime' },
   wildlife: { name: 'Wildlife', short: 'Wildlife', blurb: 'The wildlife team’s scorecard and exclusion, warranty, trapping and insulation sales.', href: '/wildlife', critter: 'raccoon', tone: 'forest' },
   finance: { name: 'Finance', short: 'Finance', blurb: 'P&L by office and Wildlife from QuickBooks, and marketing cost per customer.', href: '/finance', bug: 'termite', tone: 'lime' },
-  ads: { name: 'Ads', short: 'Ads', blurb: 'Local Services Ads, Google search ads and the website: spend, leads, cost per lead and cost per customer.', href: '/ads', bug: 'cricket', tone: 'ink' },
+  ads: { name: 'Marketing', short: 'Marketing', blurb: 'Local Services Ads, Google search ads and the website: spend, leads, cost per lead and cost per customer.', href: '/ads', bug: 'cricket', tone: 'ink' },
   operations: { name: 'Operations Performance Card', short: 'Operations', blurb: 'Sales, cancels, job pool, reservice and AR for every office.', href: '/ops', bug: 'termite', tone: 'ink' },
 };
 

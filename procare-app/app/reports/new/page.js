@@ -24,7 +24,7 @@ export default async function NewReportPage({ searchParams }) {
       <div className="rc-top brand-head brand-hero">
         <Bug kind={kind === 'ride_along' ? 'cricket' : 'spider'} size={150} className="brand-head-bug" />
         <div>
-          <p className="rc-kicker"><Link href="/reports">Reports</Link></p>
+          <p className="rc-kicker"><Link href="/reports">Forms</Link></p>
           <h1 className="rc-title">New <em>{KIND_LABEL[kind].toLowerCase()}</em></h1>
           <p className="note">{kind === 'ride_along' ? 'One per day with the tech.' : 'One per customer visit.'}</p>
         </div>

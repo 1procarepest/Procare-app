@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 const TABS = [
   { key: 'goals', label: 'Goals' },
-  { key: 'amounts', label: 'Bonus amounts' },
+  { key: 'amounts', label: 'Bonus Amounts' },
   { key: 'approve', label: 'Approve' },
   { key: 'settings', label: 'Settings' },
 ];

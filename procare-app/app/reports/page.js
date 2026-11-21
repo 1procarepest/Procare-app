@@ -74,11 +74,25 @@ export default async function ReportsPage({ searchParams }) {
         </div>
         {canFile && (
           <div className="rf-new">
-            <Link className="btn btn-small" href="/reports/new?kind=ride_along">New ride-along</Link>
-            <Link className="btn btn-small" href="/reports/new?kind=follow_behind">New follow-behind</Link>
+            <Link className="btn btn-small" href="/reports/new?kind=ride_along">New Ride-Along</Link>
+            <Link className="btn btn-small" href="/reports/new?kind=follow_behind">New Follow-Behind</Link>
           </div>
         )}
       </div>
+
+      {(me.rank >= 3 || me.hr_approver) && (
+        <div className="rc-top brand-head brand-hero rf-hr">
+          <Bug kind="ant" size={150} className="brand-head-bug" />
+          <div>
+            <p className="rc-kicker">HR who cares · Yearly review</p>
+            <h1 className="rc-title">Your <em>Review</em></h1>
+          </div>
+          <div className="rf-new">
+            <Link className="btn btn-small" href="/reports/review?kind=checkin">6 Month Check-In</Link>
+            <Link className="btn btn-small" href="/reports/review?kind=yearly">Your Yearly Review</Link>
+          </div>
+        </div>
+      )}
 
       {searchParams?.sent && <p className="cp-me">Sent. Ryan has a copy, and it counts once the “I told the tech” switch is on.</p>}
       {searchParams?.queued && <p className="cp-me">No signal right now. The report is saved on this phone and sends when you’re back online.</p>}

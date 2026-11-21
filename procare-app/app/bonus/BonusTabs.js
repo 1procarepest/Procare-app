@@ -7,8 +7,8 @@ import { usePathname } from 'next/navigation';
 export default function BonusTabs({ mine, manage }) {
   const path = usePathname();
   const tabs = [
-    mine && { href: '/bonus', label: 'Your goals', on: path === '/bonus' },
-    manage && { href: '/bonus/manage', label: 'Manage bonuses', on: path.startsWith('/bonus/manage') },
+    mine && { href: '/bonus', label: 'Your Goals', on: path === '/bonus' },
+    manage && { href: '/bonus/manage', label: 'Manage Bonuses', on: path.startsWith('/bonus/manage') },
   ].filter(Boolean);
   if (tabs.length < 2) return null;
   return (

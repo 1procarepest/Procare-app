@@ -7,7 +7,7 @@ import { createAdminClient } from './supabase/admin';
 import { accessToken, syncAds } from './gads';
 
 /** Analytics answered "this sign-in can't read Analytics": the connection predates change 72. */
-export const NEEDS_RECONNECT = 'Analytics needs one more permission: in Ads -> Settings, Disconnect, then Connect Google Ads again and allow Analytics.';
+export const NEEDS_RECONNECT = 'Analytics needs one more permission: in Marketing → Settings, Disconnect, then Connect Google Ads again and allow Analytics.';
 
 async function call(url, body) {
   const res = await fetch(url, {
@@ -81,7 +81,7 @@ export async function syncWebsite(days = 30) {
   let property = c.ga_property;
   if (!property) {
     const props = await listProperties();
-    if (props.length !== 1) return { skipped: props.length ? 'Pick the website’s Analytics property in Ads -> Settings.' : 'This Google login can’t see any Google Analytics property.' };
+    if (props.length !== 1) return { skipped: props.length ? 'Pick the website’s Analytics property in Marketing → Settings.' : 'This Google login can’t see any Google Analytics property.' };
     property = props[0].id;
     await a.from('gads_connection').update({ ga_property: property, ga_property_name: props[0].name }).eq('id', 1);
   }

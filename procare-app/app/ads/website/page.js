@@ -39,7 +39,7 @@ export default async function WebsitePage({ searchParams }) {
     <>
       <div className="rc-top brand-head bug-band">
         <div>
-          <p className="rc-kicker">Ads · Website{prop.name ? ` · ${prop.name}` : ''}</p>
+          <p className="rc-kicker">Marketing · Website{prop.name ? ` · ${prop.name}` : ''}</p>
           <h1 className="rc-title">Website <em>visits</em></h1>
           <p className="note">{range.label}: {shortDate(range.from)} – {shortDate(range.to)}. From Google Analytics: who came to the website, from where, and who reached out.</p>
         </div>
