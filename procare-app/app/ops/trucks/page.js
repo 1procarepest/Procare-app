@@ -12,7 +12,7 @@ export default async function TrucksPage() {
   const supabase = createClient();
   const { me } = await getMe(supabase);
   if (!me || me.rank < 3 || me.department === 'wildlife') redirect('/ops');
-  const { data, error } = await supabase.rpc('trucks_data');
+  const [{ data, error }, { data: samsara }] = await Promise.all([supabase.rpc('trucks_data'), supabase.rpc('samsara_status')]);
   if (error) return <p className="error">The truck sheet couldn’t load: {error.message}{/trucks_data/.test(error.message) ? ' (run change 75 in Supabase first)' : ''}</p>;
   if (!data) redirect('/ops');
   return (
@@ -23,6 +23,8 @@ export default async function TrucksPage() {
       money={!!data.money}
       verify={!data.money && me.rank >= 4 ? verifyHref('/ops/trucks') : null}
       today={todayYmd()}
+      samsara={samsara || null}
+      chief={me.rank >= 4}
     />
   );
 }

@@ -1883,3 +1883,5 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .drv-warn strong { color: #8A6A00; }
 .drv-edit { max-width: 720px; }
 .admin-driver { margin-top: 18px; max-width: 760px; }
+.tr-ss { font-size: 12.5px; }
+.tr-ss-lines { margin: 6px 0 0; padding-left: 18px; font-size: 13px; max-height: 320px; overflow: auto; }

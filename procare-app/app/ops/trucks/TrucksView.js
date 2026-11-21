@@ -11,6 +11,15 @@ import Picker from '../../Picker';
 const rpc = (name, args) => createClient().rpc(name, args);
 const last6 = (vin) => (vin ? vin.slice(-6) : '');
 
+/** Tell Samsara about a change on the sheet (change 81). The server does nothing while the push is off. */
+async function nudgeSamsara(truckId) {
+  try {
+    const res = await fetch('/api/samsara', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'push', truck: truckId }) });
+    const j = await res.json().catch(() => ({}));
+    return j.skipped || j.ok ? null : (j.problems || []).join(' ') || j.text || null;
+  } catch { return null; }
+}
+
 /** Sends the insurance + bookkeeper emails for an added / removed truck. Returns the message to show. */
 async function sendNotice(id) {
   const res = await fetch('/api/fleet-notice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
@@ -156,8 +165,9 @@ function Status({ t, today, settings }) {
     if (error) { setBusy(false); setM({ ok: false, text: error.message }); return; }
     let note = null;
     if (ev && extra.email) note = await sendNotice(ev);
+    const ss = await nudgeSamsara(t.id);
     setBusy(false);
-    setM(note || { ok: true, text: 'Saved.' });
+    setM(ss ? { ok: false, text: `${note?.text || 'Saved'} · Samsara: ${ss}` } : note || { ok: true, text: 'Saved.' });
     setOpen(false);
     router.refresh();
   };
@@ -382,7 +392,7 @@ function Documents({ t }) {
 }
 
 /* ---------- One truck, opened ---------- */
-function TruckCard({ t, people, money, today, settings }) {
+function TruckCard({ t, people, money, today, settings, samsara }) {
   const router = useRouter();
   const [f, setF] = useState(() => blank(t));
   const [driver, setDriver] = useState({ id: t.driver_id || '', note: t.driver_note || '' });
@@ -392,16 +402,24 @@ function TruckCard({ t, people, money, today, settings }) {
   const saveDriver = async (id, note) => {
     setDriver({ id, note });
     const { error } = await rpc('set_truck_driver', { p_truck: t.id, p_driver: id || null, p_note: note });
-    if (error) setM({ ok: false, text: error.message }); else router.refresh();
+    if (error) { setM({ ok: false, text: error.message }); return; }
+    await synced();
   };
   const move = async (office) => {
     const { error } = await rpc('move_truck', { p_truck: t.id, p_office: office });
-    if (error) setM({ ok: false, text: error.message }); else router.refresh();
+    if (error) { setM({ ok: false, text: error.message }); return; }
+    await synced();
   };
   const save = async () => {
     const { error } = await rpc('save_truck', { p_id: t.id, p: clean(f, money) });
-    setM(error ? { ok: false, text: error.message } : { ok: true, text: 'Saved.' });
-    if (!error) router.refresh();
+    if (error) { setM({ ok: false, text: error.message }); return; }
+    await synced('Saved.');
+  };
+  // After a change: Samsara (when the push is on), then reload the sheet
+  const synced = async (okText = null) => {
+    const ss = await nudgeSamsara(t.id);
+    setM(ss ? { ok: false, text: `Saved here, but Samsara: ${ss}` } : okText ? { ok: true, text: okText } : null);
+    router.refresh();
   };
 
   return (
@@ -423,6 +441,8 @@ function TruckCard({ t, people, money, today, settings }) {
 
       <section className="tr-sec">
         <h3>Details</h3>
+        <p className="note tr-ss">Samsara: {samsara?.vehicle_id ? `“${samsara.name}”` : 'not matched yet'}{samsara?.pushed_at ? ` · updated ${usDate(samsara.pushed_at.slice(0, 10))}` : ''}
+          {samsara?.result ? <span className="error"> · {samsara.result}</span> : null}</p>
         <DetailsForm f={f} set={(patch) => setF({ ...f, ...patch })} money={money} />
         <div className="panel-buttons"><button type="button" className="btn btn-small" onClick={save}>Save details</button></div>
         <Msg m={m} />
@@ -471,6 +491,7 @@ function AddTruck({ today, settings, onClose, money }) {
     }
     let note = null;
     if (email && data?.event) note = await sendNotice(data.event);
+    await nudgeSamsara(data.id);
     setBusy(false);
     setM(problems.length ? { ok: false, text: [note?.text, ...problems].filter(Boolean).join(' · ') } : note || { ok: true, text: 'Added.' });
     router.refresh();
@@ -540,6 +561,46 @@ function EmailSettings({ settings }) {
   );
 }
 
+/* ---------- Samsara (C-Suite, change 81) ---------- */
+function SamsaraPanel({ auto }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState('');
+  const [out, setOut] = useState(null);
+  const run = async (action) => {
+    if (action === 'push_all' && !window.confirm('Make these changes in Samsara now (names, plates, office tags)?')) return;
+    setBusy(action === 'preview' ? 'Checking Samsara…' : 'Updating Samsara…'); setOut(null);
+    const res = await fetch('/api/samsara', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) });
+    const j = await res.json().catch(() => ({}));
+    setBusy(''); setOut({ action, ...j });
+    if (action === 'push_all') router.refresh();
+  };
+  const flip = async (on) => {
+    const { error } = await rpc('set_samsara_auto', { p_on: on });
+    if (error) setOut({ ok: false, text: error.message }); else router.refresh();
+  };
+  return (
+    <section className="panel tr-settings">
+      <h2>Samsara</h2>
+      <p className="note">The sheet sets each truck’s Samsara name (“Adin Sanford -118”), plate and office tag, matched by VIN, and renames sold trucks “SOLD -123”. Procare Sync then pins the tech’s Samsara driver to their truck. New trucks show up in Samsara when the camera is installed; the next morning’s run sets them up.</p>
+      <div className="panel-buttons">
+        <button type="button" className="btn btn-small btn-quiet" disabled={!!busy} onClick={() => run('preview')}>Preview changes</button>
+        <button type="button" className="btn btn-small" disabled={!!busy} onClick={() => run('push_all')}>Update Samsara now</button>
+      </div>
+      <Toggle checked={!!auto} onChange={flip}>
+        <span>Keep Samsara in step automatically</span>
+        <span className="note">{auto ? 'On: every change on the sheet goes to Samsara right away, and new trucks are set up each morning.' : 'Off: nothing changes in Samsara until you press Update Samsara now.'}</span>
+      </Toggle>
+      {busy && <p className="note">{busy}</p>}
+      {out && (out.text ? <p className={out.ok ? 'ok' : 'error'}>{out.text}</p> : (
+        <div className="tr-ss-out">
+          <p className={out.problems?.length ? 'error' : 'ok'}>{out.action === 'preview' ? `${(out.lines || []).filter((l) => /^Truck /.test(l)).length} trucks would change.` : `Updated ${out.changed} trucks in Samsara.`}{out.problems?.length ? ` Problems: ${out.problems.join(' · ')}` : ''}</p>
+          <ul className="tr-ss-lines">{(out.lines || []).map((l) => <li key={l}>{l}</li>)}</ul>
+        </div>
+      ))}
+    </section>
+  );
+}
+
 /* ---------- The sheet ---------- */
 const FILTERS = [
   { key: 'sheet', label: 'On the sheet', test: ON_SHEET },
@@ -566,7 +627,7 @@ const COLS = [
   { key: 'status', label: 'Status', v: (t) => Object.keys(STATUS).indexOf(t.status) },
 ];
 
-export default function TrucksView({ trucks, people, settings, money, verify, today }) {
+export default function TrucksView({ trucks, people, settings, money, verify, today, samsara = null, chief = false }) {
   const [office, setOffice] = useState('all');
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState('sheet');
@@ -574,6 +635,7 @@ export default function TrucksView({ trucks, people, settings, money, verify, to
   const [open, setOpen] = useState(null);
   const [adding, setAdding] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showSamsara, setShowSamsara] = useState(false);
   const tot = fleetTotals(trucks);
 
   const test = FILTERS.find((f) => f.key === filter)?.test || ON_SHEET;
@@ -633,9 +695,11 @@ export default function TrucksView({ trucks, people, settings, money, verify, to
         <input type="search" className="tr-search" placeholder="Truck #, driver, VIN, tag…" value={q} onChange={(e) => setQ(e.target.value)} />
         <button type="button" className="btn btn-small" onClick={() => setAdding(true)}>Add a truck</button>
         {money && <button type="button" className="btn btn-small btn-quiet" onClick={() => setShowSettings(!showSettings)}>Email settings</button>}
+        {chief && <button type="button" className="btn btn-small btn-quiet" onClick={() => setShowSamsara(!showSamsara)}>Samsara{samsara?.auto ? ' (on)' : ''}</button>}
       </div>
 
       {money && showSettings && <EmailSettings settings={settings} />}
+      {chief && showSamsara && <SamsaraPanel auto={samsara?.auto} />}
       {money && settings && !settings.bookkeeper_email && !showSettings && (
         <p className="error tr-verify">The bookkeeper’s email isn’t set yet, so sold / added emails only go to insurance. <button type="button" className="linklike" onClick={() => setShowSettings(true)}>Add it</button></p>
       )}
@@ -677,7 +741,7 @@ export default function TrucksView({ trucks, people, settings, money, verify, to
                     <td><span className={`pill tr-st-${t.status}`}>{STATUS[t.status]?.label}</span></td>
                   </tr>
                   {isOpen && (
-                    <tr className="tr-open"><td colSpan={cols.length}><TruckCard key={t.id} t={t} people={people} money={money} today={today} settings={settings} /></td></tr>
+                    <tr className="tr-open"><td colSpan={cols.length}><TruckCard key={t.id} t={t} people={people} money={money} today={today} settings={settings} samsara={samsara?.trucks?.[t.id]} /></td></tr>
                   )}
                 </Fragment>
               );

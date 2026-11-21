@@ -5,6 +5,7 @@ import { hasSecondStep } from '@/lib/mfa';
 import { syncBalanceSheet, syncPl } from '@/lib/qbo';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendPendingDriverNotices } from '@/lib/driverNotice';
+import { samsaraConfigured, syncSamsara } from '@/lib/samsaraPush';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -18,6 +19,15 @@ export async function GET(request) {
   // Also the daily send for driver emails still waiting (change 78), e.g. someone the FieldRoutes sync deactivated
   let drivers = {};
   try { drivers = await sendPendingDriverNotices(createAdminClient()); } catch (e) { drivers = { driverError: String(e.message || e) }; }
+  // And the truck sheet → Samsara (change 81), while it's on: picks up newly installed trucks by VIN
+  try {
+    const admin = createAdminClient();
+    const { data: fs } = await admin.from('fleet_settings').select('samsara_auto').eq('id', 1).maybeSingle();
+    if (fs?.samsara_auto && samsaraConfigured()) {
+      const r = await syncSamsara(admin, { apply: true });
+      drivers = { ...drivers, samsaraChanged: r.changed, samsaraProblems: r.problems.length };
+    }
+  } catch (e) { drivers = { ...drivers, samsaraError: String(e.message || e) }; }
   try {
     const pl = await syncPl(3);
     return NextResponse.json({ ok: true, ...drivers, ...pl, ...(await syncBalanceSheet(13)) });
