@@ -56,12 +56,14 @@ const STATUS = { pending: 'Waiting', approved: 'Approved', denied: 'Denied', can
 /**
  * Who approves time off (the database enforces the same rule in can_approve_time_off):
  * sales requests go to a sales manager or the President; everyone else's go to the
- * HR approver or the President. Nobody but the President decides their own.
+ * HR approver or the President; the wildlife team's also go to the wildlife manager (Jessica, change 79).
+ * Nobody but the President decides their own.
  */
 function canApprove(me, r) {
   if (me.level === 'president') return true;
   if (r.employee_id === me.id) return false;
   if (r.employee?.department === 'sales') return me.department === 'sales' && me.level === 'manager';
+  if (r.employee?.department === 'wildlife' && me.manages_wildlife) return true;   // Jessica (change 79)
   return me.hr_approver;
 }
 
@@ -72,6 +74,7 @@ function headNote(me) {
       ? 'You approve time off for the sales team and give final approval for everyone else.'
       : 'You approve time off for the sales team. Everyone else’s requests go to HR.';
   }
+  if (me.manages_wildlife && !me.hr_approver) return 'You approve time off for the wildlife team.';
   if (me.hr_approver) return 'You give final approval on these requests. Sales team requests go to the sales manager or the President.';
   if (me.department === 'sales') return 'Requests from your team. The sales manager or the President approves them.';
   return 'Requests from your team. Final approval is given by HR.';

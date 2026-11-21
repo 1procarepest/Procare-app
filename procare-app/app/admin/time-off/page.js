@@ -17,7 +17,7 @@ export default async function TimeOffPage() {
   return (
     <TimeOffList
       requests={requests || []}
-      me={{ id: me.id, level: me.level, department: me.department, hr_approver: !!me.hr_approver }}
+      me={{ id: me.id, level: me.level, department: me.department, hr_approver: !!me.hr_approver, manages_wildlife: !!me.manages_wildlife }}
     />
   );
 }

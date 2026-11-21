@@ -28,7 +28,7 @@ export default async function TopNav({ me, supabase, current, extra = null }) {
         {bonusLinks?.bonus && link('bonus', '/bonus', 'Bonus')}
         {link('compete', '/compete', 'Compete')}
         {extra}
-        {me.rank >= 2 && me.department !== 'wildlife' && link('settings', '/admin', 'Settings')}
+        {(me.rank >= 2 || me.manages_wildlife) && me.department !== 'wildlife' && link('settings', '/admin', 'Settings')}
         <SignOut />
       </nav>
     </header>

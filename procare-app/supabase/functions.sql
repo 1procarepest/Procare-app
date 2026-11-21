@@ -67,6 +67,7 @@ $function$;
 --   President: everyone. C-Suite: everyone but the President.
 --   Manager: team members and leads in their department, every office.
 --   Lead: team members in their department and office.
+--   Wildlife manager (employees.manages_wildlife, change 79): the wildlife department.
 CREATE OR REPLACE FUNCTION public.can_manage(target uuid)
  RETURNS boolean
  LANGUAGE sql
@@ -84,6 +85,7 @@ AS $function$
         or (m.level = 'manager' and m.department = t.department and public.level_rank(t.level) < 3)
         or (m.level = 'lead' and m.department = t.department and m.office = t.office
             and t.level = 'team_member')
+        or (m.manages_wildlife and t.department::text = 'wildlife' and public.level_rank(t.level) < 4)   -- change 79
       )
   )
 $function$;
@@ -163,6 +165,7 @@ AS $function$
         or (m.id <> t.id and t.department = 'sales'
             and m.department = 'sales' and m.level = 'manager')
         or (m.id <> t.id and t.department <> 'sales' and m.hr_approver)
+        or (m.id <> t.id and t.department::text = 'wildlife' and m.manages_wildlife)   -- change 79
       )
   )
 $function$;

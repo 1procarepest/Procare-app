@@ -67,6 +67,11 @@ export async function POST(request) {
   const presidents = () => people((q) => q.eq('level', 'president'));
   const salesManagers = () => people((q) => q.eq('department', 'sales').eq('level', 'manager'));
   const hrApprovers = () => people((q) => q.eq('hr_approver', true));
+  // The wildlife team's schedule and time off go to the wildlife manager (Jessica, change 79); HR if there is none
+  const wildlifeManagers = async () => {
+    const list = await people((q) => q.eq('manages_wildlife', true));
+    return list.length ? list : hrApprovers();
+  };
 
   // Everyone in `list` except the person themselves; falls back to the President.
   async function others(list, personId) {
@@ -126,7 +131,7 @@ export async function POST(request) {
       }
 
       if (!(await switchedOn('time_off_request'))) return reply(200, { sent: false });
-      const to = await others(await hrApprovers(), person.id);
+      const to = await others(person.department === 'wildlife' ? await wildlifeManagers() : await hrApprovers(), person.id);
       const { ok: sent, problem } = await sendEmail({
         to: to.map((p) => p.email),
         subject: `${r.use_pto ? 'Paid vacation request' : 'Time-off request'}: ${name(person)}, ${when}`,
@@ -183,6 +188,8 @@ export async function POST(request) {
     let handlers;
     if (person.department === 'sales') {
       handlers = await salesManagers();
+    } else if (person.department === 'wildlife') {
+      handlers = await wildlifeManagers();
     } else {
       const sameDept = await people((q) => q.eq('department', person.department).in('level', ['lead', 'manager']));
       handlers = sameDept.filter((m) =>
@@ -215,7 +222,7 @@ export async function POST(request) {
     const isSales = person.department === 'sales';
     const to = isSales
       ? [...await salesManagers(), ...await presidents()].filter((p, i, all) => p.id !== person.id && all.findIndex((x) => x.id === p.id) === i)
-      : await others(await hrApprovers(), person.id);
+      : await others(person.department === 'wildlife' ? await wildlifeManagers() : await hrApprovers(), person.id);
     const days = [
       `Location: ${f.location || '–'} · Position: ${f.position || '–'}`,
       ...FORM_DAYS.map((d) => dayLine(f.days, d)),

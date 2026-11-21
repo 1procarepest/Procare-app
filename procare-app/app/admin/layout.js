@@ -11,7 +11,8 @@ export default async function AdminLayout({ children }) {
   const supabase = createClient();
   const { user, me } = await getMe(supabase);
   if (!user) redirect('/login');
-  if (!me || me.rank < 2 || me.department === 'wildlife') redirect('/');   // Wildlife: Wildlife-only access
+  // Wildlife: Wildlife-only access. Jessica (manages_wildlife, change 79) gets the wildlife team's people, time off and issues.
+  if (!me || (me.rank < 2 && !me.manages_wildlife) || me.department === 'wildlife') redirect('/');
 
   return (
     <>

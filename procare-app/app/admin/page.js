@@ -17,7 +17,9 @@ export default async function PeoplePage() {
     contactsById(supabase),
     supabase.rpc('fieldroutes_missing_email'),
   ]);
-  const withEmail = (people || []).map((p) => ({ ...p, email: contacts[p.id]?.email || '' }));
+  // A wildlife manager below lead (Jessica, change 79) sees the wildlife team only
+  const mine = me.rank < 2 && me.manages_wildlife ? (people || []).filter((p) => p.department === 'wildlife') : people || [];
+  const withEmail = mine.map((p) => ({ ...p, email: contacts[p.id]?.email || '' }));
 
   return <PeopleList people={withEmail} myOffice={me.office} missing={missing || []} />;
 }

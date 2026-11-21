@@ -7,6 +7,7 @@ import PersonEditor from './PersonEditor';
 import CompetitionFollows from './CompetitionFollows';
 import WildlifeAssist from './WildlifeAssist';
 import DriverSection from './DriverSection';
+import ManagesWildlife from './ManagesWildlife';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,7 @@ export default async function PersonPage({ params }) {
   const [{ data: found }, contacts] = await Promise.all([
     supabase
       .from('employees')
-      .select('id, first_name, last_name, office, department, level, active, deactivated_by, hr_approver, auth_user_id, photo_url, wildlife_assist')
+      .select('id, first_name, last_name, office, department, level, active, deactivated_by, hr_approver, auth_user_id, photo_url, wildlife_assist, manages_wildlife')
       .eq('id', params.id)
       .maybeSingle(),
     contactsById(supabase, params.id),
@@ -60,11 +61,13 @@ export default async function PersonPage({ params }) {
         today={today}
         upcoming={upcoming || []}
         me={{ id: me.id, level: me.level, rank: me.rank, office: me.office, department: me.department }}
-        canManage={!!canManage}
+        // Jessica (wildlife manager, change 79) runs the wildlife team's schedules and time off, not their level or login
+        canManage={!!canManage && !(me.rank < 3 && me.manages_wildlife && person.department === 'wildlife')}
         canEditSchedule={!!canEditSchedule}
       />
       {me.rank >= 4 && person.active && <CompetitionFollows person={person} follows={follows || []} />}
       {(me.rank >= 4 || me.hr_approver) && person.active && person.department !== 'wildlife' && <WildlifeAssist person={person} />}
+      {me.rank >= 4 && person.active && person.department !== 'wildlife' && <ManagesWildlife person={person} />}
       {(me.rank >= 4 || me.hr_approver) && person.active && <DriverSection personId={person.id} />}
     </section>
   );
