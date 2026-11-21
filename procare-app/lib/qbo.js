@@ -312,6 +312,65 @@ export async function syncBalanceSheet(months = 13) {
   }
 }
 
+// File types QuickBooks takes as attachments
+const QBO_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/tiff', 'image/bmp',
+  'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/plain', 'text/csv']);
+
+/** The lender's vendor in QuickBooks ("Nissan Finance (P)" → a vendor named like "Nissan Finance"), or null. */
+async function findVendor(lender) {
+  const base = String(lender || '').replace(/\(.*?\)/g, '').replace(/[^A-Za-z0-9 &.-]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!base) return null;
+  const tries = [base, base.split(' ')[0]].filter((x, i, a) => x.length >= 3 && a.indexOf(x) === i);
+  for (const t of tries) {
+    const q = `select Id, DisplayName from Vendor where DisplayName like '%${t.replace(/'/g, "\\'")}%'`;
+    const res = await api('/query', { query: q });
+    const list = res?.QueryResponse?.Vendor || [];
+    if (list.length === 1) return list[0];
+    if (list.length > 1) return list.find((v) => v.DisplayName.toLowerCase() === base.toLowerCase()) || null;
+  }
+  return null;
+}
+
+/**
+ * Upload one file to QuickBooks' Attachments (the Attachable list), attached to the lender's vendor when QuickBooks has
+ * one, otherwise on its own for the bookkeeper to attach. Returns { id, vendor } or throws.
+ */
+export async function attachToQuickBooks({ buffer, filename, contentType, note, lender }) {
+  if (!QBO_TYPES.has(String(contentType || '').toLowerCase())) throw new Error(`QuickBooks doesn’t take ${contentType || 'this kind of'} files (use a PDF or a photo).`);
+  let vendor = null;
+  try { vendor = await findVendor(lender); } catch { /* no vendor: the file still goes in Attachments */ }
+  const send = async (withVendor, retried = false) => {
+    const c = await session();
+    const meta = { FileName: filename, ContentType: contentType, Note: String(note || '').slice(0, 2000),
+      ...(withVendor && vendor ? { AttachableRef: [{ EntityRef: { type: 'Vendor', value: vendor.Id }, IncludeOnSend: false }] } : {}) };
+    const form = new FormData();
+    form.append('file_metadata_01', new Blob([JSON.stringify(meta)], { type: 'application/json' }), 'attachment.json');
+    form.append('file_content_01', new Blob([buffer], { type: contentType }), filename);
+    const res = await fetch(`${apiBase()}/v3/company/${c.realm_id}/upload?minorversion=75`, {
+      method: 'POST', headers: { Authorization: `Bearer ${c.access_token}`, Accept: 'application/json' }, body: form, cache: 'no-store',
+    });
+    const json = await res.json().catch(() => ({}));
+    if (res.status === 401 && !retried) {
+      await createAdminClient()?.from('qbo_connection').update({ access_expires_at: new Date(0).toISOString() }).eq('id', 1);
+      return send(withVendor, true);
+    }
+    const fault = json?.AttachableResponse?.[0]?.Fault?.Error?.[0] || json?.Fault?.Error?.[0];
+    if (!res.ok || fault) {
+      logQbo('/upload', res, json);
+      throw new Error(`QuickBooks said: ${fault?.Detail || fault?.Message || res.statusText} (${res.status})`);
+    }
+    return json?.AttachableResponse?.[0]?.Attachable?.Id || null;
+  };
+  try {
+    return { id: await send(true), vendor: vendor?.DisplayName || null };
+  } catch (e) {
+    if (!vendor) throw e;
+    // Attaching to the vendor was refused: put it in Attachments on its own
+    return { id: await send(false), vendor: null };
+  }
+}
+
 /** Disconnect: revoke the token at Intuit and forget it here (the copied P&L stays). */
 export async function disconnect() {
   const admin = createAdminClient();

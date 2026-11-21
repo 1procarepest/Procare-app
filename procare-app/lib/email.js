@@ -25,11 +25,11 @@ export function normalizeFrom(raw) {
 }
 
 /**
- * Sends one email. `lines` are plain sentences, shown one per line; `link` is
+ * Sends one email. `lines` are plain sentences, shown one per line; `attachments` are [{ filename, content (base64) }]; `link` is
  * { href, label } for a button. Returns { ok, problem }: ok is true when Resend
  * accepted it; otherwise problem says why in plain words.
  */
-export async function sendEmail({ to, cc, subject, heading, lines, link, replyTo: replyOverride, footer }) {
+export async function sendEmail({ to, cc, subject, heading, lines, link, replyTo: replyOverride, footer, attachments }) {
   // Trim stray spaces or quotes that sneak in when pasting into Vercel
   const clean = (v) => (v || '').trim().replace(/^["']|["']$/g, '').trim();
   const key = clean(process.env.RESEND_API_KEY);
@@ -70,7 +70,7 @@ export async function sendEmail({ to, cc, subject, heading, lines, link, replyTo
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to: recipients, subject, text, html, ...(copies.length ? { cc: copies } : {}), ...(replyTo ? { reply_to: replyTo } : {}) }),
+      body: JSON.stringify({ from, to: recipients, subject, text, html, ...(copies.length ? { cc: copies } : {}), ...(attachments?.length ? { attachments } : {}), ...(replyTo ? { reply_to: replyTo } : {}) }),
     });
     if (!res.ok) {
       const body = await res.text();

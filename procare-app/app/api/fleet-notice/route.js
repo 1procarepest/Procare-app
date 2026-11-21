@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { sendEmail } from '@/lib/email';
 import { OFFICE_NAME } from '@/lib/labels';
-import { truckName, usDate, dollars } from '@/lib/trucks';
+import { DOC_KIND, truckName, usDate, dollars } from '@/lib/trucks';
 
 // Change 75: a truck was added to the fleet or taken off it (sold, totaled, returned) → one email to the insurance
 // agent (add / remove it on the auto policy) and one to the bookkeeper (record the purchase or sale and the loan).
@@ -38,6 +38,22 @@ export async function POST(request) {
   ]);
   if (!t) return reply(404, { message: 'That truck is gone.' });
   const loan = (loans || [])[0] || null;
+
+  // The paperwork for the bookkeeper (change 77): purchase + finance agreements when added, the bill of sale when sold
+  const { data: docs } = await admin.from('truck_documents').select('*').eq('truck_id', ev.truck_id).order('created_at');
+  const attachments = [];
+  const attached = [];
+  let room = 30 * 1024 * 1024;
+  for (const doc of (docs || []).filter((x) => DOC_KIND[x.kind]?.when === ev.kind)) {
+    const { data: file } = await admin.storage.from('truck-docs').download(doc.path);
+    if (!file) continue;
+    const buf = Buffer.from(await file.arrayBuffer());
+    if (buf.length > room) continue;
+    room -= buf.length;
+    const ext = (doc.name.match(/\.[A-Za-z0-9]{2,5}$/) || [''])[0];
+    attachments.push({ filename: `Truck ${t.truck_no || ''} ${DOC_KIND[doc.kind].label}${ext}`.replace(/\s+/g, ' '), content: buf.toString('base64') });
+    attached.push(`${DOC_KIND[doc.kind].label}${doc.qbo_attachable_id ? ' (also in QuickBooks Attachments)' : ''}`);
+  }
   const added = ev.kind === 'added';
   const sold = t.status === 'sold';
   const when = usDate(ev.day);
@@ -89,7 +105,7 @@ export async function POST(request) {
       !added ? (loan.paid_off || Number(loan.balance) === 0 ? 'Loan balance: paid off' : loan.balance != null ? `Loan balance to pay off: ${dollars(loan.balance, true)}${loan.balance_on ? ` (as of ${usDate(loan.balance_on)})` : ''}` : null) : null,
     ].filter(Boolean) : ['Loan: none on file (paid in cash or paid off)'];
     const r = await sendEmail({
-      to: [s.bookkeeper_email], cc, replyTo, footer,
+      to: [s.bookkeeper_email], cc, replyTo, footer, attachments,
       subject: added ? `Procare Pest: vehicle purchased (${vehicle})` : `Procare Pest: vehicle ${sold ? 'sold' : 'off the fleet'} (${vehicle})`,
       heading: added ? 'Vehicle added to the fleet' : sold ? 'Vehicle sold' : 'Vehicle taken off the fleet',
       lines: [
@@ -102,6 +118,7 @@ export async function POST(request) {
         sold && t.sold_price ? `Sale price: ${dollars(t.sold_price, true)}` : null,
         sold && t.sold_to ? `Sold to: ${t.sold_to}` : null,
         ...loanLines,
+        attached.length ? `Attached: ${attached.join(', ')}` : null,
         'Thank you,',
         `${sender}, Procare Pest`,
       ].filter(Boolean),

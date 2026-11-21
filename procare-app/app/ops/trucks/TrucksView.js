@@ -4,7 +4,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { OFFICES, OFFICE_NAME } from '@/lib/labels';
-import { LOG_KIND, MONTHS, ON_SHEET, STATUS, dollars, fleetTotals, monthsLeft, openLoan, truckName, usDate } from '@/lib/trucks';
+import { DOC_KIND, LOG_KIND, MONTHS, ON_SHEET, STATUS, dollars, fleetTotals, monthsLeft, openLoan, truckName, usDate } from '@/lib/trucks';
 import Toggle from '../../Toggle';
 import Picker from '../../Picker';
 
@@ -189,7 +189,7 @@ function Status({ t, today, settings }) {
           </div>
           <Toggle checked={f.email} onChange={(on) => setF({ ...f, email: on })}>
             <span>Email {who}</span>
-            <span className="note">{f.email ? 'Insurance: take it off the policy. Bookkeeper: record the sale and the loan payoff.' : 'No email; you can send it later from the truck’s history.'}</span>
+            <span className="note">{f.email ? 'Insurance: take it off the policy. Bookkeeper: record the sale and the loan payoff (a bill of sale uploaded under Documents first goes with it).' : 'No email; you can send it later from the truck’s history.'}</span>
           </Toggle>
           <div className="panel-buttons">
             <button type="button" className="btn btn-small" disabled={busy} onClick={() => {
@@ -274,6 +274,110 @@ function Log({ t, today, money }) {
   );
 }
 
+/* ---------- Documents: agreements, title, bill of sale (C-Suite, change 77) ---------- */
+const post = async (body) => {
+  const res = await fetch('/api/truck-doc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j.error || `Error ${res.status}`);
+  return j;
+};
+
+/** Phone photos: turned into a JPEG no bigger than 2400px (smaller emails; iPhone HEIC photos become JPEG). */
+async function shrink(file) {
+  const img = file.type.startsWith('image/');
+  if (!img || ((file.type === 'image/jpeg' || file.type === 'image/png') && file.size < 1.5e6)) return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const k = Math.min(1, 2400 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.85));
+    return blob ? new File([blob], `${file.name.replace(/\.[^.]+$/, '')}.jpg`, { type: 'image/jpeg' }) : file;
+  } catch {
+    return file;
+  }
+}
+
+/** Upload one file to a truck (straight to storage), save it and send it to QuickBooks. Returns the QuickBooks result. */
+async function uploadDoc(truckId, raw, kind) {
+  const file = await shrink(raw);
+  const start = await post({ action: 'start', truck: truckId, name: file.name });
+  const { error } = await createClient().storage.from('truck-docs').uploadToSignedUrl(start.path, start.token, file, { contentType: file.type });
+  if (error) throw new Error(error.message);
+  const done = await post({ action: 'done', truck: truckId, path: start.path, name: file.name, kind, size: file.size, mime: file.type });
+  return done.qbo || { ok: true, text: 'Saved' };
+}
+
+function Documents({ t }) {
+  const router = useRouter();
+  const [kind, setKind] = useState('finance');
+  const [busy, setBusy] = useState('');
+  const [m, setM] = useState(null);
+  const upload = async (e) => {
+    const picked = [...(e.target.files || [])];
+    e.target.value = '';
+    for (const raw of picked) {
+      setM(null);
+      try {
+        setBusy(`Uploading ${raw.name}…`);
+        const q = await uploadDoc(t.id, raw, kind);
+        setM({ ok: q.ok !== false, text: q.ok ? `Saved. ${q.text}.` : q.text });
+      } catch (err) {
+        setM({ ok: false, text: String(err.message || err) });
+      }
+    }
+    setBusy('');
+    router.refresh();
+  };
+  const act = async (body, confirmText) => {
+    if (confirmText && !window.confirm(confirmText)) return;
+    setBusy('Working…'); setM(null);
+    try {
+      const j = await post(body);
+      if (j.qbo) setM({ ok: j.qbo.ok, text: j.qbo.text });
+    } catch (err) { setM({ ok: false, text: String(err.message || err) }); }
+    setBusy('');
+    router.refresh();
+  };
+  return (
+    <section className="tr-sec">
+      <h3>Documents</h3>
+      {(t.documents || []).length === 0 && <p className="note">No paperwork yet. Agreements go to the bookkeeper with the email and into QuickBooks.</p>}
+      {(t.documents || []).length > 0 && (
+        <ul className="tr-entries">
+          {t.documents.map((d) => (
+            <li key={d.id}>
+              <span className="pill">{DOC_KIND[d.kind]?.label || d.kind}</span>
+              <span className="tr-entry-main">
+                <a href={`/api/truck-doc?id=${d.id}`} target="_blank" rel="noreferrer">{d.name}</a>
+                <span className="note"> · {usDate(d.created_at.slice(0, 10))}</span>
+                <span className="tr-email">
+                  {d.qbo_attachable_id ? <span className="note">{d.qbo_result || 'In QuickBooks'}</span> : (
+                    <>{d.qbo_result && <span className="error">{d.qbo_result}</span>}
+                      <button type="button" className="btn btn-small btn-quiet" disabled={!!busy} onClick={() => act({ action: 'qbo', id: d.id })}>Send to QuickBooks</button></>
+                  )}
+                </span>
+              </span>
+              <button type="button" className="tr-x" aria-label="Delete document" disabled={!!busy}
+                onClick={() => act({ action: 'delete', id: d.id }, `Delete ${d.name} from the app? (A copy already in QuickBooks stays there.)`)}>×</button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="chips">
+        {Object.entries(DOC_KIND).map(([k, v]) => <button key={k} type="button" className={`chip${kind === k ? ' on' : ''}`} onClick={() => setKind(k)}>{v.label}</button>)}
+      </div>
+      <label className={`btn btn-small tr-upload${busy ? ' disabled' : ''}`}>
+        {busy || `Upload ${DOC_KIND[kind].label.toLowerCase()}`}
+        <input type="file" accept="image/*,application/pdf" multiple disabled={!!busy} onChange={upload} hidden />
+      </label>
+      <p className="note">A photo or a PDF. Only C-Suite can open these.</p>
+      <Msg m={m} />
+    </section>
+  );
+}
+
 /* ---------- One truck, opened ---------- */
 function TruckCard({ t, people, money, today, settings }) {
   const router = useRouter();
@@ -322,6 +426,7 @@ function TruckCard({ t, people, money, today, settings }) {
         <Msg m={m} />
       </section>
 
+      {money && <Documents t={t} />}
       {money && <Loans t={t} today={today} />}
       {money && <Status t={t} today={today} settings={settings} />}
       <Log t={t} today={today} money={money} />
@@ -335,6 +440,7 @@ function AddTruck({ today, settings, onClose }) {
   const [f, setF] = useState(() => ({ ...blank(null), make: 'Nissan', model: 'Frontier', year: today.slice(0, 4), bought_on: today, office: '' }));
   const [loan, setLoan] = useState({ on: false, lender: '', payment: '', start_on: today, end_on: '', financed: '', rate: '' });
   const [email, setEmail] = useState(true);
+  const [papers, setPapers] = useState({ purchase: null, finance: null });
   const [busy, setBusy] = useState(false);
   const [m, setM] = useState(null);
   const who = [settings?.insurance_name, settings?.bookkeeper_name].filter(Boolean).map((x) => x.split(' ')[0]).join(' and ') || 'insurance and the bookkeeper';
@@ -352,10 +458,19 @@ function AddTruck({ today, settings, onClose }) {
       for (const k of ['payment', 'financed', 'rate', 'balance']) p[k] = String(p[k] ?? '').replace(/[$,%\s]/g, '');
       await rpc('save_truck_loan', { p_truck: data.id, p_loan: null, p, p_delete: false });
     }
+    // The paperwork first, so the bookkeeper's email has it attached
+    const problems = [];
+    for (const [kind, file] of Object.entries(papers)) {
+      if (!file) continue;
+      try {
+        const q = await uploadDoc(data.id, file, kind);
+        if (q.ok === false) problems.push(q.text);
+      } catch (err) { problems.push(`${kind === 'purchase' ? 'Purchase' : 'Finance'} agreement didn’t upload: ${err.message}`); }
+    }
     let note = null;
     if (email && data?.event) note = await sendNotice(data.event);
     setBusy(false);
-    setM(note || { ok: true, text: 'Added.' });
+    setM(problems.length ? { ok: false, text: [note?.text, ...problems].filter(Boolean).join(' · ') } : note || { ok: true, text: 'Added.' });
     router.refresh();
     if (!note || note.ok) onClose();
   };
@@ -375,9 +490,16 @@ function AddTruck({ today, settings, onClose }) {
           ))}
         </div>
       )}
+      <div className="tr-grid">
+        {[['purchase', 'Purchase agreement'], ['finance', 'Finance agreement']].map(([k, label]) => (
+          <label key={k} className="tr-field"><span>{label} (photo or PDF)</span>
+            <input type="file" accept="image/*,application/pdf" onChange={(e) => setPapers({ ...papers, [k]: e.target.files?.[0] || null })} />
+          </label>
+        ))}
+      </div>
       <Toggle checked={email} onChange={setEmail}>
         <span>Email {who}</span>
-        <span className="note">{email ? 'Insurance: add it to the policy. Bookkeeper: record the purchase and the loan.' : 'No email; you can send it later from the truck’s history.'}</span>
+        <span className="note">{email ? 'Insurance: add it to the policy. Bookkeeper: record the purchase and the loan, with the agreements attached. The agreements also go into QuickBooks.' : 'No email; you can send it later from the truck’s history.'}</span>
       </Toggle>
       <div className="panel-buttons">
         <button type="button" className="btn btn-small" disabled={busy} onClick={add}>{busy ? 'Adding…' : 'Add truck'}</button>
@@ -416,18 +538,46 @@ function EmailSettings({ settings }) {
 }
 
 /* ---------- The sheet ---------- */
+const FILTERS = [
+  { key: 'sheet', label: 'On the sheet', test: ON_SHEET },
+  { key: 'road', label: 'On the road', test: (t) => t.status === 'active' },
+  { key: 'for_sale', label: 'For sale', test: (t) => t.status === 'for_sale' },
+  { key: 'nodriver', label: 'No driver', test: (t) => t.status === 'active' && !t.driver_id },
+  { key: 'sold', label: 'Sold', test: (t) => t.status === 'sold' },
+  { key: 'gone', label: 'Off the fleet', test: (t) => t.status === 'gone' },
+  { key: 'all', label: 'Everything', test: () => true },
+];
+const num = (x) => (x === null || x === undefined || x === '' ? null : Number(x));
+/** Columns: label, sort value, money only. */
+const COLS = [
+  { key: 'truck', label: 'Truck', v: (t) => (/^\d+$/.test(t.truck_no || '') ? Number(t.truck_no) : t.truck_no || '') },
+  { key: 'vehicle', label: 'Vehicle', v: (t) => `${t.make || ''} ${t.model || ''} ${t.year || ''}` },
+  { key: 'driver', label: 'Driver', v: (t) => t.driver || t.driver_note || '' },
+  { key: 'office', label: 'Office', v: (t) => OFFICE_NAME[t.office] || '' },
+  { key: 'tag', label: 'Tag', v: (t) => (t.tag_month ? MONTHS.indexOf(t.tag_month) : 99) },
+  { key: 'miles', label: 'Miles', v: (t) => num(t.mileage) },
+  { key: 'payment', label: 'Payment', money: true, v: (t) => num(openLoan(t)?.payment) },
+  { key: 'ends', label: 'Loan ends', money: true, v: (t) => openLoan(t)?.end_on || null },
+  { key: 'owed', label: 'Owed', money: true, v: (t) => num(openLoan(t)?.balance) },
+  { key: 'value', label: 'Value', money: true, v: (t) => num(t.value) },
+  { key: 'status', label: 'Status', v: (t) => Object.keys(STATUS).indexOf(t.status) },
+];
+
 export default function TrucksView({ trucks, people, settings, money, verify, today }) {
   const [office, setOffice] = useState('all');
   const [q, setQ] = useState('');
-  const [showOff, setShowOff] = useState(false);
+  const [filter, setFilter] = useState('sheet');
+  const [sort, setSort] = useState({ key: null, dir: 1 });
   const [open, setOpen] = useState(null);
   const [adding, setAdding] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const tot = fleetTotals(trucks);
 
+  const test = FILTERS.find((f) => f.key === filter)?.test || ON_SHEET;
+  const cols = COLS.filter((c) => money || !c.money);
+  const sortBy = (key) => setSort((s) => (s.key === key ? (s.dir === 1 ? { key, dir: -1 } : { key: null, dir: 1 }) : { key, dir: 1 }));
   const list = trucks.filter((t) => {
-    if (!showOff && !ON_SHEET(t)) return false;
-    if (showOff && ON_SHEET(t)) return false;
+    if (!test(t)) return false;
     if (office !== 'all' && (t.office || 'none') !== office) return false;
     if (q) {
       const s = q.toLowerCase();
@@ -435,7 +585,16 @@ export default function TrucksView({ trucks, people, settings, money, verify, to
     }
     return true;
   });
-  const cols = money ? 11 : 7;
+  if (sort.key) {
+    const col = COLS.find((c) => c.key === sort.key);
+    list.sort((a, b) => {
+      const x = col.v(a), y = col.v(b);
+      if (x === null || x === '') return 1;   // blanks last either way
+      if (y === null || y === '') return -1;
+      return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'en', { numeric: true })) * sort.dir;
+    });
+  }
+  const counts = Object.fromEntries(FILTERS.map((f) => [f.key, trucks.filter(f.test).length]));
 
   return (
     <>
@@ -457,6 +616,11 @@ export default function TrucksView({ trucks, people, settings, money, verify, to
         {money && <div className="fin-tile"><span className="note">Owed on trucks</span><strong>{dollars(tot.balance)}</strong><small className="note">Value {dollars(tot.value)} ({tot.valued} valued) · equity {dollars(tot.equity)}</small></div>}
       </div>
 
+      <div className="chips tr-filters" role="group" aria-label="Show">
+        {FILTERS.filter((f) => counts[f.key] > 0 || f.key === 'sheet').map((f) => (
+          <button key={f.key} type="button" className={`chip${filter === f.key ? ' on' : ''}`} onClick={() => setFilter(f.key)}>{f.label} <span className="tr-count">{counts[f.key]}</span></button>
+        ))}
+      </div>
       <div className="tr-controls">
         <div className="chips">
           {[['all', 'All offices'], ...OFFICES.map((o) => [o.key, o.name])].map(([k, label]) => (
@@ -464,7 +628,6 @@ export default function TrucksView({ trucks, people, settings, money, verify, to
           ))}
         </div>
         <input type="search" className="tr-search" placeholder="Truck #, driver, VIN, tag…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <Toggle checked={showOff} onChange={setShowOff} small><span>Sold &amp; off the fleet</span></Toggle>
         {money && <button type="button" className="btn btn-small" onClick={() => setAdding(true)}>Add a truck</button>}
         {money && <button type="button" className="btn btn-small btn-quiet" onClick={() => setShowSettings(!showSettings)}>Email settings</button>}
       </div>
@@ -479,13 +642,17 @@ export default function TrucksView({ trucks, people, settings, money, verify, to
         <table className="ops-table tr-table">
           <thead>
             <tr>
-              <th>Truck</th><th>Vehicle</th><th>Driver</th><th>Office</th><th>Tag</th><th>Miles</th>
-              {money && <><th>Payment</th><th>Loan ends</th><th>Owed</th><th>Value</th></>}
-              <th>Status</th>
+              {cols.map((c) => (
+                <th key={c.key} scope="col" aria-sort={sort.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}>
+                  <button type="button" className="tr-sort" onClick={() => sortBy(c.key)}>
+                    {c.label}<span aria-hidden="true">{sort.key === c.key ? (sort.dir === 1 ? ' ▲' : ' ▼') : ' ↕'}</span>
+                  </button>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {list.length === 0 && <tr><td colSpan={cols} className="note">{trucks.length ? 'No trucks match.' : 'No trucks yet.'}</td></tr>}
+            {list.length === 0 && <tr><td colSpan={cols.length} className="note">{trucks.length ? 'No trucks match.' : 'No trucks yet.'}</td></tr>}
             {list.map((t) => {
               const l = money ? openLoan(t) : null;
               const isOpen = open === t.id;
@@ -507,7 +674,7 @@ export default function TrucksView({ trucks, people, settings, money, verify, to
                     <td><span className={`pill tr-st-${t.status}`}>{STATUS[t.status]?.label}</span></td>
                   </tr>
                   {isOpen && (
-                    <tr className="tr-open"><td colSpan={cols}><TruckCard key={t.id} t={t} people={people} money={money} today={today} settings={settings} /></td></tr>
+                    <tr className="tr-open"><td colSpan={cols.length}><TruckCard key={t.id} t={t} people={people} money={money} today={today} settings={settings} /></td></tr>
                   )}
                 </Fragment>
               );

@@ -68,3 +68,12 @@ export function fleetTotals(trucks) {
     byOffice, payments, balance, value, valued, equity: value - balance, insurance,
   };
 }
+
+/** Truck documents (change 77). `bookkeeper`: sent to the bookkeeper with the added / sold email. */
+export const DOC_KIND = {
+  purchase: { label: 'Purchase agreement', when: 'added' },
+  finance: { label: 'Finance agreement', when: 'added' },
+  title: { label: 'Title', when: null },
+  bill_of_sale: { label: 'Bill of sale', when: 'removed' },
+  other: { label: 'Other', when: null },
+};

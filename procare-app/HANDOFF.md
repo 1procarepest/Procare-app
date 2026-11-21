@@ -6,7 +6,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - John Ely, President of Procare Pest (3 Atlanta offices: East, West, South). Not technical: short, plain answers, one step and one question at a time.
 - Repo `1procarepest/Procare-app`; the app is in `procare-app/` (Next.js 14 App Router, plain JS, Supabase). Vercel deploys from `main`.
 - Check with `npm run build` before pushing. Commit and push only your own files; end commit messages with the Co-Authored-By line.
-- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-21-76-debt-schedule.sql`, so the next is 77). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
+- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-21-77-truck-documents.sql`, so the next is 78). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
 - Supabase cuts a request off after about 8 s. Time heavy queries on real data first.
 - SQL tests run in PGlite (`@electric-sql/pglite`); there's no local Postgres. The new Mac (2026-11-16) had no Node.js or Homebrew at first.
 - **UI rules from John**: use toggle switches (`app/Toggle.js`), never checkboxes. Use the brand look: `.brand-head` patterned headers, bug art from `app/Bug.js` (bugs anywhere; wildlife icons only on future wildlife pages), colors ink/forest/green/lime/sage.
@@ -82,6 +82,14 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
   full months, payments as a share of profit. "In QuickBooks, not on the schedule" lists unlinked loan/card accounts.
   Data: `imports/2026-11-21-debts.sql` (John's debt sheet photos, balances about July 2026). John will send loan
   agreements later for rates / terms.
+
+- **Truck documents (change 77, 2026-11-21)**: Documents section on each truck (C-Suite only): purchase / finance
+  agreement, title, bill of sale, other. Private bucket `truck-docs`; only `/api/truck-doc` touches it (one-time
+  upload links straight from the phone, one-minute links to open). Each upload is also sent to QuickBooks'
+  Attachments (`attachToQuickBooks` in `lib/qbo.js`, attached to the lender's Vendor when found). The bookkeeper's
+  truck email attaches purchase + finance agreements (added) or the bill of sale (sold). Add a truck has file
+  pickers for both agreements, uploaded before the email. Trucks sheet: status filter chips (with counts) and
+  sortable column headings.
 
 ## Next up (John's list)
 1. ~~Manager bonuses~~: live since 2026-11-16 (changes 47–49). Setup left for Ally: Ryan as report recipient, yearly amounts, Q4 goals, past reports.
