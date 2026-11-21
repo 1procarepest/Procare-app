@@ -24,7 +24,7 @@ export default async function TopNav({ me, supabase, current, extra = null }) {
         {link('home', '/', 'My Profile')}
         {apps.map((k) => link(k, APPS[k].href, APPS[k].short))}
         {canSeeTeamSchedule(me) && link('team', '/team', 'Schedule')}
-        {(bonusLinks?.reports || me.rank >= 3) && link('reports', '/reports', 'Forms')}
+        {(bonusLinks?.reports || me.rank >= 3 || me.hr_approver) && link('reports', '/reports', 'Forms')}
         {bonusLinks?.bonus && link('bonus', '/bonus', 'Bonus')}
         {link('compete', '/compete', 'Compete')}
         {extra}

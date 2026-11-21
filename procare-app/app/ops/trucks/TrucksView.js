@@ -27,12 +27,12 @@ function Msg({ m }) {
   return <p className={m.ok ? 'ok' : 'error'} role="status">{m.text}</p>;
 }
 
-/* ---------- Details (managers: everyday fields; C-Suite: money too) ---------- */
+/* ---------- Details (managers and up: the truck sheet; C-Suite: money too, change 80) ---------- */
 const EVERYDAY = [
-  ['truck_no', 'Truck #'], ['year', 'Year'], ['make', 'Make'], ['model', 'Model'], ['plate', 'Tag'], ['county', 'County'],
-  ['insurer', 'Insurance'], ['gas_card', 'Gas card'], ['toolbox', 'Toolbox'], ['key_tag', 'Key'], ['peach_pass', 'Peach Pass'], ['mileage', 'Miles'],
+  ['vin', 'VIN'], ['truck_no', 'Truck #'], ['year', 'Year'], ['make', 'Make'], ['model', 'Model'], ['plate', 'Tag'], ['county', 'County'],
+  ['insurer', 'Insurance'], ['gas_card', 'Gas card'], ['toolbox', 'Toolbox'], ['key_tag', 'Key'], ['peach_pass', 'Peach Pass'], ['mileage', 'Miles'], ['insurance_yearly', 'Insurance a year ($)'],
 ];
-const MONEY = [['vin', 'VIN'], ['insurance_yearly', 'Insurance a year ($)'], ['bought_on', 'Bought on'], ['purchase_price', 'Purchase price ($)'], ['value', 'Value today ($)']];
+const MONEY = [['bought_on', 'Bought on'], ['purchase_price', 'Purchase price ($)'], ['value', 'Value today ($)']];
 
 function blank(t) {
   const f = {};
@@ -46,19 +46,19 @@ function blank(t) {
 function DetailsForm({ f, set, money, isNew }) {
   return (
     <div className="tr-grid">
-      {isNew && money && <Field label="VIN" wide><input value={f.vin} onChange={(e) => set({ vin: e.target.value.toUpperCase() })} maxLength={17} /></Field>}
       {EVERYDAY.map(([k, label]) => (
-        <Field key={k} label={label}>
-          <input value={f[k]} inputMode={['year', 'mileage'].includes(k) ? 'numeric' : undefined} onChange={(e) => set({ [k]: e.target.value })} />
+        <Field key={k} label={label} wide={k === 'vin' && isNew}>
+          <input value={f[k]} maxLength={k === 'vin' ? 17 : undefined} inputMode={['year', 'mileage', 'insurance_yearly'].includes(k) ? (k === 'insurance_yearly' ? 'decimal' : 'numeric') : undefined}
+            onChange={(e) => set({ [k]: k === 'vin' ? e.target.value.toUpperCase() : e.target.value })} />
         </Field>
       ))}
       <Field label="Tag renews">
         <Picker label="Tag renews" value={f.tag_month} placeholder="Month…" options={[{ value: '', label: '(not set)' }, ...MONTHS.map((m) => ({ value: m, label: m }))]} onChange={(v) => set({ tag_month: v })} />
       </Field>
-      {money && MONEY.filter(([k]) => !(isNew && k === 'vin')).map(([k, label]) => (
+      {money && MONEY.map(([k, label]) => (
         <Field key={k} label={label}>
-          <input type={['bought_on'].includes(k) ? 'date' : 'text'} inputMode={k === 'vin' || k === 'bought_on' ? undefined : 'decimal'} value={f[k]}
-            onChange={(e) => set({ [k]: k === 'vin' ? e.target.value.toUpperCase() : e.target.value })} />
+          <input type={['bought_on'].includes(k) ? 'date' : 'text'} inputMode={k === 'bought_on' ? undefined : 'decimal'} value={f[k]}
+            onChange={(e) => set({ [k]: e.target.value })} />
         </Field>
       ))}
       <Field label="Notes" wide><textarea rows={2} value={f.notes} onChange={(e) => set({ notes: e.target.value })} /></Field>
@@ -69,11 +69,14 @@ function DetailsForm({ f, set, money, isNew }) {
 
 const clean = (f, money) => {
   const out = {};
-  for (const [k] of EVERYDAY) out[k] = String(f[k] ?? '').replace(/,/g, k === 'mileage' ? '' : ',').trim();
+  for (const [k] of EVERYDAY) {
+    const v = String(f[k] ?? '');
+    out[k] = k === 'vin' ? v.replace(/\s/g, '').toUpperCase() : k === 'insurance_yearly' ? v.replace(/[$,\s]/g, '') : v.replace(/,/g, k === 'mileage' ? '' : ',').trim();
+  }
   out.tag_month = f.tag_month;
   out.samsara = f.samsara;
   out.notes = f.notes;
-  if (money) for (const [k] of MONEY) out[k] = String(f[k] ?? '').replace(k === 'vin' || k === 'bought_on' ? /\s/g : /[$,\s]/g, '');
+  if (money) for (const [k] of MONEY) out[k] = String(f[k] ?? '').replace(k === 'bought_on' ? /\s/g : /[$,\s]/g, '');
   return out;
 };
 
@@ -257,7 +260,7 @@ function Log({ t, today, money }) {
                 <b>{usDate(g.day)}</b> {g.text}
                 {g.cost ? ` · ${dollars(g.cost, true)}` : ''}{g.miles ? ` · ${Number(g.miles).toLocaleString('en-US')} mi` : ''}
                 {g.by ? <span className="note"> · {g.by}</span> : null}
-                {money && (g.kind === 'added' || g.kind === 'removed') && (
+                {(g.kind === 'added' || g.kind === 'removed') && (
                   <span className="tr-email">
                     {g.emailed_at ? <span className="note">Emailed {usDate(g.emailed_at.slice(0, 10))}</span>
                       : <>{g.email_result && <span className="error">{g.email_result}</span>}
@@ -420,7 +423,6 @@ function TruckCard({ t, people, money, today, settings }) {
 
       <section className="tr-sec">
         <h3>Details</h3>
-        {!money && <p className="note">VIN {t.vin || 'not on file'}</p>}
         <DetailsForm f={f} set={(patch) => setF({ ...f, ...patch })} money={money} />
         <div className="panel-buttons"><button type="button" className="btn btn-small" onClick={save}>Save details</button></div>
         <Msg m={m} />
@@ -428,14 +430,14 @@ function TruckCard({ t, people, money, today, settings }) {
 
       {money && <Documents t={t} />}
       {money && <Loans t={t} today={today} />}
-      {money && <Status t={t} today={today} settings={settings} />}
+      <Status t={t} today={today} settings={settings} />
       <Log t={t} today={today} money={money} />
     </div>
   );
 }
 
 /* ---------- Add a truck (C-Suite) ---------- */
-function AddTruck({ today, settings, onClose }) {
+function AddTruck({ today, settings, onClose, money }) {
   const router = useRouter();
   const [f, setF] = useState(() => ({ ...blank(null), make: 'Nissan', model: 'Frontier', year: today.slice(0, 4), bought_on: today, office: '' }));
   const [loan, setLoan] = useState({ on: false, lender: '', payment: '', start_on: today, end_on: '', financed: '', rate: '' });
@@ -451,16 +453,16 @@ function AddTruck({ today, settings, onClose }) {
     if (vin.length !== 17) { setM({ ok: false, text: `A VIN is 17 characters (this one has ${vin.length}).` }); return; }
     if (!f.office) { setM({ ok: false, text: 'Pick the office.' }); return; }
     setBusy(true);
-    const { data, error } = await rpc('save_truck', { p_id: null, p: { ...clean(f, true), office: f.office } });
+    const { data, error } = await rpc('save_truck', { p_id: null, p: { ...clean(f, money), office: f.office } });
     if (error) { setBusy(false); setM({ ok: false, text: /duplicate|unique/i.test(error.message) ? 'That VIN is already on the sheet.' : error.message }); return; }
-    if (loan.on) {
+    if (money && loan.on) {
       const p = { ...loan, balance: loan.financed, balance_on: loan.start_on };
       for (const k of ['payment', 'financed', 'rate', 'balance']) p[k] = String(p[k] ?? '').replace(/[$,%\s]/g, '');
       await rpc('save_truck_loan', { p_truck: data.id, p_loan: null, p, p_delete: false });
     }
     // The paperwork first, so the bookkeeper's email has it attached
     const problems = [];
-    for (const [kind, file] of Object.entries(papers)) {
+    for (const [kind, file] of Object.entries(money ? papers : {})) {
       if (!file) continue;
       try {
         const q = await uploadDoc(data.id, file, kind);
@@ -481,22 +483,23 @@ function AddTruck({ today, settings, onClose }) {
       <Field label="Office">
         <div className="chips">{OFFICES.map((o) => <button key={o.key} type="button" className={`chip${f.office === o.key ? ' on' : ''}`} onClick={() => setF({ ...f, office: o.key })}>{o.name}</button>)}</div>
       </Field>
-      <DetailsForm f={f} set={(patch) => setF({ ...f, ...patch })} money isNew />
-      <Toggle checked={loan.on} onChange={(on) => setLoan({ ...loan, on })}><span>Financed</span></Toggle>
-      {loan.on && (
+      <DetailsForm f={f} set={(patch) => setF({ ...f, ...patch })} money={money} isNew />
+      {money && <Toggle checked={loan.on} onChange={(on) => setLoan({ ...loan, on })}><span>Financed</span></Toggle>}
+      {money && loan.on && (
         <div className="tr-grid">
           {LOAN_FIELDS.filter(([k]) => k !== 'balance').map(([k, label, type]) => (
             <Field key={k} label={label}><input type={type === 'date' ? 'date' : 'text'} inputMode={type === 'decimal' ? 'decimal' : undefined} value={loan[k]} onChange={(e) => setLoan({ ...loan, [k]: e.target.value })} /></Field>
           ))}
         </div>
       )}
-      <div className="tr-grid">
+      {!money && <p className="note">The price, loan and agreements are added by C-Suite.</p>}
+      {money && <div className="tr-grid">
         {[['purchase', 'Purchase agreement'], ['finance', 'Finance agreement']].map(([k, label]) => (
           <label key={k} className="tr-field"><span>{label} (photo or PDF)</span>
             <input type="file" accept="image/*,application/pdf" onChange={(e) => setPapers({ ...papers, [k]: e.target.files?.[0] || null })} />
           </label>
         ))}
-      </div>
+      </div>}
       <Toggle checked={email} onChange={setEmail}>
         <span>Email {who}</span>
         <span className="note">{email ? 'Insurance: add it to the policy. Bookkeeper: record the purchase and the loan, with the agreements attached. The agreements also go into QuickBooks.' : 'No email; you can send it later from the truck’s history.'}</span>
@@ -628,7 +631,7 @@ export default function TrucksView({ trucks, people, settings, money, verify, to
           ))}
         </div>
         <input type="search" className="tr-search" placeholder="Truck #, driver, VIN, tag…" value={q} onChange={(e) => setQ(e.target.value)} />
-        {money && <button type="button" className="btn btn-small" onClick={() => setAdding(true)}>Add a truck</button>}
+        <button type="button" className="btn btn-small" onClick={() => setAdding(true)}>Add a truck</button>
         {money && <button type="button" className="btn btn-small btn-quiet" onClick={() => setShowSettings(!showSettings)}>Email settings</button>}
       </div>
 
@@ -636,7 +639,7 @@ export default function TrucksView({ trucks, people, settings, money, verify, to
       {money && settings && !settings.bookkeeper_email && !showSettings && (
         <p className="error tr-verify">The bookkeeper’s email isn’t set yet, so sold / added emails only go to insurance. <button type="button" className="linklike" onClick={() => setShowSettings(true)}>Add it</button></p>
       )}
-      {adding && <AddTruck today={today} settings={settings} onClose={() => setAdding(false)} />}
+      {adding && <AddTruck today={today} settings={settings} money={money} onClose={() => setAdding(false)} />}
 
       <div className="tr-scroll">
         <table className="ops-table tr-table">

@@ -80,7 +80,7 @@ export default async function ReportsPage({ searchParams }) {
         )}
       </div>
 
-      {me.rank >= 4 && (
+      {(me.rank >= 4 || me.hr_approver) && (
         <div className="rc-top brand-head brand-hero rf-hr">
           <Bug kind="ant" size={150} className="brand-head-bug" />
           <div>

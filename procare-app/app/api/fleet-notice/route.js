@@ -8,7 +8,7 @@ import { DOC_KIND, truckName, usDate, dollars } from '@/lib/trucks';
 
 // Change 75: a truck was added to the fleet or taken off it (sold, totaled, returned) → one email to the insurance
 // agent (add / remove it on the auto policy) and one to the bookkeeper (record the purchase or sale and the loan).
-// { id } is the truck_log row ('added' or 'removed'). Only C-Suite / the President (can_see_finance) can send, and
+// { id } is the truck_log row ('added' or 'removed'). Managers and up can send (change 80), and
 // each change is emailed once (truck_log.emailed_at); a failed send can be tried again from the truck.
 
 const reply = (status, body) => NextResponse.json(body, { status });
@@ -20,8 +20,9 @@ export async function POST(request) {
   const supabase = createClient();
   const { user, me } = await getMe(supabase);
   if (!me) return reply(401, { message: 'Sign in again.' });
-  const { data: allowed } = await supabase.rpc('can_see_finance');
-  if (!allowed) return reply(403, { message: 'Only C-Suite and the President (with the authenticator step) can send these.' });
+  // Managers and up (change 80). The bookkeeper's email carries loan details and agreements, so only C-Suite is copied.
+  const [{ data: allowed }, { data: finance }] = await Promise.all([supabase.rpc('can_see_trucks'), supabase.rpc('can_see_finance')]);
+  if (!allowed) return reply(403, { message: 'Only managers and up can send these.' });
 
   const secret = process.env.SUPABASE_SECRET_KEY;
   if (!secret) return reply(500, { message: 'SUPABASE_SECRET_KEY is missing.' });
@@ -67,7 +68,7 @@ export async function POST(request) {
     t.office ? `Garaged at: Procare Pest, ${OFFICE_NAME[t.office] || t.office}` : null,
   ].filter(Boolean);
   const footer = `Sent from the Procare Pest team app by ${sender}. Reply to this email with any questions.`;
-  const cc = [s?.reply_to, user?.email].filter((e) => e && !/@example\./.test(e));
+  const cc = [s?.reply_to, finance ? user?.email : null].filter((e) => e && !/@example\./.test(e));
   const replyTo = s?.reply_to || user?.email;
   const results = [];
   // A retry after a partial send skips whoever already got it
