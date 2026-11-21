@@ -5,6 +5,7 @@ import { getMe } from '@/lib/me';
 import { contactsById } from '@/lib/contacts';
 import PersonEditor from './PersonEditor';
 import CompetitionFollows from './CompetitionFollows';
+import WildlifeAssist from './WildlifeAssist';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,7 @@ export default async function PersonPage({ params }) {
   const [{ data: found }, contacts] = await Promise.all([
     supabase
       .from('employees')
-      .select('id, first_name, last_name, office, department, level, active, deactivated_by, hr_approver, auth_user_id, photo_url')
+      .select('id, first_name, last_name, office, department, level, active, deactivated_by, hr_approver, auth_user_id, photo_url, wildlife_assist')
       .eq('id', params.id)
       .maybeSingle(),
     contactsById(supabase, params.id),
@@ -62,6 +63,7 @@ export default async function PersonPage({ params }) {
         canEditSchedule={!!canEditSchedule}
       />
       {me.rank >= 4 && person.active && <CompetitionFollows person={person} follows={follows || []} />}
+      {(me.rank >= 4 || me.hr_approver) && person.active && person.department !== 'wildlife' && <WildlifeAssist person={person} />}
     </section>
   );
 }

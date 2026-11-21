@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { todayYmd } from '@/lib/repcards';
 import { payPeriod } from '@/lib/payroll';
-import { buildReferrals, buildWildlifePay } from '@/lib/wildlifePay';
+import { buildAssists, buildReferrals, buildWildlifePay } from '@/lib/wildlifePay';
 import WildlifePayView from './WildlifePayView';
 
 export const dynamic = 'force-dynamic';
@@ -18,6 +18,10 @@ export default async function WildlifePayPage({ searchParams }) {
     <WildlifePayView
       people={buildWildlifePay(data)}
       referrals={buildReferrals(data)}
+      assists={buildAssists(data)}
+      jobs={data.jobs || []}
+      names={data.people || {}}
+      canToggle={!!data.can_toggle}
       period={period}
       today={today}
       canEdit={!!data.can_edit}

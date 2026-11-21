@@ -6,7 +6,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - John Ely, President of Procare Pest (3 Atlanta offices: East, West, South). Not technical: short, plain answers, one step and one question at a time.
 - Repo `1procarepest/Procare-app`; the app is in `procare-app/` (Next.js 14 App Router, plain JS, Supabase). Vercel deploys from `main`.
 - Check with `npm run build` before pushing. Commit and push only your own files; end commit messages with the Co-Authored-By line.
-- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-20-73-checkins-and-yearly-reviews.sql`, so the next is 74). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
+- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-20-74-wildlife-split-and-assist.sql`, so the next is 75). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
 - Supabase cuts a request off after about 8 s. Time heavy queries on real data first.
 - SQL tests run in PGlite (`@electric-sql/pglite`); there's no local Postgres. The new Mac (2026-11-16) had no Node.js or Homebrew at first.
 - **UI rules from John**: use toggle switches (`app/Toggle.js`), never checkboxes. Use the brand look: `.brand-head` patterned headers, bug art from `app/Bug.js` (bugs anywhere; wildlife icons only on future wildlife pages), colors ink/forest/green/lime/sage.
@@ -159,6 +159,17 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 8. **Forms access (John, 2026-11-20)**: Forms is managers and up (plus the ride-along rules from change 47: technician
    leads, the HR approver and the report recipients); team members don't see it. The HR who cares section (6 Month
    Check-In, Yearly Review) is C-Suite and the President only.
+
+9. **Wildlife split and office assist (change 74, 2026-11-20)**: per-job **Split** switch (on by default: the whole
+   commission is shared evenly by the wildlife team on the commission plan) and **Office assist** switch (off by
+   default: $100 to whoever has `employees.wildlife_assist` on, Jessica, taken out of the team's pay: split jobs half
+   each, otherwise the seller). Assist is on the pay report only, never Earnings / cash out. Switches: C-Suite,
+   President, HR approver, Jessica (`can_set_wildlife_jobs`). Profile switch on Settings -> person page.
+   **NEXT (2026-11-21): Jessica as the wildlife team's manager** (John: wildlife team only, not other office staff):
+   edit Bryan and Sam's schedules, approve their time off, get their schedule/time-off notices. Bryan and Sam are level
+   `manager` in `wildlife`, so it needs a flag (e.g. `employees.manages_wildlife`) in `can_manage`,
+   `can_approve_time_off`, the Settings gate (`app/admin/layout.js`, rank >= 2), `TimeOffList.js` and
+   `app/api/notify/route.js` recipients. Also confirm with John: "change it for Ally" (HR who cares forms)?
 
 ## Good to know
 - FieldRoutes data syncs into Supabase through the Apps Script "Procare Sync" (`sync/ProcareSync.gs`). It saves the morning route snapshot and, since change 42, a daily copy of each office's numbers (`office_kpi_days`).

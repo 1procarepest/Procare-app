@@ -8,6 +8,7 @@ import { shortDate } from '@/lib/labels';
 import { money0 } from '@/lib/ops';
 import { payPeriod, shiftPeriod } from '@/lib/payroll';
 import { BASIS_LABEL, LINE_LABEL } from '@/lib/wildlifePay';
+import Toggle from '../../Toggle';
 import { CritterTile } from '../../Critter';
 
 const money2 = (x) => `$${(Number(x) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -86,6 +87,7 @@ function PersonPay({ p, canEdit }) {
         {p.plan.plan === 'salary'
           ? <>Salary {money2(p.salary)} · job bonuses {money2(p.bonus)}</>
           : <>Selling {money2(p.sell)} · doing the work {money2(p.work)}</>}
+        {p.assist ? <> · office assist −{money2(p.assist)}</> : null}
       </p>
       {p.lines.length === 0 ? <p className="note">No wildlife jobs had their first visit done this pay period.</p> : (
         <div className="pay-scroll">
@@ -93,7 +95,7 @@ function PersonPay({ p, canEdit }) {
             <thead>
               <tr>
                 <th scope="col">Customer</th><th scope="col">Job</th><th scope="col">First visit done</th><th scope="col">Paid on</th>
-                <th scope="col">Sold</th><th scope="col">Did the work</th><th scope="col">Pay</th>
+                <th scope="col">Sold</th><th scope="col">Did the work</th><th scope="col">Office assist</th><th scope="col">Pay</th>
               </tr>
             </thead>
             <tbody>
@@ -103,8 +105,9 @@ function PersonPay({ p, canEdit }) {
                   <td className="wp-job"><CritterTile kind={CRITTER[l.line]?.[0]} tone={CRITTER[l.line]?.[1]} size={24} /> {LINE_LABEL[l.line]}<small>{l.service_type}</small></td>
                   <td>{shortDate(l.done_on)}</td>
                   <td>{money2(l.basis)}<small>{BASIS_LABEL[l.line]}</small></td>
-                  <td>{l.sold ? (p.plan.plan === 'commission' ? money2(l.sell) : '✓') : '–'}</td>
-                  <td>{l.did ? (p.plan.plan === 'commission' ? money2(l.work) : money2(l.bonus)) : '–'}</td>
+                  <td>{l.sell ? money2(l.sell) : l.sold ? '✓' : '–'}{l.split && l.sell ? <small>split</small> : null}</td>
+                  <td>{l.work ? money2(l.work) : l.bonus ? money2(l.bonus) : l.did ? '✓' : '–'}{l.split && l.work ? <small>split</small> : null}</td>
+                  <td>{l.assist ? `−${money2(l.assist)}` : '–'}</td>
                   <td><b>{money2(l.pay)}</b></td>
                 </tr>
               ))}
@@ -116,7 +119,52 @@ function PersonPay({ p, canEdit }) {
   );
 }
 
-export default function WildlifePayView({ people, referrals, period, today, canEdit, everyone }) {
+// The jobs this pay period with their Split and Office assist switches (change 74)
+function JobSwitches({ jobs, names, canToggle, assists }) {
+  const router = useRouter();
+  const [rows, setRows] = useState(jobs);
+  const [err, setErr] = useState('');
+  const set = async (j, patch) => {
+    const next = { ...j, ...patch };
+    setErr('');
+    setRows((list) => list.map((x) => (x.id === j.id ? next : x)));
+    const { error } = await createClient().rpc('set_wildlife_job', { p_subscription: j.id, p_split: next.split !== false, p_assist: !!next.assist });
+    if (error) { setErr(error.message); setRows((list) => list.map((x) => (x.id === j.id ? j : x))); return; }
+    router.refresh();
+  };
+  const who = (id) => (id && names[id]) || '–';
+  return (
+    <section className="wp-person" aria-labelledby="wp-jobs-h">
+      <header><div>
+        <h2 id="wp-jobs-h">Jobs this pay period</h2>
+        <p className="note">Split: the commission is shared evenly by the wildlife team (on unless you turn it off).
+          Office assist: {assists.person ? `${assists.person.name} gets ${money0(assists.amount)} for helping close it, taken out of the team’s pay` : 'nobody has the office assist switched on in their profile'}.</p>
+      </div></header>
+      {rows.length === 0 ? <p className="note">No wildlife jobs had their first visit done this pay period.</p> : (
+        <div className="pay-scroll">
+          <table className="ops-table wp-table">
+            <thead><tr><th scope="col">Customer</th><th scope="col">Job</th><th scope="col">First visit done</th><th scope="col">Sold</th><th scope="col">Did the work</th><th scope="col">Split</th><th scope="col">Office assist</th></tr></thead>
+            <tbody>
+              {rows.map((j) => (
+                <tr key={j.id}>
+                  <th scope="row">{[j.first, j.cust].filter(Boolean).join(' ') || 'Customer'}</th>
+                  <td>{LINE_LABEL[j.line]}<small>{money2(j.basis)} {BASIS_LABEL[j.line]}</small></td>
+                  <td>{shortDate(j.done_on)}</td>
+                  <td>{who(j.seller)}</td><td>{who(j.worker)}</td>
+                  <td><Toggle small checked={j.split !== false} disabled={!canToggle} onChange={(v) => set(j, { split: v })} label={`Split ${j.cust || 'job'}`} /></td>
+                  <td><Toggle small checked={!!j.assist} disabled={!canToggle || !assists.person} onChange={(v) => set(j, { assist: v })} label={`Office assist ${j.cust || 'job'}`} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {err && <p className="error" role="alert">{err}</p>}
+    </section>
+  );
+}
+
+export default function WildlifePayView({ people, referrals, assists, jobs, names, canToggle, period, today, canEdit, everyone }) {
   const thisPeriod = payPeriod(today);
   const prev = shiftPeriod(period.from, -1);
   const next = shiftPeriod(period.from, 1);
@@ -140,8 +188,25 @@ export default function WildlifePayView({ people, referrals, period, today, canE
         {period.from !== thisPeriod.from && <Link className="ops-today" href="/wildlife/pay" scroll={false}>This period</Link>}
       </div>
 
+      {everyone && <JobSwitches key={period.from + jobs.map((j) => `${j.id}${j.split}${j.assist}`).join()} jobs={jobs.filter((j) => j.line)} names={names} canToggle={canToggle} assists={assists} />}
+
       {people.length === 0 && <p className="note">Nobody is in the Wildlife department yet.</p>}
       {people.map((p) => <PersonPay key={p.id} p={p} canEdit={canEdit} />)}
+
+      {everyone && assists.person && (
+        <section className="wp-referrals" aria-labelledby="wp-assist-h">
+          <h2 id="wp-assist-h">Office assist to pay · {assists.person.name} · {money0(assists.amount)} each</h2>
+          <p className="note">On the pay report for payroll, not cash out. Taken out of the wildlife team’s pay above.</p>
+          {assists.jobs.length === 0 ? <p className="note">None this pay period.</p> : (
+            <ul className="wp-ref-list">
+              <li>
+                <b>{assists.person.name}</b> · {assists.jobs.length} job{assists.jobs.length === 1 ? '' : 's'} · <b>{money0(assists.total)}</b>
+                <small>{assists.jobs.map((j) => `${[j.first, j.cust].filter(Boolean).join(' ')} (${LINE_LABEL[j.line]}, ${shortDate(j.done_on)})`).join(' · ')}</small>
+              </li>
+            </ul>
+          )}
+        </section>
+      )}
 
       {everyone && (
         <section className="wp-referrals" aria-labelledby="wp-ref-h">
