@@ -18,7 +18,7 @@ export async function POST(request) {
   if (!id) return reply(400, { message: 'Missing id.' });
 
   const supabase = createClient();
-  const { me } = await getMe(supabase);
+  const { user, me } = await getMe(supabase);
   if (!me) return reply(401, { message: 'Sign in again.' });
   const { data: allowed } = await supabase.rpc('can_see_finance');
   if (!allowed) return reply(403, { message: 'Only C-Suite and the President (with the authenticator step) can send these.' });
@@ -67,8 +67,8 @@ export async function POST(request) {
     t.office ? `Garaged at: Procare Pest, ${OFFICE_NAME[t.office] || t.office}` : null,
   ].filter(Boolean);
   const footer = `Sent from the Procare Pest team app by ${sender}. Reply to this email with any questions.`;
-  const cc = [s?.reply_to, me.email].filter((e) => e && !/@example\./.test(e));
-  const replyTo = s?.reply_to || me.email;
+  const cc = [s?.reply_to, user?.email].filter((e) => e && !/@example\./.test(e));
+  const replyTo = s?.reply_to || user?.email;
   const results = [];
   // A retry after a partial send skips whoever already got it
   const prev = ev.email_result || '';

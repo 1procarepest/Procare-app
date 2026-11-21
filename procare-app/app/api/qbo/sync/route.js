@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { hasSecondStep } from '@/lib/mfa';
 import { syncBalanceSheet, syncPl } from '@/lib/qbo';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { sendPendingDriverNotices } from '@/lib/driverNotice';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -13,9 +15,12 @@ export async function GET(request) {
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ ok: false, error: 'Not allowed' }, { status: 401 });
   }
+  // Also the daily send for driver emails still waiting (change 78), e.g. someone the FieldRoutes sync deactivated
+  let drivers = {};
+  try { drivers = await sendPendingDriverNotices(createAdminClient()); } catch (e) { drivers = { driverError: String(e.message || e) }; }
   try {
     const pl = await syncPl(3);
-    return NextResponse.json({ ok: true, ...pl, ...(await syncBalanceSheet(13)) });
+    return NextResponse.json({ ok: true, ...drivers, ...pl, ...(await syncBalanceSheet(13)) });
   } catch (e) {
     return NextResponse.json({ ok: false, error: String(e.message || e) }, { status: 500 });
   }

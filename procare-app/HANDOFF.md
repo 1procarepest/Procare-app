@@ -6,7 +6,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - John Ely, President of Procare Pest (3 Atlanta offices: East, West, South). Not technical: short, plain answers, one step and one question at a time.
 - Repo `1procarepest/Procare-app`; the app is in `procare-app/` (Next.js 14 App Router, plain JS, Supabase). Vercel deploys from `main`.
 - Check with `npm run build` before pushing. Commit and push only your own files; end commit messages with the Co-Authored-By line.
-- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-21-77-truck-documents.sql`, so the next is 78). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
+- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-21-78-approved-drivers.sql`, so the next is 79). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
 - Supabase cuts a request off after about 8 s. Time heavy queries on real data first.
 - SQL tests run in PGlite (`@electric-sql/pglite`); there's no local Postgres. The new Mac (2026-11-16) had no Node.js or Homebrew at first.
 - **UI rules from John**: use toggle switches (`app/Toggle.js`), never checkboxes. Use the brand look: `.brand-head` patterned headers, bug art from `app/Bug.js` (bugs anywhere; wildlife icons only on future wildlife pages), colors ink/forest/green/lime/sage.
@@ -90,6 +90,13 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
   truck email attaches purchase + finance agreements (added) or the bill of sale (sold). Add a truck has file
   pickers for both agreements, uploaded before the email. Trucks sheet: status filter chips (with counts) and
   sortable column headings.
+
+- **Approved drivers (change 78, 2026-11-21)**: Operations → Drivers (`app/ops/drivers`) and a Company driver panel
+  on each person's Settings page. `employees.approved_driver` (managers see it) + `driver_licenses` (C-Suite /
+  President / HR approver with the authenticator step only). Switch on/off → `driver_events` → email to the insurance
+  agent (`lib/driverNotice.js`, `/api/driver-notice`); never the home address. Deactivating a driver (app or
+  FieldRoutes sync) queues the removal (trigger `driver_leaves`); the daily QuickBooks cron sends anything waiting.
+  John's driver list was imported from a file kept OUT of the repo: license details never go in git.
 
 ## Next up (John's list)
 1. ~~Manager bonuses~~: live since 2026-11-16 (changes 47–49). Setup left for Ally: Ryan as report recipient, yearly amounts, Q4 goals, past reports.

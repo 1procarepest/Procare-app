@@ -1877,3 +1877,9 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .tr-sort span { opacity: 0.55; font-size: 11px; }
 .tr-upload { justify-self: start; cursor: pointer; }
 .tr-upload.disabled { opacity: 0.6; pointer-events: none; }
+
+/* ---------- Operations → Drivers (change 78) ---------- */
+.drv-warn { border-color: #D9A400; }
+.drv-warn strong { color: #8A6A00; }
+.drv-edit { max-width: 720px; }
+.admin-driver { margin-top: 18px; max-width: 760px; }

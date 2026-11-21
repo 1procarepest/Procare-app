@@ -6,6 +6,7 @@ import { contactsById } from '@/lib/contacts';
 import PersonEditor from './PersonEditor';
 import CompetitionFollows from './CompetitionFollows';
 import WildlifeAssist from './WildlifeAssist';
+import DriverSection from './DriverSection';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,6 +65,7 @@ export default async function PersonPage({ params }) {
       />
       {me.rank >= 4 && person.active && <CompetitionFollows person={person} follows={follows || []} />}
       {(me.rank >= 4 || me.hr_approver) && person.active && person.department !== 'wildlife' && <WildlifeAssist person={person} />}
+      {(me.rank >= 4 || me.hr_approver) && person.active && <DriverSection personId={person.id} />}
     </section>
   );
 }
