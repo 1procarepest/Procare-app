@@ -17,5 +17,5 @@ export default async function ReviewsPage({ searchParams }) {
   const { data: reviews } = pick
     ? await supabase.from('employee_reviews').select('*').eq('employee_id', pick).order('year', { ascending: false }).order('review_date', { ascending: false })
     : { data: [] };
-  return <ReviewsView people={people || []} pick={pick} reviews={reviews || []} today={todayYmd()} />;
+  return <ReviewsView people={people || []} pick={pick} reviews={reviews || []} today={todayYmd()} hrForms={me.rank >= 4} />;
 }

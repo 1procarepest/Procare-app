@@ -148,6 +148,18 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
    - Open questions: which columns John keeps today and where (share the current sheet), who can edit (managers,
      Ryan, C-Suite?), and whether to send reminders (tag renewals, oil changes due by mileage).
 
+7. **Onboarding (training documents and sales aids)** (John, 2026-11-20): a section, probably called **Onboarding**, with
+   the important documents and training material: employee handbook, sales manual and other training, mostly by
+   department (administrative, sales, service), so each person sees what's for them. Includes **sales aids** for reps.
+   - The **door-to-door sales contract form** likely lives here, so sales reps reach it from Onboarding rather than
+     Forms (Forms stays managers and up). Open: what the contract is (the agreement a customer signs at the door, or
+     the rep's own contract), whether it's filled in and signed in the app or a PDF to read, and where it goes after.
+   - Open: who uploads and updates documents (C-Suite? HR?), whether people must mark "read" (e.g. the handbook) with
+     a date, and file types (PDF, video).
+8. **Forms access (John, 2026-11-20)**: Forms is managers and up (plus the ride-along rules from change 47: technician
+   leads, the HR approver and the report recipients); team members don't see it. The HR who cares section (6 Month
+   Check-In, Yearly Review) is C-Suite and the President only.
+
 ## Good to know
 - FieldRoutes data syncs into Supabase through the Apps Script "Procare Sync" (`sync/ProcareSync.gs`). It saves the morning route snapshot and, since change 42, a daily copy of each office's numbers (`office_kpi_days`).
 - appointment.employeeID is who BOOKED the job, never the tech. A person's FieldRoutes IDs come from `tech_fr_ids()`.

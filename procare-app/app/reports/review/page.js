@@ -14,7 +14,8 @@ export default async function NewReviewPage({ searchParams }) {
   const kind = searchParams?.kind === 'yearly' ? 'yearly' : 'checkin';
   const supabase = createClient();
   const { me } = await getMe(supabase);
-  if (!me || !(me.rank >= 3 || me.hr_approver)) redirect('/reports');
+  // C-Suite and the President only (John, 2026-11-20)
+  if (!me || me.rank < 4) redirect('/reports');
   const { data: people, error } = await supabase.rpc('review_people');
   if (error) return <p className="error">The team list couldn’t load: {error.message}</p>;
   const list = people || [];

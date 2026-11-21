@@ -107,7 +107,7 @@ function ShareButton({ r, name }) {
   );
 }
 
-export default function ReviewsView({ people, pick, reviews, today }) {
+export default function ReviewsView({ people, pick, reviews, today, hrForms }) {
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState(null);
   const person = people.find((p) => p.id === pick);
@@ -125,8 +125,8 @@ export default function ReviewsView({ people, pick, reviews, today }) {
           <ReviewForm key={editing.id || 'new'} person={person} start={editing} onDone={() => setEditing(null)} />
         ) : (
           <div className="panel-buttons">
-            <Link className="btn btn-small" href={`/reports/review?kind=checkin&person=${person.id}`}>+ 6 Month Check-In</Link>
-            <Link className="btn btn-small" href={`/reports/review?kind=yearly&person=${person.id}`}>+ Yearly Review</Link>
+            {hrForms && <Link className="btn btn-small" href={`/reports/review?kind=checkin&person=${person.id}`}>+ 6 Month Check-In</Link>}
+            {hrForms && <Link className="btn btn-small" href={`/reports/review?kind=yearly&person=${person.id}`}>+ Yearly Review</Link>}
             <button type="button" className="btn btn-small btn-quiet" onClick={() => setEditing(blank(today))}>+ G.R.E.E.N. ratings</button>
           </div>
         )}

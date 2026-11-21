@@ -12,7 +12,8 @@ export default async function TopNav({ me, supabase, current, extra = null }) {
   // Reports (ride-alongs and follow-behinds) and Bonus: only for the people they're for (change 47).
   // Pay moved into the Sales app as a tab (2026-11-19), so the bar no longer checks pay access.
   const { data: bonusLinks } = me.rank >= 2 || me.hr_approver ? await supabase.rpc('my_bonus_links') : { data: null };
-  // Forms (was Reports): ride-alongs and follow-behinds, and (2026-11-20) 6-month check-ins and yearly reviews for reviewers
+  // Forms (was Reports): ride-alongs and follow-behinds for managers and up (plus who the ride-along rules let in);
+  // the HR who cares check-ins and yearly reviews are C-Suite and the President only (John, 2026-11-20)
   const link = (key, href, label) => (
     <Link key={key} className={`toplink${current === key ? ' on' : ''}`} href={href} aria-current={current === key ? 'page' : undefined}>{label}</Link>
   );
@@ -23,7 +24,7 @@ export default async function TopNav({ me, supabase, current, extra = null }) {
         {link('home', '/', 'My Profile')}
         {apps.map((k) => link(k, APPS[k].href, APPS[k].short))}
         {canSeeTeamSchedule(me) && link('team', '/team', 'Schedule')}
-        {(bonusLinks?.reports || me.rank >= 3 || me.hr_approver) && link('reports', '/reports', 'Forms')}
+        {(bonusLinks?.reports || me.rank >= 3) && link('reports', '/reports', 'Forms')}
         {bonusLinks?.bonus && link('bonus', '/bonus', 'Bonus')}
         {link('compete', '/compete', 'Compete')}
         {extra}
