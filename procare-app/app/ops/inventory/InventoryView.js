@@ -307,7 +307,10 @@ function ItemForm({ item, section, categories, bwiPrices, onDone }) {
       </div>
       <Msg m={m} />
       {hist && hist.length > 0 && (
-        <div className="note">Price history: {hist.map((h, k) => <span key={k}>{k ? ' · ' : ''}{price2(h.price)} on {usDate(h.day)} ({SOURCE[h.source] || h.source}{h.by ? `, ${h.by}` : ''})</span>)}</div>
+        <div className="note">
+          {hist.length > 1 && <strong>Average of {hist.length}: {price2(hist.reduce((t, h) => t + Number(h.price || 0), 0) / hist.length)}. </strong>}
+          Price history: {hist.map((h, k) => <span key={k}>{k ? ' · ' : ''}{price2(h.price)} on {usDate(h.day)} ({SOURCE[h.source] || h.source}{h.by ? `, ${h.by}` : ''})</span>)}
+        </div>
       )}
     </div>
   );
@@ -338,7 +341,7 @@ function ItemsTab({ inv, scope, canPrice, bwiPrices }) {
         {may && <button type="button" className="btn btn-small btn-quiet" onClick={() => setEdit('new')}>Add an item</button>}
       </div>
       <Msg m={m} />
-      {!may && <p className="note">{section === 'pest' ? 'C-Suite sets pest prices.' : 'The wildlife inventory manager sets wildlife prices.'} Ask them if a price looks wrong.</p>}
+      {!may && <p className="note">{section === 'pest' ? 'Each office’s inventory manager and C-Suite keep the pest items and prices.' : 'The wildlife inventory manager keeps the wildlife items and prices.'} Ask them if a price looks wrong.</p>}
       {edit === 'new' && <ItemForm section={section} categories={categories} bwiPrices={bwiPrices} onDone={() => setEdit(null)} />}
       <div className="tr-scroll">
         <table className="ops-table tr-table inv-items">
