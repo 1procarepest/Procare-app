@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { OFFICES, OFFICE_NAME } from '@/lib/labels';
 import { usDate } from '@/lib/trucks';
 import DriverEditor, { EmailStatus, sendDriverNotice } from './DriverEditor';
+import OpsHero from '../OpsHero';
 
 const name = (p) => `${p.first_name} ${p.last_name}`;
 
@@ -44,14 +45,8 @@ export default function DriversView({ d, verify }) {
   const cols = d.details ? 6 : 4;
 
   return (
-    <>
-      <div className="rc-top bug-band">
-        <div>
-          <p className="rc-kicker">Operations</p>
-          <h1 className="rc-title">The <em>drivers</em></h1>
-        </div>
-        <p className="rc-updated">Who is on the company auto policy. Adding or taking someone off emails {agent.name || 'the insurance agent'}.</p>
-      </div>
+    <div className="ops-fun">
+      <OpsHero title="The" em="drivers" bug="spider">Who is on the company auto policy. Adding or taking someone off emails {agent.name || 'the insurance agent'}.</OpsHero>
       {verify && <p className="note tr-verify">License numbers and the driver switch are behind the authenticator step. <a href={verify}>Verify to see them</a>.</p>}
 
       <div className="fin-tiles">
@@ -102,6 +97,6 @@ export default function DriversView({ d, verify }) {
           </tbody>
         </table>
       </div>
-    </>
+    </div>
   );
 }

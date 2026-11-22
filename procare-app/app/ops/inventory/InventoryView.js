@@ -8,6 +8,7 @@ import { dollars, usDate } from '@/lib/trucks';
 import { KINDS, SECTIONS, SIZES, VALUED, addMonth, buildInventory, groupByCategory, monthLabel, num } from '@/lib/inventory';
 import Picker from '../../Picker';
 import Toggle from '../../Toggle';
+import OpsHero from '../OpsHero';
 
 const rpc = (name, args) => createClient().rpc(name, args);
 const clean = (s) => String(s ?? '').replace(/[$,\s]/g, '');
@@ -484,17 +485,13 @@ export default function InventoryView({ data, scope, canPrice, canAdmin, people 
   const goMonth = (k) => router.push(`${path}?month=${addMonth(inv.month, k)}&tab=${tab}`);
 
   return (
-    <>
-      <div className="rc-top brand-head bug-band">
-        <div>
-          <p className="rc-kicker">{scope === 'wildlife' ? 'Wildlife' : 'Operations'}</p>
-          <h1 className="rc-title">Inventory <em>{monthLabel(inv.month, true)}</em></h1>
-        </div>
-        <p className="rc-updated">
+    <div className="ops-fun">
+      <OpsHero kicker={scope === 'wildlife' ? 'Wildlife' : 'Operations'} title="Inventory" em={monthLabel(inv.month, true)} bug={scope === 'wildlife' ? 'centipede' : 'roach'}>
+        <span className="ops-hero-months">
           <button type="button" className="linklike" onClick={() => goMonth(-1)}>← {monthLabel(addMonth(inv.month, -1))}</button>
-          {inv.month < thisMonth && <>{' · '}<button type="button" className="linklike" onClick={() => goMonth(1)}>{monthLabel(addMonth(inv.month, 1))} →</button></>}
-        </p>
-      </div>
+          {inv.month < thisMonth && <button type="button" className="linklike" onClick={() => goMonth(1)}>{monthLabel(addMonth(inv.month, 1))} →</button>}
+        </span>
+      </OpsHero>
       <div className="chips inv-tabs">
         {tabs.map(([k, label]) => <button key={k} type="button" className={`chip${tab === k ? ' on' : ''}`} onClick={() => setTab(k)}>{label}</button>)}
       </div>
@@ -515,6 +512,6 @@ export default function InventoryView({ data, scope, canPrice, canAdmin, people 
       {tab === 'dashboard' && <DashboardTab inv={inv} canAdmin={canAdmin} people={people} />}
       {tab === 'items' && <ItemsTab inv={inv} scope={scope} canPrice={canPrice} bwiPrices={inv.bwi?.prices || []} />}
       {tab === 'bwi' && <BwiTab inv={inv} canAdmin={canAdmin} />}
-    </>
+    </div>
   );
 }

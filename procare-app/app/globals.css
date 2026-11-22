@@ -1926,3 +1926,88 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 }
 .inv-who { margin: 2px 0 10px; }
 .inv-order { display: inline-block; margin-top: 2px; font-size: 12.5px; font-weight: 500; }
+
+/* ---------- Operations look (2026-11-22): navy + lime, bugs and lines, from the brand guide ----------
+   Trucks, Drivers, Maintenance and Inventory (wrapped in .ops-fun, header from app/ops/OpsHero.js). */
+.ops-hero { background-color: var(--ink); color: var(--white); padding: 26px 26px 30px; box-shadow: 0 10px 26px rgba(6, 47, 53, 0.2); margin-bottom: 20px; }
+.ops-hero::before { background-image: url(/patterns/bugs-dark.svg); opacity: 1; }
+.ops-hero::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 6px;
+  background: repeating-linear-gradient(90deg, var(--lime) 0 38px, transparent 38px 46px, var(--green) 46px 58px, transparent 58px 66px); }
+.ops-hero .brand-head-bug { color: var(--lime); opacity: 0.16; right: -10px; top: -26px; }
+.ops-hero .rc-kicker { display: inline-flex; align-items: center; gap: 7px; color: var(--lime); }
+.ops-hero .ops-hero-mini { color: var(--lime); }
+.ops-hero .rc-title { color: var(--white); }
+.ops-hero .rc-title em { color: var(--lime); }
+.ops-hero .rc-updated { color: rgba(255, 255, 255, 0.82); max-width: 520px; font-family: var(--sans); text-transform: none; letter-spacing: 0; font-size: 14px; }
+.ops-hero .linklike, .ops-hero a { color: var(--lime); }
+.ops-hero-months { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.ops-hero-months .linklike { border: 1.5px solid rgba(217, 225, 83, 0.55); border-radius: 999px; padding: 4px 12px; text-decoration: none; font-family: var(--mono); font-size: 12.5px; }
+.ops-hero-months .linklike:hover { background: var(--lime); color: var(--ink); }
+
+/* Chips: navy when picked, a lime dot in front */
+.ops-fun .chip { border-width: 1.5px; transition: border-color 0.15s, background 0.15s; }
+.ops-fun .chip:hover { border-color: var(--ink); }
+.ops-fun .chip.on { background: var(--ink); border-color: var(--ink); color: var(--white); box-shadow: inset 0 -3px 0 var(--lime); }
+.ops-fun .inv-tabs .chip { font-weight: 600; padding: 8px 16px; }
+.ops-fun .inv-tabs .chip.on::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--lime); margin-right: 7px; vertical-align: 1px; }
+
+/* Tiles: white cards with a navy-and-lime top edge and a faint bug in the corner */
+.ops-fun .fin-tile { position: relative; overflow: hidden; border: 1px solid var(--line); border-top: 0; border-radius: 16px; padding: 16px 18px 14px;
+  background: linear-gradient(var(--ink), var(--ink)) top / 100% 5px no-repeat, linear-gradient(90deg, var(--lime) 0 40%, transparent 40%) 0 5px / 100% 3px no-repeat, var(--white);
+  box-shadow: 0 4px 14px rgba(6, 47, 53, 0.06); }
+.ops-fun .fin-tile > .note:first-child { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; font-size: 11.5px; color: var(--forest); }
+.ops-fun .fin-tile strong { color: var(--ink); font-weight: 700; }
+.ops-fun .fin-tile::after { content: ''; position: absolute; right: -8px; bottom: -10px; width: 64px; height: 64px; background: var(--lime); opacity: 0.35; transform: rotate(-18deg);
+  -webkit-mask: url(/icons/bugs/ant.svg) center / contain no-repeat; mask: url(/icons/bugs/ant.svg) center / contain no-repeat; pointer-events: none; }
+.ops-fun .fin-tile:nth-child(2)::after { -webkit-mask-image: url(/icons/bugs/roach.svg); mask-image: url(/icons/bugs/roach.svg); }
+.ops-fun .fin-tile:nth-child(3)::after { -webkit-mask-image: url(/icons/bugs/spider.svg); mask-image: url(/icons/bugs/spider.svg); }
+.ops-fun .fin-tile:nth-child(4)::after { -webkit-mask-image: url(/icons/bugs/termite.svg); mask-image: url(/icons/bugs/termite.svg); }
+.ops-fun .fin-tile:nth-child(5)::after { -webkit-mask-image: url(/icons/bugs/cricket.svg); mask-image: url(/icons/bugs/cricket.svg); }
+.ops-fun .fin-tile.drv-warn { background: linear-gradient(var(--danger), var(--danger)) top / 100% 5px no-repeat, #FFF6F4; }
+
+/* Section titles: a navy badge with a lime bug, and a lime underline */
+.ops-fun .fin-h2 { position: relative; display: flex; align-items: center; gap: 10px; min-height: 34px; padding-left: 44px; margin: 22px 0 10px; font-weight: 600; }
+.ops-fun .fin-h2::before { content: ''; position: absolute; left: 0; top: 50%; width: 34px; height: 34px; margin-top: -17px; border-radius: 10px; background: var(--ink); }
+.ops-fun .fin-h2::after { content: ''; position: absolute; left: 7px; top: 50%; width: 20px; height: 20px; margin-top: -10px; background: var(--lime);
+  -webkit-mask: url(/icons/bugs/ant.svg) center / contain no-repeat; mask: url(/icons/bugs/ant.svg) center / contain no-repeat; }
+.ops-fun .inv-cat:nth-of-type(3n+2) .fin-h2::after { -webkit-mask-image: url(/icons/bugs/roach.svg); mask-image: url(/icons/bugs/roach.svg); }
+.ops-fun .inv-cat:nth-of-type(3n) .fin-h2::after { -webkit-mask-image: url(/icons/bugs/spider.svg); mask-image: url(/icons/bugs/spider.svg); }
+.ops-fun .fin-h2 .note { font-weight: 400; }
+.ops-fun .inv-cat { padding-top: 6px; }
+.ops-fun .inv-cat + .inv-cat { border-top: 2px dashed var(--line); margin-top: 18px; }
+
+/* Tables: navy heading row with lime labels, sage group rows, a lime wash on hover */
+.ops-fun .ops-table { border: 0; border-radius: 14px; box-shadow: 0 0 0 1px var(--line), 0 4px 14px rgba(6, 47, 53, 0.05); background: var(--white); }
+.ops-fun .ops-table thead th { background: var(--ink); color: var(--lime); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; font-weight: 500; border-bottom: 3px solid var(--lime); }
+.ops-fun .ops-table tbody tr:hover th, .ops-fun .ops-table tbody tr:hover td { background: #F7F9DF; }
+.ops-fun .ops-table .fin-sum th, .ops-fun .ops-table .fin-sum td { background: var(--sage); }
+.ops-fun .ops-table .fin-sum th:first-child { box-shadow: inset 5px 0 0 var(--lime); }
+.ops-fun .ops-table .fin-net th, .ops-fun .ops-table .fin-net td { background: var(--ink); color: var(--lime); }
+.ops-fun .inv-dirty th, .ops-fun .inv-dirty td { background: #F3F6C8 !important; }
+.ops-fun .inv-in { border: 1.5px solid var(--line); border-radius: 10px; }
+.ops-fun .inv-in:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(217, 225, 83, 0.6); outline: none; }
+
+/* The count's save bar: navy with the total in lime */
+.ops-fun .inv-bar { background: var(--ink); color: var(--white); border: 0; box-shadow: 0 -6px 18px rgba(6, 47, 53, 0.25); }
+.ops-fun .inv-bar::before { content: ''; position: absolute; left: 14px; right: 14px; top: 0; height: 3px; background: var(--lime); border-radius: 0 0 3px 3px; }
+.ops-fun .inv-bar strong { color: var(--lime); font-size: 22px; }
+.ops-fun .inv-bar .note { color: rgba(255, 255, 255, 0.75); }
+.ops-fun .inv-bar .btn { background: var(--lime); border-color: var(--lime); color: var(--ink); }
+.ops-fun .inv-bar .btn.btn-quiet { background: transparent; border-color: rgba(255, 255, 255, 0.5); color: var(--white); }
+
+/* Panels and forms */
+.ops-fun .panel, .ops-fun .tr-sec { border-radius: 16px; }
+.ops-fun .tr-sec { border-left: 5px solid var(--lime); }
+.ops-fun .inv-who { display: inline-flex; align-items: center; gap: 8px; background: var(--sage); border-radius: 999px; padding: 6px 14px; margin: 4px 0 12px; color: var(--ink); }
+.ops-fun .inv-who::before { content: ''; width: 16px; height: 16px; background: var(--forest); -webkit-mask: url(/icons/bugs/ant.svg) center / contain no-repeat; mask: url(/icons/bugs/ant.svg) center / contain no-repeat; }
+.ops-fun .pill-good { background: #EEF8E3; }
+.ops-fun .inv-up { color: #9A3B00; font-weight: 600; }
+@media (max-width: 640px) {
+  .ops-hero { padding: 20px 18px 26px; }
+  .ops-hero .brand-head-bug { width: 120px !important; height: 120px !important; }
+  .ops-fun .fin-tile::after { width: 48px; height: 48px; }
+  .ops-fun .fin-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .ops-fun .fin-tile { padding: 13px 13px 12px; }
+  .ops-fun .fin-tile strong { font-size: 22px; }
+  .ops-fun .fin-tile > .note:first-child { font-size: 10.5px; }
+}

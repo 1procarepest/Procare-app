@@ -7,6 +7,7 @@ import { OFFICES, OFFICE_NAME } from '@/lib/labels';
 import { SERVICE } from '@/lib/maintenance';
 import { dollars, usDate } from '@/lib/trucks';
 import Picker from '../../Picker';
+import OpsHero from '../OpsHero';
 
 const rpc = (name, args) => createClient().rpc(name, args);
 const mi = (x) => (x === null || x === undefined ? '—' : `${Number(x).toLocaleString('en-US')}`);
@@ -102,17 +103,13 @@ export default function MaintenanceView({ m, canSetRules, today }) {
   };
 
   return (
-    <>
-      <div className="rc-top bug-band">
-        <div>
-          <p className="rc-kicker">Operations</p>
-          <h1 className="rc-title">Truck <em>maintenance</em></h1>
-        </div>
-        <p className="rc-updated">
+    <div className="ops-fun">
+      <OpsHero title="Truck" em="maintenance" bug="termite">
+        <span>
           Oil change every {m.rules.miles.toLocaleString('en-US')} miles or {m.rules.months} months.
           {' '}Miles from Samsara{m.odometerAt ? ` as of ${usDate(m.odometerAt.slice(0, 10))}` : ' (not read yet)'} · <button type="button" className="linklike" disabled={busy} onClick={refresh}>{busy ? 'Reading…' : 'Refresh miles'}</button>
-        </p>
-      </div>
+        </span>
+      </OpsHero>
       <Msg m={msg} />
 
       <div className="fin-tiles">
@@ -184,6 +181,6 @@ export default function MaintenanceView({ m, canSetRules, today }) {
         </section>
       </div>
       {canSetRules && <Rules rules={m.rules} />}
-    </>
+    </div>
   );
 }

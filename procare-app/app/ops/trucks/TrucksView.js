@@ -7,6 +7,7 @@ import { OFFICES, OFFICE_NAME } from '@/lib/labels';
 import { SERVICE } from '@/lib/maintenance';
 import { DOC_KIND, LOG_KIND, MONTHS, ON_SHEET, STATUS, dollars, fleetTotals, monthsLeft, openLoan, truckName, usDate } from '@/lib/trucks';
 import Toggle from '../../Toggle';
+import OpsHero from '../OpsHero';
 import Picker from '../../Picker';
 
 const rpc = (name, args) => createClient().rpc(name, args);
@@ -681,14 +682,8 @@ export default function TrucksView({ trucks, people, settings, money, verify, to
   const counts = Object.fromEntries(FILTERS.map((f) => [f.key, trucks.filter(f.test).length]));
 
   return (
-    <>
-      <div className="rc-top bug-band">
-        <div>
-          <p className="rc-kicker">Operations</p>
-          <h1 className="rc-title">The <em>trucks</em></h1>
-        </div>
-        <p className="rc-updated">Drivers, offices, maintenance{money ? ', loans and value' : ''}. Sold trucks drop off the sheet.</p>
-      </div>
+    <div className="ops-fun">
+      <OpsHero title="The" em="trucks" bug="cricket">Drivers, offices, maintenance{money ? ', loans and value' : ''}. Sold trucks drop off the sheet.</OpsHero>
 
       {verify && <p className="note tr-verify">Loans, values and selling are behind the authenticator step. <a href={verify}>Verify to see them</a>.</p>}
 
@@ -768,6 +763,6 @@ export default function TrucksView({ trucks, people, settings, money, verify, to
           </tbody>
         </table>
       </div>
-    </>
+    </div>
   );
 }
