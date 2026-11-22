@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendPendingDriverNotices } from '@/lib/driverNotice';
 import { samsaraConfigured, syncOdometers, syncSamsara } from '@/lib/samsaraPush';
 import { sendOilReminders } from '@/lib/maintenanceReminder';
+import { sendInventoryReminders } from '@/lib/inventoryReminder';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -35,6 +36,11 @@ export async function GET(request) {
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
     if (new Date(`${today}T12:00:00Z`).getUTCDay() === 1) drivers = { ...drivers, ...(await sendOilReminders(createAdminClient(), today, new URL(request.url).origin)) };
   } catch (e) { drivers = { ...drivers, oilError: String(e.message || e) }; }
+  // The monthly inventory count (change 85): reminders on the month's last 2 business days
+  try {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    drivers = { ...drivers, ...(await sendInventoryReminders(createAdminClient(), today, new URL(request.url).origin)) };
+  } catch (e) { drivers = { ...drivers, inventoryError: String(e.message || e) }; }
   try {
     const pl = await syncPl(3);
     return NextResponse.json({ ok: true, ...drivers, ...pl, ...(await syncBalanceSheet(13)) });

@@ -6,7 +6,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - John Ely, President of Procare Pest (3 Atlanta offices: East, West, South). Not technical: short, plain answers, one step and one question at a time.
 - Repo `1procarepest/Procare-app`; the app is in `procare-app/` (Next.js 14 App Router, plain JS, Supabase). Vercel deploys from `main`.
 - Check with `npm run build` before pushing. Commit and push only your own files; end commit messages with the Co-Authored-By line.
-- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-22-84-inventory.sql`, so the next is 85). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
+- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-22-85-inventory-reminder.sql`, so the next is 86). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
 - Supabase cuts a request off after about 8 s. Time heavy queries on real data first.
 - SQL tests run in PGlite (`@electric-sql/pglite`); there's no local Postgres. The new Mac (2026-11-16) had no Node.js or Homebrew at first.
 - **UI rules from John**: use toggle switches (`app/Toggle.js`), never checkboxes. Use the brand look: `.brand-head` patterned headers, bug art from `app/Bug.js` (bugs anywhere; wildlife icons only on future wildlife pages), colors ink/forest/green/lime/sage.
@@ -142,8 +142,11 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
   came in). Pest prices: C-Suite; wildlife prices: wildlife manager and wildlife leads+. Import:
   `imports/2026-11-22-inventory.sql` (sheet tabs East Nov, West/South/Dallas Oct, Wildlife Sept; BWI price list and Expo
   report; wildlife exclusion/fastener prices from Bryan Koons' Amazon receipts). The sheet's Total row only added
-  West + East; the app adds every place. Open: which BWI account is which place; a month-end count reminder email;
-  the manager-bonus tie-in.
+  West + East; the app adds every place. Open: which BWI account is which place; the manager-bonus tie-in.
+- **Inventory count reminder (change 85, 2026-11-22)**: switch `inventory_count_reminder`. The daily job emails, on the
+  month's last 2 business days (weekends and switched-on company holidays skipped), each place's region technician
+  managers (President if none) when that place's count isn't finished; Wildlife's count at West goes to
+  `manages_wildlife` people. `lib/inventoryReminder.js`.
 
 ## Next up (John's list)
 1. ~~Manager bonuses~~: live since 2026-11-16 (changes 47–49). Setup left for Ally: Ryan as report recipient, yearly amounts, Q4 goals, past reports.
