@@ -11,14 +11,14 @@ const TABS = [
   { href: '/ops/trucks', label: 'Trucks', trucks: true },
   { href: '/ops/drivers', label: 'Drivers', drivers: true },
   { href: '/ops/maintenance', label: 'Maintenance', trucks: true },
-  { href: '/ops/inventory', label: 'Inventory', trucks: true },
+  { href: '/ops/inventory', label: 'Inventory', inventory: true },
 ];
 
-export default function OpsTabs({ trucks = false, drivers = false }) {
+export default function OpsTabs({ trucks = false, drivers = false, inventory = false }) {
   const path = usePathname();
   return (
     <nav className="tabs ops-tabs" aria-label="Operations">
-      {TABS.filter((t) => (trucks || !t.trucks) && (drivers || !t.drivers)).map((t) => {
+      {TABS.filter((t) => (trucks || !t.trucks) && (drivers || !t.drivers) && (inventory || !t.inventory)).map((t) => {
         const on = t.match ? t.match(path) : path.startsWith(t.href);
         return <Link key={t.href} href={t.href} className={`tab${on ? ' active' : ''}`} aria-current={on ? 'page' : undefined}>{t.label}</Link>;
       })}

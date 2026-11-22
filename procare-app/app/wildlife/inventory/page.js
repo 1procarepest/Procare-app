@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { todayYmd } from '@/lib/repcards';
+import { loadInventory } from '@/lib/inventoryPage';
 import InventoryView from '../../ops/inventory/InventoryView';
 
 export const dynamic = 'force-dynamic';
@@ -12,8 +13,7 @@ export default async function WildlifeInventoryPage({ searchParams }) {
   const { me } = await getMe(supabase);
   if (!me) redirect('/');
   const today = todayYmd();
-  const month = /^\d{4}-\d{2}/.test(searchParams?.month || '') && searchParams.month.slice(0, 7) <= today.slice(0, 7) ? `${searchParams.month.slice(0, 7)}-01` : today;
-  const { data, error } = await supabase.rpc('inventory_data', { p_month: month });
+  const { data, error } = await loadInventory(supabase, searchParams, today);
   if (error) return <p className="error">Inventory couldn’t load: {error.message}{/inventory_data/.test(error.message) ? ' (run change 84 in Supabase first)' : ''}</p>;
   if (!data) redirect('/wildlife');
   // Here it's the wildlife section only, even for people who see everything

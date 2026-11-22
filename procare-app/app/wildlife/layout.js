@@ -16,7 +16,7 @@ export default async function WildlifeLayout({ children }) {
   return (
     <>
       <TopNav me={me} supabase={supabase} current="wildlife" />
-      <WildlifeTabs inventory={me.rank >= 3 || !!me.manages_wildlife || (me.department === 'wildlife' && me.rank >= 2)} />
+      <WildlifeTabs inventory={me.rank >= 3 || !!me.manages_wildlife || (me.department === 'wildlife' && me.rank >= 2) || !!(await supabase.rpc('inventory_scope')).data} />
       <main className="admin scorecard wildlife">{children}</main>
     </>
   );

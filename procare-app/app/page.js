@@ -54,7 +54,9 @@ export default async function Home({ searchParams }) {
         <SignOut />
       </main>
     );
-  }
+  }  // Change 86: a place's inventory manager who isn't in Operations gets an Inventory card
+  const invCard = me.department !== 'wildlife' && !appsOf(me).includes('operations') && (await supabase.rpc('inventory_scope')).data === 'all';
+
 
   // Speed: every lookup below starts now, all at once, and each is awaited where it's used
   // (they used to run one after another). `start` kicks off a Supabase query without waiting for it.
@@ -367,6 +369,18 @@ export default async function Home({ searchParams }) {
         <section className="section" aria-labelledby="apps-heading">
           <h2 id="apps-heading">Your apps</h2>
           <ul className="apps">
+            {invCard && (
+              <li key="inventory">
+                <Link className="app app-link" href="/inventory">
+                  <BugTile kind="termite" tone="ink" />
+                  <div className="app-text">
+                    <h3>Inventory</h3>
+                    <p>Your office’s monthly inventory count and BWI orders.</p>
+                  </div>
+                  <span className="open" aria-hidden="true">Open ›</span>
+                </Link>
+              </li>
+            )}
             {appsOf(me).map((key) => (
               <li key={key}>
                 {APPS[key].href ? (

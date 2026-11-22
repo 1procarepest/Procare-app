@@ -1,6 +1,6 @@
 // Change 85: the monthly inventory count is due the last week of the month. On the last 2 business days (Mon–Fri, not
-// a company holiday that's switched on), each place whose count isn't finished gets an email to its region's branch
-// managers (technician managers there; the President if none). Wildlife's count at West goes to the wildlife manager.
+// a company holiday that's switched on), each place whose count isn't finished gets an email to its inventory manager
+// (change 86), else its region's branch managers (technician managers there), else the President. Wildlife's count at West goes to the wildlife inventory manager (Bryan Koons), else the wildlife manager.
 // Switch: inventory_count_reminder (Settings → Email settings).
 import { sendEmail } from './email';
 import { holidayLookup } from './holidays';
@@ -39,9 +39,9 @@ export async function sendInventoryReminders(admin, today, origin) {
   const lastName = new Date(`${lastDay}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
   const month = `${today.slice(0, 7)}-01`;
   const [{ data: places }, { data: counts }, { data: people }] = await Promise.all([
-    admin.from('inventory_locations').select('key, name, office, has_wildlife').eq('active', true),
+    admin.from('inventory_locations').select('key, name, office, has_wildlife, manager_id, wildlife_manager_id').eq('active', true),
     admin.from('inventory_counts').select('location, section, status').eq('month', month),
-    admin.from('employees').select('first_name, email, department, level, office, manages_wildlife').eq('active', true),
+    admin.from('employees').select('id, first_name, email, department, level, office, manages_wildlife').eq('active', true),
   ]);
   const presidents = (people || []).filter((p) => p.level === 'president');
   const status = (loc, section) => (counts || []).find((c) => c.location === loc && c.section === section)?.status || null;
@@ -66,10 +66,12 @@ export async function sendInventoryReminders(admin, today, origin) {
   for (const place of places || []) {
     const st = status(place.key, 'pest');
     if (st !== 'done') {
-      await send((people || []).filter((p) => p.department === 'technician' && p.level === 'manager' && place.office && p.office === place.office), place, 'pest', st);
+      const own = (people || []).filter((p) => place.manager_id && p.id === place.manager_id);
+      await send(own.length ? own : (people || []).filter((p) => p.department === 'technician' && p.level === 'manager' && place.office && p.office === place.office), place, 'pest', st);
     }
     if (place.has_wildlife && status(place.key, 'wildlife') !== 'done') {
-      await send((people || []).filter((p) => p.manages_wildlife), place, 'wildlife', status(place.key, 'wildlife'));
+      const wm = (people || []).filter((p) => place.wildlife_manager_id && p.id === place.wildlife_manager_id);
+      await send(wm.length ? wm : (people || []).filter((p) => p.manages_wildlife), place, 'wildlife', status(place.key, 'wildlife'));
     }
   }
   return { inventoryEmails: sent };

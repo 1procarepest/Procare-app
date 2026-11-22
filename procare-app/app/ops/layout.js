@@ -13,10 +13,12 @@ export default async function OpsLayout({ children }) {
   if (!user) redirect('/login');
   if (!me || !appsFor(me.department, me.level).includes('operations')) redirect('/');
 
+  // Inventory: managers and up, and each place's inventory manager (change 86) whatever their level
+  const inventory = me.rank >= 3 || (await supabase.rpc('inventory_scope')).data === 'all';
   return (
     <>
       <TopNav me={me} supabase={supabase} current="operations" />
-      <OpsTabs trucks={me.rank >= 3} drivers={me.rank >= 3 || !!me.hr_approver} />
+      <OpsTabs trucks={me.rank >= 3} drivers={me.rank >= 3 || !!me.hr_approver} inventory={inventory} />
       <main className="admin scorecard reps ops">{children}</main>
     </>
   );

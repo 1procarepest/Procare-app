@@ -160,7 +160,7 @@ function CountTab({ inv, scope, loc, section }) {
 }
 
 /* ================= Dashboard ================= */
-function DashboardTab({ inv, canAdmin }) {
+function DashboardTab({ inv, canAdmin, people }) {
   const [view, setView] = useState('total');
   const d = inv.dashboard;
   const pick = (c) => (!c ? null : view === 'tbs' ? c.tbs : view === 'other' ? c.total - c.tbs : c.total);
@@ -196,17 +196,17 @@ function DashboardTab({ inv, canAdmin }) {
         </table>
       </div>
       <p className="note">Months before the app come from the sheet’s 2026 Dashboard. A grey number is a count that isn’t finished yet.</p>
-      {canAdmin && <Places locations={inv.locations} />}
+      {canAdmin && <Places locations={inv.locations} people={people} />}
     </>
   );
 }
 
-function Places({ locations }) {
+function Places({ locations, people }) {
   const router = useRouter();
   const [edit, setEdit] = useState(null);
   const [f, setF] = useState({});
   const [m, setM] = useState(null);
-  const open = (l) => { setEdit(l?.key || 'new'); setF(l ? { ...l } : { name: '', office: '', bwi_account: '', has_wildlife: false, active: true }); setM(null); };
+  const open = (l) => { setEdit(l?.key || 'new'); setF(l ? { ...l } : { name: '', office: '', bwi_account: '', manager_id: '', wildlife_manager_id: '', has_wildlife: false, active: true }); setM(null); };
   const save = async () => {
     const { error } = await rpc('save_inventory_location', { p_key: edit === 'new' ? null : edit, p: f });
     if (error) { setM({ ok: false, text: error.message }); return; }
@@ -216,12 +216,12 @@ function Places({ locations }) {
   return (
     <section className="panel inv-places">
       <h2 className="fin-h2">Places that keep inventory</h2>
-      <p className="note">Each place that gets deliveries. Satellites belong to a region. The BWI account is the customer number on BWI’s paperwork (EPRO725…).</p>
+      <p className="note">Each place that gets deliveries. The inventory manager counts it every month, places its BWI orders on its BWI account, and gets the reminder if the count isn’t finished. Satellites belong to a region.</p>
       <table className="ops-table">
-        <thead><tr><th>Place</th><th>Region</th><th>BWI account</th><th>Wildlife</th></tr></thead>
+        <thead><tr><th>Place</th><th>Inventory manager</th><th>Region</th><th>BWI account</th><th>Wildlife</th></tr></thead>
         <tbody>
           {locations.map((l) => (
-            <tr key={l.key}><th><button type="button" className="linklike" onClick={() => open(l)}>{l.name}</button></th><td>{OFFICE_NAME[l.office] || '—'}</td><td>{l.bwi_account || '—'}</td><td>{l.has_wildlife ? 'Yes' : ''}</td></tr>
+            <tr key={l.key}><th><button type="button" className="linklike" onClick={() => open(l)}>{l.name}</button></th><td>{l.manager || '—'}</td><td>{OFFICE_NAME[l.office] || '—'}</td><td>{l.bwi_account || '—'}</td><td>{l.has_wildlife ? (l.wildlife_manager ? `Yes · ${l.wildlife_manager}` : 'Yes') : ''}</td></tr>
           ))}
         </tbody>
       </table>
@@ -230,9 +230,11 @@ function Places({ locations }) {
           <div className="tr-grid">
             <label className="tr-field"><span>Name</span><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
             <label className="tr-field"><span>Region</span><Picker label="Region" value={f.office || ''} options={regions} onChange={(v) => setF({ ...f, office: v })} /></label>
+            <label className="tr-field"><span>Inventory manager</span><Picker label="Inventory manager" value={f.manager_id || ''} options={[{ value: '', label: 'Nobody (the region’s managers)' }, ...people.map((p) => ({ value: p.id, label: p.name, group: OFFICE_NAME[p.office] || 'No office' }))]} onChange={(v) => setF({ ...f, manager_id: v })} /></label>
             <label className="tr-field"><span>BWI account</span><input value={f.bwi_account || ''} onChange={(e) => setF({ ...f, bwi_account: e.target.value })} placeholder="EPRO725" /></label>
           </div>
           <Toggle checked={!!f.has_wildlife} onChange={(v) => setF({ ...f, has_wildlife: v })} small><span>Wildlife materials are kept here</span></Toggle>
+          {f.has_wildlife && <label className="tr-field"><span>Wildlife inventory manager</span><Picker label="Wildlife inventory manager" value={f.wildlife_manager_id || ''} options={[{ value: '', label: 'Nobody (the wildlife manager)' }, ...people.map((p) => ({ value: p.id, label: p.name, group: OFFICE_NAME[p.office] || 'No office' }))]} onChange={(v) => setF({ ...f, wildlife_manager_id: v })} /></label>}
           {edit !== 'new' && <Toggle checked={f.active !== false} onChange={(v) => setF({ ...f, active: v })} small><span>Still keeps inventory</span></Toggle>}
           <div className="panel-buttons">
             <button type="button" className="btn btn-small" onClick={save}>Save</button>
@@ -255,7 +257,7 @@ function ItemForm({ item, section, categories, bwiPrices, onDone }) {
     section: item?.section || section, category: item?.category || '', kind: item?.kind || 'product',
     name: item?.name || '', unit: item?.unit || '', price: item?.price !== null && item?.price !== undefined ? String(Number(item.price)) : '',
     pack_qty: item?.pack_qty ? String(Number(item.pack_qty)) : '', pack_price: item?.pack_price ? String(Number(item.pack_price)) : '',
-    vendor: item?.vendor || '', item_no: item?.item_no || '', active: item ? item.active : true, price_source: '',
+    vendor: item?.vendor || '', item_no: item?.item_no || '', active: item ? item.active : true, price_source: '', order_url: item?.order_url || '',
   }));
   const [hist, setHist] = useState(null);
   const [m, setM] = useState(null);
@@ -267,8 +269,12 @@ function ItemForm({ item, section, categories, bwiPrices, onDone }) {
   const bwi = f.item_no ? bwiPrices.find((p) => p.item_no === f.item_no.trim().toUpperCase()) : null;
   const save = async (del = false) => {
     if (del && !window.confirm(`Remove ${item.name} from the list? (If it was counted before, it’s hidden instead, so old months keep it.)`)) return;
-    const { error } = await rpc('save_inventory_item', { p_id: item?.id || null, p: { ...f, item_no: f.item_no.trim().toUpperCase() }, p_delete: del });
+    const { data: id, error } = await rpc('save_inventory_item', { p_id: item?.id || null, p: { ...f, item_no: f.item_no.trim().toUpperCase() }, p_delete: del });
     if (error) { setM({ ok: false, text: error.message }); return; }
+    if (!del && id && f.order_url.trim() !== (item?.order_url || '')) {
+      const r = await rpc('set_inventory_order_url', { p_item: id, p_url: f.order_url.trim() });
+      if (r.error) { setM({ ok: false, text: r.error.message }); router.refresh(); return; }
+    }
     onDone(); router.refresh();
   };
   return (
@@ -280,6 +286,7 @@ function ItemForm({ item, section, categories, bwiPrices, onDone }) {
           </label>
         ))}
         <label className="tr-field"><span>Category</span><input list="inv-cats" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} /></label>
+        <label className="tr-field tr-wide"><span>Where to reorder (link, optional)</span><input type="url" value={f.order_url} placeholder="https://www.amazon.com/…" onChange={(e) => setF({ ...f, order_url: e.target.value })} /></label>
       </div>
       <datalist id="inv-cats">{categories.map((c) => <option key={c} value={c} />)}</datalist>
       <div className="inv-pack">
@@ -331,7 +338,7 @@ function ItemsTab({ inv, scope, canPrice, bwiPrices }) {
         {may && <button type="button" className="btn btn-small btn-quiet" onClick={() => setEdit('new')}>Add an item</button>}
       </div>
       <Msg m={m} />
-      {!may && <p className="note">{section === 'pest' ? 'C-Suite sets pest prices.' : 'The wildlife manager and wildlife leads set wildlife prices.'} Ask them if a price looks wrong.</p>}
+      {!may && <p className="note">{section === 'pest' ? 'C-Suite sets pest prices.' : 'The wildlife inventory manager sets wildlife prices.'} Ask them if a price looks wrong.</p>}
       {edit === 'new' && <ItemForm section={section} categories={categories} bwiPrices={bwiPrices} onDone={() => setEdit(null)} />}
       <div className="tr-scroll">
         <table className="ops-table tr-table inv-items">
@@ -346,7 +353,8 @@ function ItemsTab({ inv, scope, canPrice, bwiPrices }) {
                     <Fragment key={i.id}>
                       <tr className={i.active ? '' : 'inv-off'}>
                         <th scope="row">{may ? <button type="button" className="linklike" onClick={() => setEdit(edit === i.id ? null : i.id)}>{i.name}</button> : i.name}
-                          <span className="tr-vin">{[i.unit, KINDS[i.kind] !== 'Product' ? KINDS[i.kind] : null, i.item_no, i.vendor].filter(Boolean).join(' · ')}</span></th>
+                          <span className="tr-vin">{[i.unit, KINDS[i.kind] !== 'Product' ? KINDS[i.kind] : null, i.item_no, i.vendor].filter(Boolean).join(' · ')}</span>
+                          {i.order_url && <a className="inv-order" href={i.order_url} target="_blank" rel="noreferrer">Reorder ›</a>}</th>
                         <td>{price2(i.price)}</td>
                         {section === 'pest' ? (
                           <>
@@ -458,7 +466,7 @@ function BwiTab({ inv, canAdmin }) {
 }
 
 /* ================= Page ================= */
-export default function InventoryView({ data, scope, canPrice, canAdmin, startTab = 'count', today }) {
+export default function InventoryView({ data, scope, canPrice, canAdmin, people = [], startTab = 'count', today }) {
   const inv = useMemo(() => buildInventory(data), [data]);
   const router = useRouter();
   const path = usePathname();
@@ -494,10 +502,14 @@ export default function InventoryView({ data, scope, canPrice, canAdmin, startTa
           {scope === 'all' && place?.has_wildlife && (
             <div className="chips">{Object.entries(SECTIONS).map(([k, label]) => <button key={k} type="button" className={`chip${sec === k ? ' on' : ''}`} onClick={() => setSection(k)}>{label}</button>)}</div>
           )}
+          {place && sec === 'wildlife' && place.wildlife_manager && <p className="note inv-who">Wildlife inventory manager: {place.wildlife_manager}</p>}
+          {place && sec === 'pest' && (place.manager || place.bwi_account) && (
+            <p className="note inv-who">{place.manager ? `Inventory manager: ${place.manager}` : ''}{place.manager && place.bwi_account ? ' · ' : ''}{place.bwi_account ? `BWI orders on account ${place.bwi_account}` : ''}</p>
+          )}
           {place ? <CountTab key={`${loc}-${sec}`} inv={inv} scope={scope} loc={loc} section={sec} /> : <p className="note">No places set up yet.</p>}
         </>
       )}
-      {tab === 'dashboard' && <DashboardTab inv={inv} canAdmin={canAdmin} />}
+      {tab === 'dashboard' && <DashboardTab inv={inv} canAdmin={canAdmin} people={people} />}
       {tab === 'items' && <ItemsTab inv={inv} scope={scope} canPrice={canPrice} bwiPrices={inv.bwi?.prices || []} />}
       {tab === 'bwi' && <BwiTab inv={inv} canAdmin={canAdmin} />}
     </>
