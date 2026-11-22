@@ -366,7 +366,7 @@ function ItemsTab({ inv, scope, canPrice, bwiPrices }) {
                               {may && diff !== null && Math.abs(diff) >= 0.01 && <button type="button" className="linklike inv-use" onClick={() => useList(i)}>Use it</button>}</td>
                             <td>{i.expo_price !== null ? <>{price2(i.expo_price)}<span className="tr-vin">for {i.expo_year}</span></> : '—'}</td>
                           </>
-                        ) : <td>{i.pack_price ? `${price2(i.pack_price)} / ${Number(i.pack_qty)}` : '—'}</td>}
+                        ) : <td>{i.pack_price && Number(i.pack_qty) > 0 ? `${price2(i.pack_price)} / ${Number(i.pack_qty)}` : '—'}</td>}
                         <td>{i.price_on ? usDate(i.price_on) : '—'}<span className="tr-vin">{SOURCE[i.price_source] || ''}</span></td>
                       </tr>
                       {edit === i.id && <tr className="tr-open"><td colSpan={cols}><ItemForm item={i} section={section} categories={categories} bwiPrices={bwiPrices} onDone={() => setEdit(null)} /></td></tr>}
