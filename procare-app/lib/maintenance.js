@@ -51,7 +51,7 @@ export function buildMaintenance(data, today) {
   const byTruck = {};
   for (const e of entries) {
     const k = e.truck_id;
-    byTruck[k] = byTruck[k] || { truck_no: e.truck_no, vehicle: e.vehicle, office: e.office, cost: 0, count: 0 };
+    byTruck[k] = byTruck[k] || { truck_no: e.truck_no, vehicle: e.vehicle, office: e.office, wildlife: !!e.wildlife, cost: 0, count: 0 };
     byTruck[k].cost += n(e.cost) || 0; byTruck[k].count += 1;
   }
   const byOffice = {};
@@ -63,7 +63,7 @@ export function buildMaintenance(data, today) {
     counts: Object.fromEntries(['overdue', 'soon', 'none', 'ok'].map((s) => [s, trucks.filter((t) => t.oil.status === s).length])),
     spend: { total: sum(entries), thisMonth: sum(entries.filter((e) => e.day.slice(0, 7) === month)) },
     byTruck: Object.values(byTruck).sort((a, b) => b.cost - a.cost),
-    byOffice, byService,
+    byOffice, byService, wildlifeSpend: sum(entries.filter((e) => e.wildlife)),
     odometerAt: (data?.trucks || []).map((t) => t.odometer_at).filter(Boolean).sort().pop() || null,
   };
 }

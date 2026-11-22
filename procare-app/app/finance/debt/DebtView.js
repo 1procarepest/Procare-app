@@ -141,7 +141,7 @@ export default function DebtView({ d, connection, today }) {
           <tbody>
             {d.groups.map((g) => (
               <Fragment key={g.key}>
-                <tr className="fin-sum"><th>{g.label} <span className="note">({g.list.length})</span></th><td /><td>{dollars(g.payment)}</td><td /><td />
+                <tr className="fin-sum"><th>{g.label} <span className="note">({g.list.length})</span>{g.wildlife && <span className="tr-vin">Wildlife: {g.wildlife.count} trucks, {dollars(g.wildlife.payment)} a month, {dollars(g.wildlife.balance)} owed</span>}</th><td /><td>{dollars(g.payment)}</td><td /><td />
                   <td>{dollars(g.balance)}{g.limit ? <span className="tr-vin">of {dollars(g.limit)} limit</span> : null}</td>{showLinks && <td />}</tr>
                 {g.list.map((it) => (
                   <Fragment key={it.id}>
@@ -149,6 +149,7 @@ export default function DebtView({ d, connection, today }) {
                       <th scope="row">
                         {it.type === 'debt' ? <button type="button" className="linklike" onClick={() => setEdit(edit === it.id ? null : it.id)}>{it.name}</button> : it.name}
                         {it.for_sale && <span className="pill tr-st-for_sale">For sale</span>}
+                        {it.wildlife && <span className="pill">Wildlife</span>}
                         {it.purpose && <span className="tr-vin">{it.purpose}</span>}
                       </th>
                       <td>{it.lender || '—'}</td>

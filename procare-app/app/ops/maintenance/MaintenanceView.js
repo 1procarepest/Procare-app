@@ -83,7 +83,7 @@ export default function MaintenanceView({ m, canSetRules, today }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
 
-  const inOffice = (t) => office === 'all' || (t.office || 'none') === office;
+  const inOffice = (t) => (office === 'wildlife' ? !!t.wildlife : office === 'all' || (t.office || 'none') === office);
   const FILTERS = [
     { key: 'due', label: 'Due or overdue', test: (t) => ['overdue', 'soon'].includes(t.oil.status) },
     { key: 'none', label: 'No oil change on file', test: (t) => t.oil.status === 'none' },
@@ -120,7 +120,7 @@ export default function MaintenanceView({ m, canSetRules, today }) {
         <div className="fin-tile"><span className="note">No oil change on file</span><strong>{m.counts.none}</strong><small className="note">Log the last one so reminders start</small></div>
         <div className="fin-tile"><span className="note">Maintenance this month</span><strong>{dollars(m.spend.thisMonth)}</strong><small className="note">{dollars(m.spend.total)} in the last 12 months</small></div>
         <div className="fin-tile"><span className="note">By office (12 months)</span><strong>{dollars(Math.max(0, ...Object.values(m.byOffice), 0))}</strong>
-          <small className="note">{OFFICES.map((o) => `${o.name.replace('Atlanta ', '')} ${dollars(m.byOffice[o.key] || 0)}`).join(' · ')}</small></div>
+          <small className="note">{OFFICES.map((o) => `${o.name.replace('Atlanta ', '')} ${dollars(m.byOffice[o.key] || 0)}`).join(' · ')} · Wildlife {dollars(m.wildlifeSpend)}</small></div>
       </div>
 
       <div className="chips tr-filters">
@@ -128,7 +128,7 @@ export default function MaintenanceView({ m, canSetRules, today }) {
       </div>
       <div className="tr-controls">
         <div className="chips">
-          {[['all', 'All offices'], ...OFFICES.map((o) => [o.key, o.name])].map(([k, label]) => (
+          {[['all', 'All offices'], ...OFFICES.map((o) => [o.key, o.name]), ['wildlife', 'Wildlife']].map(([k, label]) => (
             <button key={k} type="button" className={`chip${office === k ? ' on' : ''}`} onClick={() => setOffice(k)}>{label}</button>
           ))}
         </div>
@@ -147,7 +147,7 @@ export default function MaintenanceView({ m, canSetRules, today }) {
                 <tr key={t.id}>
                   <th scope="row">{t.truck_no || '—'}<span className="tr-vin">{[t.year, t.model].filter(Boolean).join(' ')}</span></th>
                   <td>{t.driver || <span className="note">{t.driver_note || 'No driver'}</span>}</td>
-                  <td>{OFFICE_NAME[t.office]?.replace('Atlanta ', '') || '—'}</td>
+                  <td>{OFFICE_NAME[t.office]?.replace('Atlanta ', '') || '—'}{t.wildlife ? <span className="tr-vin">Wildlife</span> : null}</td>
                   <td>{mi(o.now)}</td>
                   <td>{t.last_oil ? <>{usDate(t.last_oil.day)}<span className="tr-vin">{t.last_oil.miles ? `at ${mi(t.last_oil.miles)} mi` : 'miles not logged'}</span></> : '—'}</td>
                   <td>{o.status === 'none' ? '—' : <>{o.left !== null ? (o.left <= 0 ? `${mi(-o.left)} mi over` : `in ${mi(o.left)} mi`) : 'miles unknown'}<span className="tr-vin">or by {usDate(o.dueOn)}</span></>}</td>
@@ -166,7 +166,7 @@ export default function MaintenanceView({ m, canSetRules, today }) {
           <h2 className="fin-h2">Cost by truck (12 months)</h2>
           {m.byTruck.length === 0 ? <p className="note">No maintenance logged yet.</p> : (
             <table className="ops-table">
-              <tbody>{m.byTruck.filter((x) => office === 'all' || x.office === office).slice(0, 15).map((x) => (
+              <tbody>{m.byTruck.filter((x) => (office === 'wildlife' ? x.wildlife : office === 'all' || x.office === office)).slice(0, 15).map((x) => (
                 <tr key={`${x.truck_no}-${x.vehicle}`}><th>{x.truck_no || '?'} <span className="note">{x.vehicle}</span></th><td>{x.count} visit{x.count > 1 ? 's' : ''}</td><td>{dollars(x.cost)}</td></tr>
               ))}</tbody>
             </table>

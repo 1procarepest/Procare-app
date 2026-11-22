@@ -56,7 +56,7 @@ export function buildDebt(data, today) {
       type: 'truck', kind: 'auto', id: l.id, truck_no: l.truck_no, vin: l.vin,
       name: `#${l.truck_no || '?'} ${[l.year, l.model].filter(Boolean).join(' ')}`.trim(), lender: l.lender, payment: n(l.payment),
       rate: l.rate, end_on: l.end_on, start_on: l.start_on, original: l.financed, balance: l.balance, balance_on: l.balance_on,
-      qbo_account_id: l.qbo_account_id, qbo_account_name: l.qbo_account_name, for_sale: l.truck_status === 'for_sale',
+      qbo_account_id: l.qbo_account_id, qbo_account_name: l.qbo_account_name, for_sale: l.truck_status === 'for_sale', wildlife: !!l.wildlife,
     });
   }
   for (const d of data?.debts || []) {
@@ -71,7 +71,9 @@ export function buildDebt(data, today) {
 
   const groups = KINDS.map((k) => {
     const list = items.filter((i) => i.kind === k.key);
+    const wl = list.filter((i) => i.wildlife);
     return { ...k, list, payment: list.reduce((s, i) => s + i.payment, 0), balance: list.reduce((s, i) => s + i.balance, 0),
+      wildlife: wl.length ? { count: wl.length, payment: wl.reduce((s, i) => s + i.payment, 0), balance: wl.reduce((s, i) => s + i.balance, 0) } : null,
       limit: list.reduce((s, i) => s + n(i.credit_limit), 0) };
   }).filter((g) => g.list.length);
   const total = { payment: groups.reduce((s, g) => s + g.payment, 0), balance: groups.reduce((s, g) => s + g.balance, 0) };

@@ -415,6 +415,11 @@ function TruckCard({ t, people, money, today, settings, samsara }) {
     if (error) { setM({ ok: false, text: error.message }); return; }
     await synced();
   };
+  const setWildlife = async (on) => {
+    const { error } = await rpc('set_truck_wildlife', { p_truck: t.id, p_on: on });
+    if (error) { setM({ ok: false, text: error.message }); return; }
+    router.refresh();
+  };
   const save = async () => {
     const { error } = await rpc('save_truck', { p_id: t.id, p: clean(f, money) });
     if (error) { setM({ ok: false, text: error.message }); return; }
@@ -442,6 +447,10 @@ function TruckCard({ t, people, money, today, settings, samsara }) {
         <div className="chips tr-offices">
           {OFFICES.map((o) => <button key={o.key} type="button" className={`chip${t.office === o.key ? ' on' : ''}`} onClick={() => move(o.key)}>{o.name}</button>)}
         </div>
+        <Toggle checked={!!t.wildlife} onChange={setWildlife}>
+          <span>Wildlife team truck</span>
+          <span className="note">{t.wildlife ? 'Belongs to the wildlife side (shows under Wildlife on Trucks, Debt and Maintenance).' : 'Pest side.'}</span>
+        </Toggle>
       </section>
 
       <section className="tr-sec">
@@ -653,7 +662,7 @@ export default function TrucksView({ trucks, people, settings, money, verify, to
   const sortBy = (key) => setSort((s) => (s.key === key ? (s.dir === 1 ? { key, dir: -1 } : { key: null, dir: 1 }) : { key, dir: 1 }));
   const list = trucks.filter((t) => {
     if (!test(t)) return false;
-    if (office !== 'all' && (t.office || 'none') !== office) return false;
+    if (office === 'wildlife' ? !t.wildlife : office !== 'all' && (t.office || 'none') !== office) return false;
     if (q) {
       const s = q.toLowerCase();
       return [t.truck_no, t.vin, t.plate, t.driver, t.driver_note, t.model, t.make, t.gas_card].some((x) => String(x || '').toLowerCase().includes(s));
@@ -685,7 +694,7 @@ export default function TrucksView({ trucks, people, settings, money, verify, to
 
       <div className="fin-tiles">
         <div className="fin-tile"><span className="note">Trucks on the road</span><strong>{tot.count - tot.forSale}</strong>
-          <small className="note">{OFFICES.map((o) => `${o.name.replace('Atlanta ', '')} ${tot.byOffice[o.key] || 0}`).join(' · ')}</small></div>
+          <small className="note">{OFFICES.map((o) => `${o.name.replace('Atlanta ', '')} ${tot.byOffice[o.key] || 0}`).join(' · ')}{` · Wildlife ${trucks.filter((t) => t.wildlife && ON_SHEET(t)).length}`}</small></div>
         <div className="fin-tile"><span className="note">For sale</span><strong>{tot.forSale}</strong><small className="note">{tot.noDriver} active with no driver</small></div>
         {money && <div className="fin-tile"><span className="note">Truck payments a month</span><strong>{dollars(tot.payments)}</strong><small className="note">{dollars(tot.payments * 12)} a year</small></div>}
         {money && <div className="fin-tile"><span className="note">Owed on trucks</span><strong>{dollars(tot.balance)}</strong><small className="note">Value {dollars(tot.value)} ({tot.valued} valued) · equity {dollars(tot.equity)}</small></div>}
@@ -698,7 +707,7 @@ export default function TrucksView({ trucks, people, settings, money, verify, to
       </div>
       <div className="tr-controls">
         <div className="chips">
-          {[['all', 'All offices'], ...OFFICES.map((o) => [o.key, o.name])].map(([k, label]) => (
+          {[['all', 'All offices'], ...OFFICES.map((o) => [o.key, o.name]), ['wildlife', 'Wildlife']].map(([k, label]) => (
             <button key={k} type="button" className={`chip${office === k ? ' on' : ''}`} onClick={() => setOffice(k)}>{label}</button>
           ))}
         </div>
@@ -739,7 +748,7 @@ export default function TrucksView({ trucks, people, settings, money, verify, to
                     <th scope="row"><button type="button" className="linklike" aria-expanded={isOpen}>{t.truck_no || '—'}</button></th>
                     <td>{truckName(t)}<span className="tr-vin">…{last6(t.vin)}</span></td>
                     <td>{t.driver || <span className="note">{t.driver_note || 'No driver'}</span>}</td>
-                    <td>{OFFICE_NAME[t.office]?.replace('Atlanta ', '') || '—'}</td>
+                    <td>{OFFICE_NAME[t.office]?.replace('Atlanta ', '') || '—'}{t.wildlife ? <span className="tr-vin">Wildlife</span> : null}</td>
                     <td>{t.plate || '—'}{t.tag_month ? <span className="tr-vin">{t.tag_month.slice(0, 3)}</span> : null}</td>
                     <td>{t.mileage ? Number(t.mileage).toLocaleString('en-US') : '—'}</td>
                     {money && <>
