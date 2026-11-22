@@ -1929,10 +1929,8 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 
 /* ---------- Operations look (2026-11-22): navy + lime, bugs and lines, from the brand guide ----------
    Trucks, Drivers, Maintenance and Inventory (wrapped in .ops-fun, header from app/ops/OpsHero.js). */
-.ops-hero { background-color: var(--ink); color: var(--white); padding: 26px 26px 30px; box-shadow: 0 10px 26px rgba(6, 47, 53, 0.2); margin-bottom: 20px; }
-.ops-hero::before { background-image: url(/patterns/bugs-dark.svg); opacity: 1; }
-.ops-hero::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 6px;
-  background: repeating-linear-gradient(90deg, var(--lime) 0 38px, transparent 38px 46px, var(--green) 46px 58px, transparent 58px 66px); }
+.ops-hero { background-color: var(--ink); color: var(--white); padding: 26px; box-shadow: 0 10px 26px rgba(6, 47, 53, 0.2); margin-bottom: 20px; }
+.ops-hero::before { background: url(/patterns/lines-navy.svg) center / cover no-repeat; opacity: 1; }
 .ops-hero .brand-head-bug { color: var(--lime); opacity: 0.16; right: -10px; top: -26px; }
 .ops-hero .rc-kicker { display: inline-flex; align-items: center; gap: 7px; color: var(--lime); }
 .ops-hero .ops-hero-mini { color: var(--lime); }
@@ -1947,7 +1945,7 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 /* Chips: navy when picked, a lime dot in front */
 .ops-fun .chip { border-width: 1.5px; transition: border-color 0.15s, background 0.15s; }
 .ops-fun .chip:hover { border-color: var(--ink); }
-.ops-fun .chip.on { background: var(--ink); border-color: var(--ink); color: var(--white); box-shadow: inset 0 -3px 0 var(--lime); }
+.ops-fun .chip.on { background: var(--ink); border-color: var(--ink); color: var(--white); }
 .ops-fun .inv-tabs .chip { font-weight: 600; padding: 8px 16px; }
 .ops-fun .inv-tabs .chip.on::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--lime); margin-right: 7px; vertical-align: 1px; }
 
@@ -2003,7 +2001,7 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .ops-fun .pill-good { background: #EEF8E3; }
 .ops-fun .inv-up { color: #9A3B00; font-weight: 600; }
 @media (max-width: 640px) {
-  .ops-hero { padding: 20px 18px 26px; }
+  .ops-hero { padding: 20px 18px; }
   .ops-hero .brand-head-bug { width: 120px !important; height: 120px !important; }
   .ops-fun .fin-tile::after { width: 48px; height: 48px; }
   .ops-fun .fin-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -2011,3 +2009,12 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
   .ops-fun .fin-tile strong { font-size: 22px; }
   .ops-fun .fin-tile > .note:first-child { font-size: 10.5px; }
 }
+
+/* Brand line art (public/patterns/lines-*.svg, drawn by scratch lines.py): the navy feature tile and the sage panels */
+.ops-fun .fin-tile:last-child { background: url(/patterns/lines-tile.svg) center / cover no-repeat, var(--ink); border-color: var(--ink); color: var(--white); }
+.ops-fun .fin-tile:last-child > .note:first-child { color: var(--lime); }
+.ops-fun .fin-tile:last-child strong { color: var(--white); }
+.ops-fun .fin-tile:last-child small, .ops-fun .fin-tile:last-child .note { color: rgba(255, 255, 255, 0.78); }
+.ops-fun .fin-tile:last-child::after { opacity: 0.25; }
+.ops-fun .fin-tile:last-child.drv-warn { background: url(/patterns/lines-tile.svg) center / cover no-repeat, #6E211B; }
+.ops-fun .panel { background: url(/patterns/lines-sage.svg) center / cover no-repeat, var(--sage); }
