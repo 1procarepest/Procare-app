@@ -1929,9 +1929,10 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 
 /* ---------- Operations look (2026-11-22): navy + lime, bugs and lines, from the brand guide ----------
    Trucks, Drivers, Maintenance and Inventory (wrapped in .ops-fun, header from app/ops/OpsHero.js). */
-.ops-hero { background-color: var(--ink); color: var(--white); padding: 26px; box-shadow: 0 10px 26px rgba(6, 47, 53, 0.2); margin-bottom: 20px; }
+.brand-head.ops-hero { background-color: var(--ink); color: var(--white); padding: 26px 176px 26px 26px; box-shadow: 0 10px 26px rgba(6, 47, 53, 0.2); margin-bottom: 20px; }
 .ops-hero::before { background: url(/patterns/lines-navy.svg) center / cover no-repeat; opacity: 1; }
 .ops-hero .brand-head-bug { color: var(--lime); opacity: 0.16; right: -10px; top: -26px; }
+.ops-hero > .ops-hero-badge { position: absolute; right: 24px; top: 50%; width: 128px; height: auto; transform: translateY(-50%) rotate(-7deg); filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.28)); pointer-events: none; }
 .ops-hero .rc-kicker { display: inline-flex; align-items: center; gap: 7px; color: var(--lime); }
 .ops-hero .ops-hero-mini { color: var(--lime); }
 .ops-hero .rc-title { color: var(--white); }
@@ -2001,8 +2002,8 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .ops-fun .pill-good { background: #EEF8E3; }
 .ops-fun .inv-up { color: #9A3B00; font-weight: 600; }
 @media (max-width: 640px) {
-  .ops-hero { padding: 20px 18px; }
-  .ops-hero .brand-head-bug { width: 120px !important; height: 120px !important; }
+  .brand-head.ops-hero { padding: 20px 100px 20px 18px; }
+  .ops-hero > .ops-hero-badge { width: 84px; right: 14px; top: 22px; transform: rotate(-7deg); }
   .ops-fun .fin-tile::after { width: 48px; height: 48px; }
   .ops-fun .fin-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .ops-fun .fin-tile { padding: 13px 13px 12px; }
