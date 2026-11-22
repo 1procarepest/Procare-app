@@ -1,7 +1,7 @@
 -- 86 (2026-11-22). Each place's inventory manager and BWI account (John): the person who counts that place's inventory
 -- and places its orders with BWI on its account number.
 --   Atlanta West (Marietta): Branden Logan, EPRO725    Atlanta East: Lisa Schaal, EPRO726
---   Dallas: Kenneth Todd, EPRO727                      Atlanta South: Oscar Ayala, EPRO728
+--   Dallas: KC Todd, EPRO727                      Atlanta South: Oscar Ayala, EPRO728
 --  * inventory_locations.manager_id. The month-end count reminder (change 85) goes to that person (region branch
 --    managers if none set). A place's manager can open Inventory whatever their level.
 --  * inventory_locations.wildlife_manager_id: who runs the Wildlife materials kept there, counts them, orders them and
@@ -20,7 +20,7 @@ alter table public.inventory_items add column if not exists order_url text;
 do $$
 declare
   want text[][] := array[['west', 'Branden', 'Logan', 'EPRO725'], ['east', 'Lisa', 'Schaal', 'EPRO726'],
-                         ['dallas', 'Kenneth', 'Todd', 'EPRO727'], ['south', 'Oscar', 'Ayala', 'EPRO728']];
+                         ['dallas', 'KC', 'Todd', 'EPRO727'], ['south', 'Oscar', 'Ayala', 'EPRO728']];
   i int; v uuid; k int;
 begin
   for i in 1 .. array_length(want, 1) loop
