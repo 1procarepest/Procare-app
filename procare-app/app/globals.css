@@ -1891,3 +1891,36 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .mt-rules { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-top: 18px; max-width: 640px; }
 .mt-rules .tr-field { width: 180px; }
 .mt-log { margin: 8px 0; }
+
+/* ---------- Inventory (change 84) ---------- */
+.inv-tabs { margin: 4px 0 14px; }
+.inv-cat { margin-top: 14px; }
+.inv-table td, .inv-table th { text-align: left; vertical-align: middle; }
+.inv-table td:last-child { text-align: right; }
+.inv-in { width: 72px; padding: 6px 8px; font-size: 15px; text-align: right; font-variant-numeric: tabular-nums; }
+.inv-last { color: var(--muted); white-space: nowrap; }
+.inv-dirty th, .inv-dirty td { background: #FBFCEB; }
+.inv-sizes { display: flex; flex-wrap: wrap; gap: 6px; text-align: left !important; }
+.inv-sizes label { display: grid; gap: 2px; margin: 0; font-weight: 400; font-size: 11px; color: var(--muted); }
+.inv-sizes .inv-in { width: 52px; }
+.inv-bar { position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 16px; padding: 10px 14px; background: var(--white); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 -4px 14px rgba(6, 47, 53, 0.08); }
+.inv-bar strong { font-size: 18px; color: var(--forest); }
+.inv-status { font-size: 20px !important; }
+.inv-dash td.inv-draft { color: var(--muted); font-style: italic; }
+.inv-dash { min-width: 900px; }
+.inv-items td, .inv-items th { vertical-align: top; }
+.inv-off th, .inv-off td { color: var(--muted); }
+.inv-up { color: #9A3B00; }
+.inv-down { color: var(--forest); }
+.inv-use { font-size: 12px; margin-left: 6px; }
+.inv-pack { border-top: 1px dashed var(--line); padding-top: 8px; }
+.inv-pack .note { margin: 0 0 6px; }
+.inv-recv { white-space: nowrap; }
+.inv-recv .linklike { margin-left: 6px; }
+.inv-recv .pill { margin-left: 6px; }
+.inv-places { margin-top: 18px; display: grid; gap: 10px; }
+@media (max-width: 640px) {
+  .inv-in { width: 60px; }
+  .inv-bar { border-radius: 0; margin: 16px -16px 0; }
+}

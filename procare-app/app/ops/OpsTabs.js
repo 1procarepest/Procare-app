@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-/** Operations sections side by side: the Suite, AR & job pool, next month's route plan and (managers and up) Trucks. */
+/** Operations sections side by side: the Suite, AR & job pool, next month's route plan and (managers and up) Trucks, Maintenance and Inventory. */
 const TABS = [
   { href: '/ops', label: 'Operations Suite', match: (p) => p === '/ops' },
   { href: '/ops/accounts', label: 'AR & Job Pool' },
@@ -11,6 +11,7 @@ const TABS = [
   { href: '/ops/trucks', label: 'Trucks', trucks: true },
   { href: '/ops/drivers', label: 'Drivers', drivers: true },
   { href: '/ops/maintenance', label: 'Maintenance', trucks: true },
+  { href: '/ops/inventory', label: 'Inventory', trucks: true },
 ];
 
 export default function OpsTabs({ trucks = false, drivers = false }) {

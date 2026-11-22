@@ -6,7 +6,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - John Ely, President of Procare Pest (3 Atlanta offices: East, West, South). Not technical: short, plain answers, one step and one question at a time.
 - Repo `1procarepest/Procare-app`; the app is in `procare-app/` (Next.js 14 App Router, plain JS, Supabase). Vercel deploys from `main`.
 - Check with `npm run build` before pushing. Commit and push only your own files; end commit messages with the Co-Authored-By line.
-- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-21-83-wildlife-trucks.sql`, so the next is 84). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
+- **Database changes**: write a new numbered file in `supabase/changes/` (the latest is `2026-11-22-84-inventory.sql`, so the next is 85). Copy it to the clipboard with `LANG=en_US.UTF-8 pbcopy < file` (plain `pbcopy` from a non-UTF-8 shell garbles ’ – … · → into "‚Äô"-style text; fixed once on 2026-11-19 by `imports/2026-11-19-holiday-names-fix.sql`). John pastes it into Supabase → SQL Editor → New query → Run ("don't copy anything else first"). Confirm with a read-only query; the Supabase MCP is read-only. Run SQL before pushing app code that needs it. Keep `supabase/schema.sql`, `functions.sql` and `policies/` in step.
 - Supabase cuts a request off after about 8 s. Time heavy queries on real data first.
 - SQL tests run in PGlite (`@electric-sql/pglite`); there's no local Postgres. The new Mac (2026-11-16) had no Node.js or Homebrew at first.
 - **UI rules from John**: use toggle switches (`app/Toggle.js`), never checkboxes. Use the brand look: `.brand-head` patterned headers, bug art from `app/Bug.js` (bugs anywhere; wildlife icons only on future wildlife pages), colors ink/forest/green/lime/sage.
@@ -130,6 +130,20 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
 - **Wildlife trucks (change 83, 2026-11-21)**: `trucks.wildlife` switch ("Wildlife team truck", managers and up;
   the truck keeps its office). The Ford Transits 933 and 796 are on. Wildlife filter chip on Trucks and Maintenance,
   Wildlife subtotal and pill on Finance → Debt. LEAF Capital dates set (first payment 11/20/2026, ends 4/20/2029).
+- **Inventory (change 84, 2026-11-22)**: Operations → Inventory (managers and up) and Wildlife → Inventory (wildlife
+  leads and up, the wildlife manager). Replaces John's "Inventory Now" Google Sheet. Places (`inventory_locations`):
+  East, West (Marietta, keeps the Wildlife materials), South, Dallas (region West: a guess, change it on the Dashboard
+  tab); satellites get added there with their region and BWI account. One item list (`inventory_items`, section pest or
+  wildlife; kinds product / tbs / equipment / promo / uniform) with one price, a price history, BWI's latest list price
+  and the Expo's locked price per counted unit; small parts can be priced by the box (`pack_price` / `pack_qty`).
+  Monthly counts per place/month/section (`save_inventory_count`, prices copied onto the lines). Dashboard = finished
+  counts, else the sheet's 2026 Dashboard (`inventory_history`). BWI Expo 2026 commitments (`bwi_commitments`,
+  $335,897.02 over accounts EPRO725–728, paid by 2027-06-01; `bwi_shows.paid` typed by C-Suite; managers mark what
+  came in). Pest prices: C-Suite; wildlife prices: wildlife manager and wildlife leads+. Import:
+  `imports/2026-11-22-inventory.sql` (sheet tabs East Nov, West/South/Dallas Oct, Wildlife Sept; BWI price list and Expo
+  report; wildlife exclusion/fastener prices from Bryan Koons' Amazon receipts). The sheet's Total row only added
+  West + East; the app adds every place. Open: which BWI account is which place; a month-end count reminder email;
+  the manager-bonus tie-in.
 
 ## Next up (John's list)
 1. ~~Manager bonuses~~: live since 2026-11-16 (changes 47–49). Setup left for Ally: Ryan as report recipient, yearly amounts, Q4 goals, past reports.
