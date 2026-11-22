@@ -144,7 +144,7 @@ Read this first in a new Claude Code session. It replaces the notes that lived o
   report; wildlife exclusion/fastener prices from Bryan Koons' Amazon receipts). The sheet's Total row only added
   West + East; the app adds every place. Open: the manager-bonus tie-in.
 - **Inventory managers (change 86, 2026-11-22)**: `inventory_locations.manager_id` counts the place, orders from BWI on
-  its account and gets the count reminder. West: Brandon Logan EPRO725; East: Lisa Shaw EPRO726; Dallas: Kenneth Todd
+  its account and gets the count reminder. West: Branden Logan EPRO725; East: Lisa Schaal EPRO726; Dallas: Kenneth Todd
   EPRO727; South: Oscar Ayala EPRO728. A place's manager gets Inventory whatever their level (`inventory_scope`); one who isn't in Operations gets an
   Inventory card on the home page (`/inventory`). `wildlife_manager_id` (West: Bryan Koons) counts, orders and prices
   the Wildlife materials and gets their reminder; Jessica keeps the wildlife office work. `inventory_items.order_url`:
