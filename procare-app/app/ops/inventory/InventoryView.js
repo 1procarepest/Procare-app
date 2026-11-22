@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { OFFICES, OFFICE_NAME } from '@/lib/labels';
 import { dollars, usDate } from '@/lib/trucks';
-import { KINDS, SECTIONS, SIZES, VALUED, addMonth, groupByCategory, monthLabel, num } from '@/lib/inventory';
+import { KINDS, SECTIONS, SIZES, VALUED, addMonth, buildInventory, groupByCategory, monthLabel, num } from '@/lib/inventory';
 import Picker from '../../Picker';
 import Toggle from '../../Toggle';
 
@@ -458,7 +458,8 @@ function BwiTab({ inv, canAdmin }) {
 }
 
 /* ================= Page ================= */
-export default function InventoryView({ inv, scope, canPrice, canAdmin, startTab = 'count', today }) {
+export default function InventoryView({ data, scope, canPrice, canAdmin, startTab = 'count', today }) {
+  const inv = useMemo(() => buildInventory(data), [data]);
   const router = useRouter();
   const path = usePathname();
   const tabs = [['count', 'Count'], ...(scope === 'all' ? [['dashboard', 'Dashboard']] : []), ['items', 'Items & prices'], ...(scope === 'all' && inv.bwi ? [['bwi', 'BWI Expo']] : [])];

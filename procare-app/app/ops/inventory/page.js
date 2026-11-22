@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { todayYmd } from '@/lib/repcards';
-import { buildInventory } from '@/lib/inventory';
 import InventoryView from './InventoryView';
 
 export const dynamic = 'force-dynamic';
@@ -18,7 +17,7 @@ export default async function InventoryPage({ searchParams }) {
   if (error) return <p className="error">Inventory couldn’t load: {error.message}{/inventory_data/.test(error.message) ? ' (run change 84 in Supabase first)' : ''}</p>;
   if (!data) redirect('/ops');
   return (
-    <InventoryView key={data.month} inv={buildInventory(data)} scope={data.scope} canAdmin={!!data.can_admin} today={today} startTab={searchParams?.tab}
+    <InventoryView key={data.month} data={data} scope={data.scope} canAdmin={!!data.can_admin} today={today} startTab={searchParams?.tab}
       canPrice={{ pest: !!data.can_price_pest, wildlife: !!data.can_price_wildlife }} />
   );
 }
