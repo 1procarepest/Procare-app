@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Bug, { BugTile } from '../../Bug';
+import Invest from './Invest';
 import { GROUPS, GROUP_LABEL, PLAN_LABEL, money0, n, perDayFor, planOf, project } from '@/lib/comp';
 
 const MIX_COLOR = { pest: 'var(--forest)', termite: 'var(--ink)', mosquito: 'var(--green)' };
@@ -184,6 +185,8 @@ export default function Calculator({ data, year, rep }) {
             ? <p className="calc-hint">That’s more than 20 sales a day with these numbers. Try more weeks or a bigger contract value.</p>
             : <p className="calc-goal">That takes about <strong>{Math.round(needed * 100) / 100} serviced sales a day</strong>, or {Math.round(needed * n(daysWk) * 10) / 10} a week, {Math.round(needed * days)} in all.</p>)}
         </div>
+
+        <Invest goal={goal} projected={p.year} />
 
         <p className="calc-hint">
           {!commissionOnly && <>On the {plan === 'flat' ? 'commission plan (First year)' : 'flat rate plan'}, the same year would pay {money0(other.year)}. </>}
