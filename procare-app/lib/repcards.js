@@ -92,7 +92,8 @@ export function measure(r) {
 }
 
 /** Highest services sold first, then new customers, then doors. */
-export const byStanding = (a, b) => b.m.services - a.m.services || b.m.new_customers - a.m.new_customers || b.m.doors - a.m.doors || a.name.localeCompare(b.name);
+// Services sold, then doors knocked (John, 2026-11-23), then new customers
+export const byStanding = (a, b) => b.m.services - a.m.services || b.m.doors - a.m.doors || b.m.new_customers - a.m.new_customers || a.name.localeCompare(b.name);
 
 export const LEADERS = [
   { key: 'services', title: 'Most services', value: (m) => m.services, show: (v) => v, sub: 'services sold' },

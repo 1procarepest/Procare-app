@@ -143,6 +143,7 @@ export default function RepCard({ rep, me, showWeeks = true }) {
       <div className="rc-who">
         <h3>{rep.name}</h3>
         <span className="rc-office">{OFFICE_NAME[rep.office] || 'No office'}</span>
+        {rep.idle && <span className="rc-idle">Nothing yet{rep.prevRank ? ` · #${rep.prevRank} ${rep.prevLabel}` : ''}</span>}
         {rep.cities?.length > 0 && <span className="rc-cities" title="Cities of their last 5 pins">Last pins: {rep.cities.join(' · ')}</span>}
       </div>
       {rep.rank && <span className="rc-rank">#{rep.rank}</span>}

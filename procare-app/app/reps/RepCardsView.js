@@ -6,7 +6,7 @@ import Face from '../Face';
 import Bug, { BugTile } from '../Bug';
 import { OFFICES, OFFICE_NAME } from '@/lib/labels';
 import { initialsOf } from '@/lib/photo';
-import { LEADER_TITLE, OUTCOMES, VIEWS, byStanding, leaders, money0, one, pct0, shiftPeriod } from '@/lib/repcards';
+import { LEADER_TITLE, OUTCOMES, VIEWS, leaders, money0, one, pct0, shiftPeriod } from '@/lib/repcards';
 import RepCard, { SalesSide } from './RepCard';
 import SalesBoard from './SalesBoard';
 import WorkAreas from './WorkAreas';
@@ -157,6 +157,63 @@ function Leaders({ list }) {
   );
 }
 
+/**
+ * The roster: your card first, then the top 5. "Show 6–10" and "Show everyone else" load the rest of the cards'
+ * history tables only when tapped (app/reps/cards/route.js), so the page opens faster.
+ */
+const STEPS = [5, 10];
+function Roster({ shown, meId, view, date }) {
+  const [step, setStep] = useState(0);          // 0: top 5 · 1: through 10 · 2: everyone
+  const [loaded, setLoaded] = useState({});     // id → history parts fetched later
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const mine = shown.find((r) => r.id === meId);
+  const others = shown.filter((r) => r.id !== meId);
+  const upTo = step >= STEPS.length ? others.length : STEPS[step];
+  const withHistory = (r) => (r.lazy && loaded[r.id] ? { ...r, ...loaded[r.id], lazy: false } : r);
+  const visible = [...(mine ? [mine] : []), ...others.slice(0, upTo)].map(withHistory);
+
+  const more = async (next) => {
+    const end = next >= STEPS.length ? others.length : STEPS[next];
+    const need = others.slice(0, end).filter((r) => r.lazy && !loaded[r.id]).map((r) => r.id);
+    setErr('');
+    if (need.length) {
+      setBusy(true);
+      try {
+        const res = await fetch(`/reps/cards?view=${view}&date=${date}&ids=${need.join(',')}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error();
+        const got = await res.json();
+        setLoaded((l) => ({ ...l, ...got }));
+      } catch {
+        setErr('Those cards couldn’t load. Check your signal and try again.');
+        setBusy(false);
+        return;
+      }
+      setBusy(false);
+    }
+    setStep(next);
+  };
+
+  const left = others.length - upTo;
+  return (
+    <>
+      <div className="rc-roster">{visible.map((r) => <RepCard key={r.id} rep={r} me={r.id === meId} />)}</div>
+      {busy && <div className="rc-more-loading" role="status"><div className="pl-bar" /><span>Loading cards…</span></div>}
+      {err && <p className="error">{err}</p>}
+      {!busy && left > 0 && (
+        <div className="rc-more">
+          {step === 0 && others.length > STEPS[0] && (
+            <button type="button" className="btn" onClick={() => more(1)}>Show #6–{Math.min(10, others.length)}</button>
+          )}
+          {!(step === 0 && others.length <= STEPS[1]) && (
+            <button type="button" className="btn btn-quiet" onClick={() => more(STEPS.length)}>Show everyone{step === 0 ? '' : ' else'} ({left} more)</button>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 function Glossary() {
   const items = [
     ['Doors', 'Every pin a rep dropped in FieldRoutes, counted on the day it was dropped.'],
@@ -185,7 +242,8 @@ function Glossary() {
 
 export default function RepCardsView({ view, date, today, label, isCurrent, reps, offices, team, officeReps = {}, meId, syncedAt, tab = 'cards', basis = 'sold', board, canSeeAreas = false, areas = null }) {
   const [office, setOffice] = useState('all');
-  const shown = reps.filter((r) => office === 'all' || r.office === office).sort(byStanding);
+  // Already in roster order from the server (lib/repcardsData.js), with Monday-morning zero cards last
+  const shown = reps.filter((r) => office === 'all' || r.office === office);
   const m = office === 'all' ? team : offices[office];
   const officeRank = OFFICES.filter((o) => offices[o.key])
     .sort((a, b) => offices[b.key].services - offices[a.key].services || offices[b.key].new_customers - offices[a.key].new_customers)[0];
@@ -245,14 +303,14 @@ export default function RepCardsView({ view, date, today, label, isCurrent, reps
       </section>
 
       <section className="rc-block">
-        <div className="rc-block-head"><h2>The roster</h2><span className="rc-label">Ranked by services sold, then new customers</span></div>
+        <div className="rc-block-head"><h2>The roster</h2><span className="rc-label">Ranked by services sold, then doors knocked</span></div>
         <ul className="rc-legend">
           {OUTCOMES.map((o) => (
             <li key={o.key}><span className="rc-dot" style={{ background: o.color }} aria-hidden="true" />{o.label}{o.note && <small> ({o.note})</small>}</li>
           ))}
         </ul>
         {shown.length
-          ? <div className="rc-roster">{shown.map((r) => <RepCard key={r.id} rep={r} me={r.id === meId} />)}</div>
+          ? <Roster key={`${view}|${date}|${office}`} shown={shown} meId={meId} view={view} date={date} />
           : <p className="note rc-empty"><Bug kind="ant" size={28} color="var(--forest)" /> No doors or sales in this period yet.</p>}
       </section>
 
