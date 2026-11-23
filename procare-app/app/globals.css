@@ -1002,7 +1002,8 @@ details[open] > summary > .wa-caret { transform: rotate(180deg); }
 .calc-hint { color: var(--muted); font-size: 13px; margin: 0; }
 .calc-slider-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .calc-slider-head strong { font-size: 14px; }
-.calc-slider { width: 100%; accent-color: var(--forest); }
+.calc-slider { width: 100%; accent-color: var(--forest); padding: 0; margin: 8px 0; border: 0; box-shadow: none; background: none; }
+.calc-slider:focus-visible { outline: 2px solid var(--forest); outline-offset: 4px; border-radius: 8px; }
 .calc-days { display: flex; flex-direction: column; gap: 6px; }
 .calc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .calc-chips button { font: inherit; font-size: 14px; padding: 6px 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--white); color: var(--ink); cursor: pointer; }

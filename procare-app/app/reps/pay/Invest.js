@@ -139,7 +139,7 @@ export default function Invest({ goal, projected }) {
 
       <label className="calc-field">
         <span className="calc-slider-head"><span className="rc-label">Share you invest</span><strong>{pct}%</strong></span>
-        <input className="calc-slider" type="range" min={0} max={30} step={1} value={pct} onChange={(e) => setPct(Number(e.target.value))} />
+        <input className="calc-slider" type="range" min={0} max={100} step={1} value={pct} onChange={(e) => setPct(Number(e.target.value))} />
       </label>
       <div className="ivst-per">
         <div><span className="rc-label">Per month</span><strong>{money0(monthly)}</strong></div>
