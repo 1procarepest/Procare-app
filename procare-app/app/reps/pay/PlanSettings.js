@@ -211,6 +211,37 @@ export default function PlanSettings({ data, year, nextPlans }) {
           )}
         </div>
       </section>
+
+      <EvereeCheck />
     </>
+  );
+}
+
+/** Everee connection (read-only): confirms the keys in Vercel work. Nothing here pays anyone. */
+function EvereeCheck() {
+  const [r, setR] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const test = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch('/api/everee/test', { cache: 'no-store' });
+      setR(await res.json());
+    } catch {
+      setR({ ok: false, message: 'Couldn’t reach the app. Check your signal and try again.' });
+    }
+    setBusy(false);
+  };
+  const where = { sandbox: 'Everee’s test company (sandbox). No real pay.', production: 'Your real Everee payroll.', unknown: 'Couldn’t tell sandbox from real payroll from the token.' };
+  return (
+    <section className="rc-panel">
+      <div className="rc-panel-body pay-form">
+        <h2 className="cp-h"><BugTile kind="tick" tone="lime" size={30} /> Everee</h2>
+        <p className="calc-hint">Checks that the Everee keys in Vercel work. It only reads; it doesn’t pay anyone or change anything in Everee.</p>
+        <div><button type="button" className="btn" disabled={busy} onClick={test}>{busy ? 'Checking…' : 'Test connection'}</button></div>
+        {r && (r.ok
+          ? <p className="pay-status" role="status"><strong>Connected.</strong> {where[r.env] || where.unknown} Tenant {r.tenant} · {r.workers} worker{r.workers === 1 ? '' : 's'} on file.</p>
+          : <p className="error" role="status">Not connected: {r.message}</p>)}
+      </div>
+    </section>
   );
 }
