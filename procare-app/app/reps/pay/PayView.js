@@ -8,6 +8,7 @@ import {
 import Bug, { BugTile } from '../../Bug';
 import Calculator from './Calculator';
 import PlanSettings from './PlanSettings';
+import EvereePreview from './EvereePreview';
 
 const qs = (o) => '?' + Object.entries(o).filter(([, v]) => v !== null && v !== undefined && v !== '').map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
 
@@ -238,7 +239,7 @@ function TeamTable({ data, year, today }) {
   );
 }
 
-export default function PayView({ data, year, thisYear, today, tab, rep, meId, nextPlans }) {
+export default function PayView({ data, year, thisYear, today, tab, rep, meId, nextPlans, everee }) {
   const st = useMemo(() => (rep ? statement(data, rep, year, today) : null), [data, rep, year, today]);
   const who = data.reps.find((r) => r.id === rep);
   const openSales = useMemo(() => (data.open || []).filter((x) => x.e === rep), [data, rep]);
@@ -250,7 +251,7 @@ export default function PayView({ data, year, thisYear, today, tab, rep, meId, n
         <Bug kind="ant" size={150} className="brand-head-bug" />
         <div>
           <p className="rc-kicker">Sales pay · {year}</p>
-          <h1 className="rc-title">{tab === 'calc' ? <>Pay <em>calculator</em></> : tab === 'plans' ? <>Pay <em>plans</em></> : who && rep !== meId ? <>{who.name.split(' ')[0]}’s <em>pay</em></> : rep ? <>Your <em>pay</em></> : <>Team <em>pay</em></>}</h1>
+          <h1 className="rc-title">{tab === 'calc' ? <>Pay <em>calculator</em></> : tab === 'plans' ? <>Pay <em>plans</em></> : tab === 'everee' ? <>Everee <em>preview</em></> : who && rep !== meId ? <>{who.name.split(' ')[0]}’s <em>pay</em></> : rep ? <>Your <em>pay</em></> : <>Team <em>pay</em></>}</h1>
         </div>
         <nav className="rc-step" aria-label="Choose a year">
           {year > 2025 ? <Link className="rc-arrow" href={qs({ tab: tab === 'statement' ? null : tab, year: year - 1, rep: data.boss ? rep : null })} aria-label="Previous year">‹</Link> : <span className="rc-arrow off">‹</span>}
@@ -264,8 +265,9 @@ export default function PayView({ data, year, thisYear, today, tab, rep, meId, n
           <Link className={tab === 'statement' ? 'on' : ''} href={tabHref('statement')}>Statement</Link>
           <Link className={tab === 'calc' ? 'on' : ''} href={tabHref('calc')}>Calculator</Link>
           {data.boss && <Link className={tab === 'plans' ? 'on' : ''} href={tabHref('plans')}>Plans</Link>}
+          {data.boss && <Link className={tab === 'everee' ? 'on' : ''} href={tabHref('everee')}>Everee</Link>}
         </nav>
-        {data.boss && tab !== 'plans' && (
+        {data.boss && tab !== 'plans' && tab !== 'everee' && (
           <select className="rc-office-pick" aria-label="Rep" value={rep || ''} onChange={(e) => { window.location.href = (tab === 'calc' ? qs({ tab, year, rep: e.target.value }) : qs({ year, rep: e.target.value })); }}>
             <option value="">{tab === 'calc' ? 'Choose a rep' : 'Whole team'}</option>
             {data.reps.map((r) => <option key={r.id} value={r.id}>{r.name}{r.active ? '' : ' (left)'}</option>)}
@@ -284,6 +286,7 @@ export default function PayView({ data, year, thisYear, today, tab, rep, meId, n
       {tab === 'statement' && (rep ? <Statement st={st} today={today} open={openSales} /> : <TeamTable data={data} year={year} today={today} />)}
       {tab === 'calc' && <Calculator data={data} year={year} rep={rep} />}
       {tab === 'plans' && <PlanSettings data={data} year={year} nextPlans={nextPlans} />}
+      {tab === 'everee' && everee && <EvereePreview everee={everee} />}
     </>
   );
 }

@@ -44,3 +44,14 @@ export async function evereeCheck() {
   const page = await ev('/workers?size=1');
   return { env: evereeEnv(), workers: Number(page?.totalItems ?? 0), tenant: tenant() };
 }
+
+/** Every worker on file (all statuses), 100 at a time. */
+export async function evereeWorkers() {
+  const out = [];
+  for (let page = 0; page < 20; page += 1) {
+    const r = await ev(`/workers?size=100&page=${page}`);
+    out.push(...(r?.items || []));
+    if (!r || page + 1 >= Number(r.totalPages || 0)) break;
+  }
+  return out;
+}

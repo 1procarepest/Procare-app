@@ -2062,3 +2062,16 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .rc-more-loading { display: grid; gap: 8px; justify-items: center; margin-top: 18px; color: var(--muted); font-size: 14px; }
 .rc-more-loading .pl-bar { width: min(320px, 100%); height: 3px; border-radius: 3px; background: linear-gradient(90deg, var(--forest) 0 30%, transparent 30%); background-size: 200% 100%; animation: pl-slide 1s linear infinite; }
 .rc-idle { display: block; font-size: 12.5px; color: var(--muted); }
+
+/* Sales → Pay → Everee preview (2026-11-24) */
+.ev-table { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; margin: 10px 0 14px; }
+.ev-table table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+.ev-table th, .ev-table td { padding: 9px 12px; text-align: left; vertical-align: top; white-space: nowrap; }
+.ev-table thead th { background: var(--sage); font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+.ev-table tbody tr { border-top: 1px solid var(--line); }
+.ev-table small { display: block; color: var(--muted); font-size: 12px; }
+.ev-miss { color: var(--danger); }
+.ev-chip { display: inline-block; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 9px; border-radius: 999px; background: var(--paper); color: var(--muted); }
+.ev-ok { background: var(--forest); color: var(--white); }
+.ev-bad { background: #F6E0DD; color: var(--danger); }
+.ev-json { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-size: 12px; overflow-x: auto; max-height: 360px; }
