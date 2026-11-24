@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
-import { appsFor } from '@/lib/apps';
+import { appsOf } from '@/lib/apps';
 import { todayYmd } from '@/lib/repcards';
 import { historyOf, loadRoster, readPeriod } from '@/lib/repcardsData';
 
@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request) {
   const supabase = createClient();
   const { user, me } = await getMe(supabase);
-  if (!user || !me || !appsFor(me.department, me.level).includes('sales')) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+  if (!user || !me || !appsOf(me).includes('sales')) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
   const sp = Object.fromEntries(request.nextUrl.searchParams);
   const ids = new Set(String(sp.ids || '').split(',').filter(Boolean).slice(0, 200));
   const today = todayYmd();

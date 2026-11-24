@@ -8,6 +8,7 @@ import CompetitionFollows from './CompetitionFollows';
 import WildlifeAssist from './WildlifeAssist';
 import DriverSection from './DriverSection';
 import ManagesWildlife from './ManagesWildlife';
+import SalesPayAccess from './SalesPayAccess';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,8 @@ export default async function PersonPage({ params }) {
     contactsById(supabase, params.id),
   ]);
   if (!found) notFound();
+  // "Processes sales pay" (change 89): asked separately so this page still opens before that change is run
+  const { data: payRow } = me.rank >= 4 ? await supabase.from('employees').select('sales_pay_access').eq('id', params.id).maybeSingle() : { data: null };
   const person = { ...found, email: contacts[found.id]?.email || '', phone: contacts[found.id]?.phone || '' };
 
   // Today in Atlanta as YYYY-MM-DD, so requests still in progress count as upcoming.
@@ -68,6 +71,7 @@ export default async function PersonPage({ params }) {
       {me.rank >= 4 && person.active && <CompetitionFollows person={person} follows={follows || []} />}
       {(me.rank >= 4 || me.hr_approver) && person.active && person.department !== 'wildlife' && <WildlifeAssist person={person} />}
       {me.rank >= 4 && person.active && person.department !== 'wildlife' && <ManagesWildlife person={person} />}
+      {me.rank >= 4 && person.active && person.department !== 'sales' && person.level !== 'c_suite' && person.level !== 'president' && <SalesPayAccess person={person} initial={payRow?.sales_pay_access} />}
       {(me.rank >= 4 || me.hr_approver) && person.active && <DriverSection personId={person.id} />}
     </section>
   );

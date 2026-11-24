@@ -12,14 +12,16 @@ export const APPS = {
  * wildlifeAccess: the person's employees.wildlife_access (change 63), e.g. Jessica, who handles the Wildlife office work.
  * The Wildlife department sees only Wildlife (John, 2026-11-19).
  */
-export function appsFor(department, level, wildlifeAccess = false, adsAccess = false) {
-  const list = baseApps(department, level, wildlifeAccess);
+export function appsFor(department, level, wildlifeAccess = false, adsAccess = false, salesPayAccess = false) {
+  let list = baseApps(department, level, wildlifeAccess);
+  // "Processes sales pay" (change 89): the Sales app (for its Pay tab) even for an office team member
+  if (salesPayAccess && !list.includes('sales')) list = [...list, 'sales'];
   // Ads (change 71): C-Suite, the President, and the ad team (employees.ads_access, set in Ads -> Settings)
   return adsAccess && !list.includes('ads') ? [...list, 'ads'] : list;
 }
 
 /** Shorthand for an employee record. */
-export const appsOf = (me) => appsFor(me.department, me.level, !!me.wildlife_access, !!me.ads_access);
+export const appsOf = (me) => appsFor(me.department, me.level, !!me.wildlife_access, !!me.ads_access, !!me.sales_pay_access);
 
 function baseApps(department, level, wildlifeAccess) {
   if (department === 'wildlife') return ['wildlife'];

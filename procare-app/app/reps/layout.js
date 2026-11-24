@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
-import { appsFor } from '@/lib/apps';
+import { appsOf } from '@/lib/apps';
 import TopNav from '../TopNav';
 import SalesTabs from './SalesTabs';
 
@@ -11,8 +11,8 @@ export default async function RepsLayout({ children }) {
   const supabase = createClient();
   const { user, me } = await getMe(supabase);
   if (!user) redirect('/login');
-  if (!me || !appsFor(me.department, me.level).includes('sales')) redirect('/');
-  // Pay tab (moved from the top bar): everyone in sales, plus whoever manages pay
+  if (!me || !appsOf(me).includes('sales')) redirect('/');
+  // Pay tab (moved from the top bar): everyone in sales, plus whoever manages pay (incl. "Processes sales pay", change 89)
   const { data: boss } = me.department === 'sales' ? { data: true } : await supabase.rpc('can_manage_pay');
 
   return (
