@@ -12,7 +12,8 @@
  *    A rep who has left loses the hold.
  *  - Clawbacks: a cancel within clawback_days of the first service takes back everything paid on the
  *    sale, even across years. Customers more than past_due_days past due don't count until they pay.
- *  - Termite on the commission plan also pays termite_initial_pct (0/50/100%) of the initial price, up front.
+ *  - Termite (both plans, since 2026-11-24) also pays a share of the initial price, up front: the rep's own
+ *    comp_assignments.termite_initial_pct (change 90), else the company's termite_initial_pct.
  *  - Flat plan: a set amount per service type, paid in full up front; no bonus, holds or clawbacks.
  */
 
@@ -61,9 +62,15 @@ export function upfrontFor(settings, a, grp) {
   if (a?.plan === 'flat') return n(settings?.[`flat_${grp}`]);
   return a?.upfront ?? n(settings?.upfront);
 }
-/** Commission plan: a termite sale also pays termite_initial_pct of the initial price the rep charged. */
+/** The share (%) of a termite sale's initial price this rep is paid up front: their own, else the company's (change 90). */
+export const termitePct = (settings, a) => {
+  if (!a?.plan) return 0;
+  const own = a.termite_initial_pct;
+  return own === null || own === undefined || own === '' ? n(settings?.termite_initial_pct ?? 100) : n(own);
+};
+/** Both plans (John, 2026-11-24): a termite sale also pays the rep's termitePct of the initial price they charged. */
 export function termiteInitial(settings, a, init) {
-  return a?.plan === 'commission' ? (n(init) * n(settings?.termite_initial_pct ?? 100)) / 100 : 0;
+  return (n(init) * termitePct(settings, a)) / 100;
 }
 /** Everything paid up front on one sale. */
 export const saleUpfront = (settings, a, x) => upfrontFor(settings, a, x.g) + (x.g === 'termite' ? termiteInitial(settings, a, x.init) : 0);

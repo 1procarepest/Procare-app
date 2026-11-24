@@ -25,16 +25,20 @@ function AssignRow({ rep, row, year, save, scales }) {
   const [v, setV] = useState({
     plan: row?.plan || '', scale: row?.scale || 'first_year',
     upfront: row?.upfront ?? '', start_rate: row?.start_rate ?? '', step_rate: row?.step_rate ?? '', note: row?.note || '',
+    termite_initial_pct: row?.termite_initial_pct ?? '',
   });
   const set = (k) => (e) => setV({ ...v, [k]: e.target.value });
   const dirty = JSON.stringify(v) !== JSON.stringify({
     plan: row?.plan || '', scale: row?.scale || 'first_year', upfront: row?.upfront ?? '', start_rate: row?.start_rate ?? '', step_rate: row?.step_rate ?? '', note: row?.note || '',
+    termite_initial_pct: row?.termite_initial_pct ?? '',
   });
+  // Termite install % (change 90) is only sent once it's set or the column exists, so saving works before that change
   const go = () => (v.plan
     ? save(`${rep.name}’s ${year} plan`, (sb) => sb.from('comp_assignments').upsert({
       employee_id: rep.id, year, plan: v.plan, scale: v.scale,
       upfront: numOrNull(v.upfront), start_rate: numOrNull(v.start_rate), step_rate: numOrNull(v.step_rate),
       note: v.note.trim() || null, updated_at: new Date().toISOString(),
+      ...(v.termite_initial_pct !== '' || (row && 'termite_initial_pct' in row) ? { termite_initial_pct: numOrNull(v.termite_initial_pct) } : {}),
     }))
     : save(`${rep.name}’s ${year} plan`, (sb) => sb.from('comp_assignments').delete().eq('employee_id', rep.id).eq('year', year)));
   const isCom = v.plan === 'commission';
@@ -56,6 +60,7 @@ function AssignRow({ rep, row, year, save, scales }) {
       <td><input className="pay-small" type="number" placeholder="plan" value={v.upfront} onChange={set('upfront')} disabled={!isCom} aria-label={`${rep.name} up front`} /></td>
       <td><input className="pay-small" type="number" placeholder="scale" value={v.start_rate} onChange={set('start_rate')} disabled={!isCom} aria-label={`${rep.name} start rate`} /></td>
       <td><input className="pay-small" type="number" placeholder="scale" value={v.step_rate} onChange={set('step_rate')} disabled={!isCom} aria-label={`${rep.name} step`} /></td>
+      <td><input className="pay-small" type="number" min={0} max={100} placeholder="company" value={v.termite_initial_pct} onChange={set('termite_initial_pct')} disabled={!v.plan} aria-label={`${rep.name} termite install percent`} /></td>
       <td><input value={v.note} onChange={set('note')} placeholder="Deal notes" aria-label={`${rep.name} note`} /></td>
       <td><button type="button" className="btn pay-btn" disabled={!dirty} onClick={go}>Save</button></td>
     </tr>
@@ -114,10 +119,10 @@ export default function PlanSettings({ data, year, nextPlans }) {
               {[year, year + 1].map((y) => <button key={y} type="button" className={planYear === y ? 'on' : ''} onClick={() => setPlanYear(y)}>{y}</button>)}
             </div>
           </div>
-          <p className="calc-hint">A rep stays on one plan for the whole year and can switch on January 1. Leave up front, start rate and step blank to use the plan’s numbers; fill them in for a special deal.</p>
+          <p className="calc-hint">A rep stays on one plan for the whole year and can switch on January 1. Leave up front, start rate and step blank to use the plan’s numbers; fill them in for a special deal. Termite install % is the rep’s share of a termite sale’s initial price (both plans); blank uses the company setting below.</p>
           <div className="pay-scroll">
             <table className="ops-table pay-assign">
-              <thead><tr><th scope="col">Rep</th><th scope="col">Plan</th><th scope="col">Scale</th><th scope="col">Up front $</th><th scope="col">Start %</th><th scope="col">Step %</th><th scope="col">Notes</th><th scope="col"><span className="sr-only">Save</span></th></tr></thead>
+              <thead><tr><th scope="col">Rep</th><th scope="col">Plan</th><th scope="col">Scale</th><th scope="col">Up front $</th><th scope="col">Start %</th><th scope="col">Step %</th><th scope="col">Termite install %</th><th scope="col">Notes</th><th scope="col"><span className="sr-only">Save</span></th></tr></thead>
               <tbody>
                 {data.reps.map((r) => <AssignRow key={`${r.id}-${planYear}-${plans.find((p) => p.employee_id === r.id)?.updated_at || ''}`} rep={r} row={plans.find((p) => p.employee_id === r.id)} year={planYear} save={save} scales={scales} />)}
               </tbody>
@@ -143,7 +148,7 @@ export default function PlanSettings({ data, year, nextPlans }) {
               </span>
             </label>
           </div>
-          <p className="calc-hint">Termite sales pay the up-front amount plus this share of the initial price, the same Monday. Example: a $200 initial at {n(s.termite_initial_pct)}% pays ${n(s.upfront) + 2 * n(s.termite_initial_pct)}.</p>
+          <p className="calc-hint">Termite sales pay the up-front amount (or the flat termite amount on Flat rate) plus this share of the initial price, the same Monday. Example: a $200 initial at {n(s.termite_initial_pct)}% pays ${n(s.upfront) + 2 * n(s.termite_initial_pct)} on Commission. A rep’s own Termite install % in Each rep’s plan wins over this.</p>
           <h3 className="pay-sub">Pay scales</h3>
           {Object.entries(s.scales).map(([key, v]) => (
             <div key={key} className="pay-fields">

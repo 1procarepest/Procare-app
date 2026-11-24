@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Bug, { BugTile } from '../../Bug';
 import Invest from './Invest';
-import { GROUPS, GROUP_LABEL, PLAN_LABEL, money0, n, perDayFor, planOf, project } from '@/lib/comp';
+import { GROUPS, GROUP_LABEL, PLAN_LABEL, money0, n, perDayFor, planOf, project, termitePct } from '@/lib/comp';
 
 const MIX_COLOR = { pest: 'var(--forest)', termite: 'var(--ink)', mosquito: 'var(--green)' };
 
@@ -123,9 +123,9 @@ export default function Calculator({ data, year, rep }) {
               ))}
             </div>
           )}
-          {plan === 'commission' && n(s.termite_initial_pct ?? 100) > 0 && mix.termite > 0 && (
+          {termitePct(s, a) > 0 && mix.termite > 0 && (
             <Num label="Average termite initial you charge" value={termiteInit} onChange={setTermiteInit} prefix="$" step={25}
-              hint={`You get ${n(s.termite_initial_pct ?? 100)}% of it on top of the ${money0(n(a.upfront ?? s.upfront))} up front.`} />
+              hint={`You get ${termitePct(s, a)}% of it on top of the ${money0(plan === 'flat' ? n(s.flat_termite) : n(a.upfront ?? s.upfront))} up front.`} />
           )}
           <Slider label="Sales that cancel or don’t pay" value={n(cancelPct)} onChange={setCancelPct} min={0} max={40} step={1} show={(v) => `${v}%`} />
         </div>
@@ -150,7 +150,7 @@ export default function Calculator({ data, year, rep }) {
           <div className="calc-card">
             <h3 className="cp-h"><BugTile kind="termite" tone="sage" size={26} /> How it’s paid</h3>
             <ul className="calc-paid">
-              <li><span>Every Monday, {money0(n(a.upfront ?? s.upfront))} per sale serviced the week before{n(s.termite_initial_pct ?? 100) > 0 ? `, plus ${n(s.termite_initial_pct ?? 100)}% of each termite initial` : ''}</span><strong>≈ {money0(p.upfront / weeksWorked)} a week</strong></li>
+              <li><span>Every Monday, {money0(n(a.upfront ?? s.upfront))} per sale serviced the week before{termitePct(s, a) > 0 ? `, plus ${termitePct(s, a)}% of each termite initial` : ''}</span><strong>≈ {money0(p.upfront / weeksWorked)} a week</strong></li>
               <li><span>The rest in quarter checks on Apr 20, Jul 20, Oct 20, with {n(s.hold_pct)}% held until Jan 20</span><strong>{money0(Math.max(0, p.backend))} a year</strong></li>
             </ul>
           </div>
