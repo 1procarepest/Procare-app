@@ -2,10 +2,8 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMe } from '@/lib/me';
 import { todayYmd } from '@/lib/repcards';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { nextMonday } from '@/lib/comp';
-import { evereeConfigured, evereeEnv, evereeWorkers } from '@/lib/everee';
-import { payablePreview } from '@/lib/evereePreview';
+import { loadEveree } from '@/lib/evereeLoad';
 import PayView from './PayView';
 
 export const dynamic = 'force-dynamic';
@@ -29,26 +27,15 @@ export default async function PayPage({ searchParams }) {
   if (error || !data) return <p className="error">Pay couldn’t load: {error?.message || 'no data'}</p>;
   if ((tab === 'plans' || tab === 'everee') && !data.boss) tab = 'statement';
 
-  // Everee preview (managers of pay only): reads Everee's worker list; sends nothing
+  // Everee (managers of pay only): reads Everee's worker list and what was sent; sending is /api/everee/send
   let everee = null;
   if (tab === 'everee') {
     const next = nextMonday(today);
     const payday = /^\d{4}-\d{2}-\d{2}$/.test(searchParams?.payday || '') ? searchParams.payday : next;
-    everee = { payday, next, configured: evereeConfigured(), env: evereeEnv() };
-    if (everee.configured) {
-      try {
-        const admin = createAdminClient();
-        const ids = (data.reps || []).map((r) => r.id);
-        const [workers, emps] = await Promise.all([
-          evereeWorkers(),
-          admin ? admin.from('employees').select('id, first_name, last_name, email').in('id', ids).then((r) => r.data || []) : [],
-        ]);
-        const payYear = Number(payday.slice(0, 4));
-        const src = payYear === year ? data : (await supabase.rpc('comp_sales', { p_year: payYear })).data || data;
-        everee = { ...everee, ...payablePreview({ data: src, year: payYear, payday, today, workers, emps }), workerCount: workers.length };
-      } catch (e) {
-        everee.error = e.message;
-      }
+    try {
+      everee = { ...(await loadEveree(supabase, { payday, today, data: { ...data, year } })), next };
+    } catch (e) {
+      everee = { payday, next, configured: true, error: e.message, sent: {} };
     }
   }
 

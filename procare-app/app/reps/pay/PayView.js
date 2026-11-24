@@ -251,7 +251,7 @@ export default function PayView({ data, year, thisYear, today, tab, rep, meId, n
         <Bug kind="ant" size={150} className="brand-head-bug" />
         <div>
           <p className="rc-kicker">Sales pay · {year}</p>
-          <h1 className="rc-title">{tab === 'calc' ? <>Pay <em>calculator</em></> : tab === 'plans' ? <>Pay <em>plans</em></> : tab === 'everee' ? <>Everee <em>preview</em></> : who && rep !== meId ? <>{who.name.split(' ')[0]}’s <em>pay</em></> : rep ? <>Your <em>pay</em></> : <>Team <em>pay</em></>}</h1>
+          <h1 className="rc-title">{tab === 'calc' ? <>Pay <em>calculator</em></> : tab === 'plans' ? <>Pay <em>plans</em></> : tab === 'everee' ? <>Everee <em>sales pay</em></> : who && rep !== meId ? <>{who.name.split(' ')[0]}’s <em>pay</em></> : rep ? <>Your <em>pay</em></> : <>Team <em>pay</em></>}</h1>
         </div>
         <nav className="rc-step" aria-label="Choose a year">
           {year > 2025 ? <Link className="rc-arrow" href={qs({ tab: tab === 'statement' ? null : tab, year: year - 1, rep: data.boss ? rep : null })} aria-label="Previous year">‹</Link> : <span className="rc-arrow off">‹</span>}

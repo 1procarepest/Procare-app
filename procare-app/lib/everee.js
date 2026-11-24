@@ -1,7 +1,10 @@
 // Everee (sales pay, later prize payouts). Server only: EVEREE_API_TOKEN and EVEREE_TENANT_ID live in Vercel.
 // https://developer.everee.com/docs/authentication-api-tokens — Basic auth with the token as the user name, plus the
 // x-everee-tenant-id header. Sandbox and production share api.everee.com; the token decides which: tsk_test_ = sandbox
-// (Everee's test company), tsk_prod_ = real payroll. Read-only for now: nothing here moves money.
+// (Everee's test company), tsk_prod_ = real payroll.
+// Sending (change 91): createPayable() adds a pending item (nothing is paid); requestPayout() asks Everee to pay sent
+// items (1099 contractors are only paid this way), and they're paid once approved in Everee. Each is called only from
+// /api/everee/send, after a person presses the button and confirms.
 
 const BASE = 'https://api.everee.com/integration/v1';
 const token = () => String(process.env.EVEREE_API_TOKEN || '').trim();
@@ -17,18 +20,24 @@ export function evereeEnv() {
   return 'unknown';
 }
 
-async function ev(path) {
+/**
+ * One Everee call. GETs and payables (keyed by externalId, so a repeat updates the same unpaid item) retry when Everee
+ * is busy; a payout request (safeRetry false) only retries on 429, which Everee hasn't acted on, never on a 5xx.
+ */
+async function ev(path, { method = 'GET', body, safeRetry = true } = {}) {
   if (!evereeConfigured()) throw new Error('EVEREE_API_TOKEN and EVEREE_TENANT_ID need to be set in Vercel (then redeploy).');
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     const res = await fetch(`${BASE}${path}`, {
-      cache: 'no-store',
+      method, cache: 'no-store',
       headers: {
         Authorization: `Basic ${Buffer.from(`${token()}:`).toString('base64')}`,
         'x-everee-tenant-id': tenant(),
         Accept: 'application/json',
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
       },
+      body: body ? JSON.stringify(body) : undefined,
     });
-    if (res.status === 429 || res.status >= 500) { await new Promise((r) => setTimeout(r, 700 * attempt)); continue; }
+    if (res.status === 429 || (safeRetry && res.status >= 500)) { await new Promise((r) => setTimeout(r, 700 * attempt)); continue; }
     const json = await res.json().catch(() => ({}));
     if (res.status === 401 || res.status === 403) {
       throw new Error(`Everee didn’t accept the keys (${res.status}). Check that the token and tenant ID are from the same Everee company${json.errorMessage ? `: ${json.errorMessage}` : '.'}`);
@@ -55,3 +64,9 @@ export async function evereeWorkers() {
   }
   return out;
 }
+
+/** Create (or update, while unpaid) one payable. Pending in Everee: nothing is paid. */
+export const createPayable = (payable) => ev('/payables', { method: 'POST', body: payable });
+
+/** Ask Everee to pay these sent payables (contractors). Paid once approved in Everee. */
+export const requestPayout = (externalIds) => ev('/payables/payment-request', { method: 'POST', body: { externalIds }, safeRetry: false });

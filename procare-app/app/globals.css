@@ -2075,3 +2075,11 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .ev-ok { background: var(--forest); color: var(--white); }
 .ev-bad { background: #F6E0DD; color: var(--danger); }
 .ev-json { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-size: 12px; overflow-x: auto; max-height: 360px; }
+.ev-warn { background: var(--lime); color: var(--ink); }
+.ev-done { background: var(--ink); color: var(--white); }
+.ev-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 14px; }
+.ev-confirm { background: var(--white); border: 2px solid var(--forest); border-radius: 16px; padding: 16px 18px; margin-bottom: 14px; display: grid; gap: 8px; }
+.ev-confirm p { margin: 0; }
+.ev-confirm-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 220px; overflow: auto; font-variant-numeric: tabular-nums; }
+.ev-confirm-list li { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding-top: 4px; }
+.ev-result { background: var(--sage); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; display: grid; gap: 4px; }
