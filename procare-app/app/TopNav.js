@@ -27,6 +27,7 @@ export default async function TopNav({ me, supabase, current, extra = null }) {
         {(bonusLinks?.reports || me.rank >= 3 || me.hr_approver) && link('reports', '/reports', 'Forms')}
         {bonusLinks?.bonus && link('bonus', '/bonus', 'Bonus')}
         {link('compete', '/compete', 'Compete')}
+        {link('onboarding', '/onboarding', 'Onboarding')}
         {extra}
         {(me.rank >= 2 || me.manages_wildlife) && me.department !== 'wildlife' && link('settings', '/admin', 'Settings')}
         <SignOut />
