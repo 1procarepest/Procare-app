@@ -4,6 +4,7 @@ import { todayYmd } from '@/lib/repcards';
 import { shortDate } from '@/lib/labels';
 import { buildMarketing, money, pickRange } from '@/lib/finance';
 import PeriodNav from '../PeriodNav';
+import OpsHero from '../../ops/OpsHero';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,19 +22,15 @@ export default async function MarketingPage({ searchParams }) {
 
   return (
     <>
-      <div className="rc-top brand-head bug-band">
-        <div>
-          <p className="rc-kicker">Finance · Marketing</p>
-          <h1 className="rc-title">Cost per <em>customer</em></h1>
-          <p className="note">{range.label}: {shortDate(range.from)} – {shortDate(range.to)}. Spend from QuickBooks ÷ new customers from FieldRoutes, by channel.</p>
-        </div>
-      </div>
+      <OpsHero kicker="Finance · Marketing" title="Cost per" em="customer" bug="spider">
+        {range.label}: {shortDate(range.from)} – {shortDate(range.to)}. Spend from QuickBooks ÷ new customers from FieldRoutes, by channel.
+      </OpsHero>
       <PeriodNav base="/finance/marketing" range={range} />
 
       <div className="fin-tiles">
-        <div className="fin-tile"><span className="rc-label">Marketing spend</span><strong>{money(m.total.spend)}</strong></div>
-        <div className="fin-tile"><span className="rc-label">New customers</span><strong>{m.total.customers}</strong></div>
-        <div className="fin-tile"><span className="rc-label">Cost per customer</span><strong>{cpc(m.total.cpc)}</strong></div>
+        <div className="fin-tile"><span className="note">Marketing spend</span><strong>{money(m.total.spend)}</strong></div>
+        <div className="fin-tile"><span className="note">New customers</span><strong>{m.total.customers}</strong></div>
+        <div className="fin-tile"><span className="note">Cost per customer</span><strong>{cpc(m.total.cpc)}</strong></div>
       </div>
 
       {anyUnset && <p className="panel">Some channels aren’t matched yet. In <Link href="/finance/settings">Settings</Link>, pick each channel’s QuickBooks accounts (its cost) and FieldRoutes lead sources (its customers).</p>}

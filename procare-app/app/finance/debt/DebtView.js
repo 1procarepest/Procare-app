@@ -7,6 +7,7 @@ import { KINDS } from '@/lib/debt';
 import { dollars, usDate } from '@/lib/trucks';
 import Picker from '../../Picker';
 import Toggle from '../../Toggle';
+import OpsHero from '../../ops/OpsHero';
 
 const rpc = (name, args) => createClient().rpc(name, args);
 const pct = (x) => (x === null || x === undefined ? '–' : `${Math.round(x * 100)}%`);
@@ -101,16 +102,10 @@ export default function DebtView({ d, connection, today }) {
 
   return (
     <>
-      <div className="rc-top brand-head bug-band">
-        <div>
-          <p className="rc-kicker">Finance</p>
-          <h1 className="rc-title">Debt <em>schedule</em></h1>
-        </div>
-        <p className="rc-updated">
-          {d.bsMonth ? `Balances from QuickBooks as of ${monthName(d.bsMonth)}${d.bsMonth.slice(0, 7) === today.slice(0, 7) ? ' (so far)' : ''}` : 'No QuickBooks balance sheet yet'}
-          {' · '}<button type="button" className="linklike" disabled={busy} onClick={syncNow}>{busy ? 'Copying…' : 'Sync now'}</button>
-        </p>
-      </div>
+      <OpsHero kicker="Finance" title="Debt" em="schedule" bug="roach">
+        {d.bsMonth ? `Balances from QuickBooks as of ${monthName(d.bsMonth)}${d.bsMonth.slice(0, 7) === today.slice(0, 7) ? ' (so far)' : ''}` : 'No QuickBooks balance sheet yet'}
+        {' · '}<button type="button" className="linklike" disabled={busy} onClick={syncNow}>{busy ? 'Copying…' : 'Sync now'}</button>
+      </OpsHero>
       {connection.bs_sync_error && <p className="error">The last balance sheet copy had a problem: {connection.bs_sync_error}</p>}
 
       <div className="fin-tiles">

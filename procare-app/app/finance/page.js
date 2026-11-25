@@ -5,8 +5,12 @@ import { shortDate } from '@/lib/labels';
 import { buildPl, pickRange } from '@/lib/finance';
 import PeriodNav from './PeriodNav';
 import PlTable from './PlTable';
+import OpsHero from '../ops/OpsHero';
+import { money } from '@/lib/finance';
 
 export const dynamic = 'force-dynamic';
+
+const pctOf = (part, whole) => (whole ? `${Math.round((part / whole) * 1000) / 10}%` : '–');
 
 /** Finance → P&L: QuickBooks P&L by class (each office, Wildlife), whole months in the period. */
 export default async function FinancePage({ searchParams }) {
@@ -20,20 +24,26 @@ export default async function FinancePage({ searchParams }) {
 
   return (
     <>
-      <div className="rc-top brand-head bug-band">
-        <div>
-          <p className="rc-kicker">Finance · QuickBooks</p>
-          <h1 className="rc-title">Profit &amp; <em>loss</em></h1>
-          <p className="note">{range.label}: {shortDate(range.from)} – {shortDate(range.to)}. By QuickBooks class: each office and Wildlife.
-            {conn.last_sync_at ? ` Updated from QuickBooks ${new Date(conn.last_sync_at).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}.` : ''}</p>
-        </div>
-      </div>
+      <OpsHero kicker="Finance · QuickBooks" title="Profit &" em="loss" bug="termite">
+        {range.label}: {shortDate(range.from)} – {shortDate(range.to)}. By QuickBooks class: each office and Wildlife.
+        {conn.last_sync_at ? ` Updated from QuickBooks ${new Date(conn.last_sync_at).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}.` : ''}
+      </OpsHero>
       <PeriodNav base="/finance" range={range} />
       {!conn.connected && pl.classes.length === 0 ? (
         <p className="panel">QuickBooks isn’t connected yet. <Link href="/finance/settings">Connect it in Settings</Link>.</p>
       ) : pl.classes.length === 0 ? (
         <p className="note">No QuickBooks numbers for these months yet. Try “Sync now” in <Link href="/finance/settings">Settings</Link>.</p>
-      ) : <PlTable pl={pl} />}
+      ) : (
+        <>
+          <div className="fin-tiles">
+            <div className="fin-tile"><span className="note">Income</span><strong>{money(pl.sections.Income.total)}</strong><small className="note">all classes</small></div>
+            <div className="fin-tile"><span className="note">Gross profit</span><strong>{money(pl.totals.gross.total)}</strong><small className="note">{pctOf(pl.totals.gross.total, pl.sections.Income.total)} of income</small></div>
+            <div className="fin-tile"><span className="note">Expenses</span><strong>{money(pl.sections.Expenses.total)}</strong><small className="note">{pctOf(pl.sections.Expenses.total, pl.sections.Income.total)} of income</small></div>
+            <div className="fin-tile"><span className="note">Net income</span><strong>{money(pl.totals.net.total)}</strong><small className="note">{pctOf(pl.totals.net.total, pl.sections.Income.total)} net margin</small></div>
+          </div>
+          <PlTable pl={pl} />
+        </>
+      )}
     </>
   );
 }

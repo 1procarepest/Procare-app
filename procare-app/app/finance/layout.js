@@ -20,7 +20,7 @@ export default async function FinanceLayout({ children }) {
     <>
       <TopNav me={me} supabase={supabase} current="finance" />
       <FinanceTabs />
-      <main className="admin scorecard finance">{children}</main>
+      <main className="admin scorecard finance ops-fun fin-fun">{children}</main>
     </>
   );
 }

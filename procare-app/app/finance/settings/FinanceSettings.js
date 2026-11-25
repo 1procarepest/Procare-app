@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import OpsHero from '../../ops/OpsHero';
 
 const when = (t) => (t ? new Date(t).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '');
 
@@ -111,10 +112,7 @@ export default function FinanceSettings({ connection, configured, channels, acco
   };
   return (
     <section className="section">
-      <div className="admin-head">
-        <h1>Finance settings</h1>
-        <p className="note">C-Suite and the President only.</p>
-      </div>
+      <OpsHero kicker="Finance" title="Finance" em="settings" bug="cricket">C-Suite and the President only. The QuickBooks link and how each marketing channel is counted.</OpsHero>
       {notice && <p className={notice.ok ? 'ok' : 'error'} role="status">{notice.text}</p>}
       <Connection connection={connection} configured={configured} />
 

@@ -2021,6 +2021,30 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .ops-fun .fin-tile:last-child.drv-warn { background: url(/patterns/lines-tile.svg) center / cover no-repeat, #6E211B; }
 .ops-fun .panel { background: url(/patterns/lines-sage.svg) center / cover no-repeat, var(--sage); }
 
+/* Finance (2026-11-25): the same navy-and-lime look as Operations (.ops-fun), plus its period picker, P&L rows and channel cards */
+.fin-fun .fin-periods .tabs-inline { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 0; padding: 8px 0; }
+.fin-fun .fin-periods .tab { margin-bottom: 0; border: 1.5px solid var(--line); border-radius: 999px; padding: 7px 14px; font-weight: 600; color: var(--ink); background: var(--white); }
+.fin-fun .fin-periods .tab::after { display: none; }
+.fin-fun .fin-periods .tab:hover { border-color: var(--ink); }
+.fin-fun .fin-periods .tab.active { background: var(--ink); border-color: var(--ink); color: var(--white); }
+.fin-fun .fin-periods .tab.active::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--lime); margin-right: 7px; vertical-align: 1px; }
+.fin-fun .fin-custom { background: var(--white); border: 1px solid var(--line); border-left: 5px solid var(--lime); border-radius: 14px; padding: 8px 12px; width: fit-content; max-width: 100%; }
+.fin-fun .fin-custom input[type="month"] { border-radius: 10px; }
+.fin-fun .fin-section th button { color: var(--forest); font-weight: 700; text-decoration: none; }
+.fin-fun .fin-section th button:hover { text-decoration: underline; }
+.fin-fun .fin-table td { font-variant-numeric: tabular-nums; }
+.fin-fun .fin-table .fin-total { background: rgba(229, 233, 218, 0.45); }
+.fin-fun .ops-table .fin-net th, .fin-fun .ops-table .fin-net td { font-size: 16px; }
+.fin-fun .fin-margin th, .fin-fun .fin-margin td { font-family: var(--mono); font-size: 12px; }
+.fin-fun .fin-channel { border-left: 5px solid var(--lime); border-radius: 16px; box-shadow: 0 4px 14px rgba(6, 47, 53, 0.05); }
+.fin-fun .fin-conn h2 { color: var(--ink); }
+.fin-fun .fin-tiles { grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); }
+@media (max-width: 640px) {
+  .fin-fun .fin-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fin-fun .fin-periods .tabs-inline { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -20px; padding-right: 20px; }
+  .fin-fun .fin-periods .tab { flex: none; padding: 6px 12px; }
+}
+
 /* Sales → Pay → Calculator: "Invest part of it" (illustration, not advice) */
 .ivst-row { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end; }
 .ivst-row > .calc-field { flex: 1 1 200px; }
