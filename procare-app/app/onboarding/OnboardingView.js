@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -234,7 +235,46 @@ function Signoffs({ list }) {
   );
 }
 
-export default function OnboardingView({ data }) {
+const AG_STATE = {
+  unsigned: ['Needs your signature', 'ev-warn'], resign: ['Changed · sign again', 'ev-warn'],
+  company: ['Signed · waiting for ProCare', ''], done: ['Signed by both', 'ev-ok'],
+};
+const AG_TEAM = { unsigned: ['Not signed', 'ev-warn'], resign: ['Needs to sign again', 'ev-warn'], company: ['Needs ProCare’s signature', 'ev-warn'], done: ['Signed by both', 'ev-ok'] };
+const agHref = (a) => `/onboarding/agreement?year=${a.year}&rep=${a.employee_id}`;
+
+/** Sales agreements (change 93): written from each rep's pay plan; who has signed, for the people who manage pay. */
+function Agreements({ team }) {
+  const [year, setYear] = useState(() => team[0]?.year);
+  const years = [...new Set(team.map((a) => a.year))];
+  if (!team.length) return null;
+  const list = team.filter((a) => a.year === year);
+  const done = list.filter((a) => a.state === 'done').length;
+  return (
+    <section className="ob-signoffs">
+      <h2 className="fin-h2">Sales agreements</h2>
+      <p className="note">Written from each rep’s plan in Sales → Pay → Plans. When a plan changes, that rep is asked to sign again.</p>
+      <div className="ob-so">
+        <div className="ob-so-head">
+          {years.length > 1
+            ? <div className="rc-seg" role="group" aria-label="Year">{years.map((y) => <button key={y} type="button" className={y === year ? 'on' : ''} onClick={() => setYear(y)}>{y}</button>)}</div>
+            : <strong>{year}</strong>}
+          <span className={`ev-chip ${done === list.length ? 'ev-ok' : 'ev-warn'}`}>{done} of {list.length} signed by both</span>
+        </div>
+        <div className="ob-so-bar" aria-hidden="true"><span style={{ width: `${list.length ? (done / list.length) * 100 : 0}%` }} /></div>
+        <ul className="ob-so-list">
+          {list.map((a) => (
+            <li key={`${a.employee_id}-${a.year}`}>
+              <span><Link href={agHref(a)}>{a.name}</Link><small>{a.title.replace(' Independent Contractor Agreement', '')}{a.office ? ` · ${OFFICE_NAME[a.office] || a.office}` : ''}</small></span>
+              <span className={`ev-chip ${AG_TEAM[a.state][1]}`}>{AG_TEAM[a.state][0]}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+export default function OnboardingView({ data, agreements = { mine: [], team: [] } }) {
   const manage = !!data.can_manage;
   const people = data.people || [];
   const peopleById = useMemo(() => Object.fromEntries(people.map((p) => [p.id, p])), [people]);
@@ -242,6 +282,7 @@ export default function OnboardingView({ data }) {
   const [all, setAll] = useState(false);    // managers: show every document, not just their own
   const docs = (data.docs || []).filter((d) => d.mine || (manage && all));
   const due = (data.docs || []).filter((d) => d.mine && d.needs_signoff && !d.signed);
+  const agDue = agreements.mine.filter((a) => a.state === 'unsigned' || a.state === 'resign');
   const categories = [...new Set([...CATEGORIES, ...(data.docs || []).map((d) => d.category)])];
   const groups = [...new Set(docs.map((d) => d.category))].sort((a, b) => {
     const ia = CATEGORIES.indexOf(a), ib = CATEGORIES.indexOf(b);
@@ -254,11 +295,31 @@ export default function OnboardingView({ data }) {
         The handbook, training, sales aids and contracts for you. Tap one to open it.
       </OpsHero>
 
-      {due.length > 0 && (
+      {due.length + agDue.length > 0 && (
         <p className="ob-due-bar" role="status">
           <Bug kind="spider" size={20} />
-          <span><strong>{due.length} to sign.</strong> Open {due.length === 1 ? 'it' : 'each one'}, read it, then tap “I’ve read this”.</span>
+          <span><strong>{due.length + agDue.length} to sign.</strong> Open {due.length + agDue.length === 1 ? 'it' : 'each one'}, read it, then sign.</span>
         </p>
+      )}
+
+      {agreements.mine.length > 0 && (
+        <section className="inv-cat ob-cat">
+          <h2 className="fin-h2">Your agreement</h2>
+          <div className="ob-grid">
+            {agreements.mine.map((a) => {
+              const [label, cls] = AG_STATE[a.state];
+              const toSign = a.state === 'unsigned' || a.state === 'resign';
+              return (
+                <article key={a.year} className={`ob-card ob-agree${toSign ? ' ob-due' : ''}`}>
+                  <div className="ob-card-top"><span className="ob-kind">{a.year}</span><span className={`ev-chip ${cls}`}>{label}</span></div>
+                  <h3 className="ob-title"><Link href={agHref(a)}>{a.title}</Link></h3>
+                  <p className="note">{a.state === 'resign' ? 'Your pay plan or the agreement changed. Read the new version and sign it.' : 'Your contract with ProCare Sales, written from your pay plan for the year.'}</p>
+                  <div className="ob-actions"><Link className="btn btn-small" href={agHref(a)}>{toSign ? 'Read and sign' : 'Open'}</Link></div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       {manage && (
@@ -269,7 +330,7 @@ export default function OnboardingView({ data }) {
       )}
       {edit === 'new' && <DocForm people={people} categories={categories} onDone={() => setEdit(null)} />}
 
-      {!docs.length && <p className="panel">{manage ? 'Nothing here yet. Add the employee handbook first, with Needs sign-off on.' : 'Nothing here for you yet.'}</p>}
+      {!docs.length && !agreements.mine.length && <p className="panel">{manage ? 'Nothing here yet. Add the employee handbook first, with Needs sign-off on.' : 'Nothing here for you yet.'}</p>}
 
       {groups.map((g) => (
         <section key={g} className="inv-cat ob-cat">
@@ -284,6 +345,7 @@ export default function OnboardingView({ data }) {
         </section>
       ))}
 
+      <Agreements team={agreements.team} />
       <Signoffs list={data.signoffs || []} />
     </>
   );

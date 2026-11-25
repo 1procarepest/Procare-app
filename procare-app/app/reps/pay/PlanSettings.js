@@ -26,11 +26,13 @@ function AssignRow({ rep, row, year, save, scales }) {
     plan: row?.plan || '', scale: row?.scale || 'first_year',
     upfront: row?.upfront ?? '', start_rate: row?.start_rate ?? '', step_rate: row?.step_rate ?? '', note: row?.note || '',
     termite_initial_pct: row?.termite_initial_pct ?? '',
+    salary: row?.salary ?? '', salary_from: row?.salary_from || '', agreement_terms: row?.agreement_terms || '',
   });
   const set = (k) => (e) => setV({ ...v, [k]: e.target.value });
   const dirty = JSON.stringify(v) !== JSON.stringify({
     plan: row?.plan || '', scale: row?.scale || 'first_year', upfront: row?.upfront ?? '', start_rate: row?.start_rate ?? '', step_rate: row?.step_rate ?? '', note: row?.note || '',
     termite_initial_pct: row?.termite_initial_pct ?? '',
+    salary: row?.salary ?? '', salary_from: row?.salary_from || '', agreement_terms: row?.agreement_terms || '',
   });
   // Termite install % (change 90) is only sent once it's set or the column exists, so saving works before that change
   const go = () => (v.plan
@@ -39,9 +41,13 @@ function AssignRow({ rep, row, year, save, scales }) {
       upfront: numOrNull(v.upfront), start_rate: numOrNull(v.start_rate), step_rate: numOrNull(v.step_rate),
       note: v.note.trim() || null, updated_at: new Date().toISOString(),
       ...(v.termite_initial_pct !== '' || (row && 'termite_initial_pct' in row) ? { termite_initial_pct: numOrNull(v.termite_initial_pct) } : {}),
+      // Salary plan and agreement terms (change 93): only sent once used or the columns exist
+      ...(v.plan === 'salary' || (row && 'salary' in row) ? { salary: v.plan === 'salary' ? numOrNull(v.salary) : null, salary_from: v.plan === 'salary' && v.salary_from ? v.salary_from : null } : {}),
+      ...(v.agreement_terms.trim() || (row && 'agreement_terms' in row) ? { agreement_terms: v.agreement_terms.trim() || null } : {}),
     }))
     : save(`${rep.name}’s ${year} plan`, (sb) => sb.from('comp_assignments').delete().eq('employee_id', rep.id).eq('year', year)));
   const isCom = v.plan === 'commission';
+  const usesScale = isCom || v.plan === 'salary';
   return (
     <tr className={rep.active ? '' : 'pay-muted'}>
       <th scope="row">{rep.name}{!rep.active && ' (left)'}</th>
@@ -50,18 +56,26 @@ function AssignRow({ rep, row, year, save, scales }) {
           <option value="">No plan</option>
           <option value="commission">Commission</option>
           <option value="flat">Flat rate</option>
+          <option value="salary">Salary</option>
         </select>
+        {v.plan === 'salary' && (
+          <span className="pay-salary">
+            <input className="pay-small" type="number" min={0} placeholder="$ a week" value={v.salary} onChange={set('salary')} aria-label={`${rep.name} salary per week`} />
+            <input type="date" value={v.salary_from} onChange={set('salary_from')} aria-label={`${rep.name} salary starts`} title="First week paid (blank = January 1)" />
+          </span>
+        )}
       </td>
       <td>
-        <select value={v.scale} onChange={set('scale')} disabled={!isCom} aria-label={`${rep.name} scale`}>
+        <select value={v.scale} onChange={set('scale')} disabled={!usesScale} aria-label={`${rep.name} scale`}>
           {scales.map(([k, s]) => <option key={k} value={k}>{s.name}</option>)}
         </select>
       </td>
       <td><input className="pay-small" type="number" placeholder="plan" value={v.upfront} onChange={set('upfront')} disabled={!isCom} aria-label={`${rep.name} up front`} /></td>
-      <td><input className="pay-small" type="number" placeholder="scale" value={v.start_rate} onChange={set('start_rate')} disabled={!isCom} aria-label={`${rep.name} start rate`} /></td>
-      <td><input className="pay-small" type="number" placeholder="scale" value={v.step_rate} onChange={set('step_rate')} disabled={!isCom} aria-label={`${rep.name} step`} /></td>
+      <td><input className="pay-small" type="number" placeholder="scale" value={v.start_rate} onChange={set('start_rate')} disabled={!usesScale} aria-label={`${rep.name} start rate`} /></td>
+      <td><input className="pay-small" type="number" placeholder="scale" value={v.step_rate} onChange={set('step_rate')} disabled={!usesScale} aria-label={`${rep.name} step`} /></td>
       <td><input className="pay-small" type="number" min={0} max={100} placeholder="company" value={v.termite_initial_pct} onChange={set('termite_initial_pct')} disabled={!v.plan} aria-label={`${rep.name} termite install percent`} /></td>
-      <td><input value={v.note} onChange={set('note')} placeholder="Deal notes" aria-label={`${rep.name} note`} /></td>
+      <td><input value={v.note} onChange={set('note')} placeholder="Deal notes" aria-label={`${rep.name} note`} />
+        <textarea className="pay-terms" rows={2} value={v.agreement_terms} onChange={set('agreement_terms')} placeholder="Extra terms for their agreement (optional)" aria-label={`${rep.name} agreement terms`} /></td>
       <td><button type="button" className="btn pay-btn" disabled={!dirty} onClick={go}>Save</button></td>
     </tr>
   );
@@ -119,7 +133,7 @@ export default function PlanSettings({ data, year, nextPlans }) {
               {[year, year + 1].map((y) => <button key={y} type="button" className={planYear === y ? 'on' : ''} onClick={() => setPlanYear(y)}>{y}</button>)}
             </div>
           </div>
-          <p className="calc-hint">A rep stays on one plan for the whole year and can switch on January 1. Leave up front, start rate and step blank to use the plan’s numbers; fill them in for a special deal. Termite install % is the rep’s share of a termite sale’s initial price (both plans); blank uses the company setting below.</p>
+          <p className="calc-hint">A rep stays on one plan for the whole year and can switch on January 1. Leave up front, start rate and step blank to use the plan’s numbers; fill them in for a special deal (e.g. $150 up front). Salary: their weekly salary and the first week it’s paid (blank = January 1); commission above the salary comes in the quarter checks. Each rep’s agreement in Onboarding is written from this row, and extra terms print in its pay section. Termite install % is the rep’s share of a termite sale’s initial price (both plans); blank uses the company setting below.</p>
           <div className="pay-scroll">
             <table className="ops-table pay-assign">
               <thead><tr><th scope="col">Rep</th><th scope="col">Plan</th><th scope="col">Scale</th><th scope="col">Up front $</th><th scope="col">Start %</th><th scope="col">Step %</th><th scope="col">Termite install %</th><th scope="col">Notes</th><th scope="col"><span className="sr-only">Save</span></th></tr></thead>

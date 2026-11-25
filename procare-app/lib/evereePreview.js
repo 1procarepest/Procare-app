@@ -43,7 +43,7 @@ export function payablePreview({ data, year, payday, today, workers, emps }) {
       externalId: `procare::${rep.id}::upfront::${payday}`,
       ...(/^\d+$/.test(String(m.w.id)) ? { workerId: String(m.w.id) } : { externalWorkerId: String(m.w.id) }),
       type: 'commission',
-      label: `Sales up fronts, ${nice(from)}–${nice(to)}`,
+      label: `${st.plan?.plan === 'salary' ? 'Sales salary' : 'Sales up fronts'}, ${nice(from)}–${nice(to)}`,
       payableModel: 'PRE_CALCULATED',
       payCode: 'COMMISSION',
       amount: { amount, currency: 'USD' },

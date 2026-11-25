@@ -15,11 +15,16 @@
  *  - Termite (both plans, since 2026-11-24) also pays a share of the initial price, up front: the rep's own
  *    comp_assignments.termite_initial_pct (change 90), else the company's termite_initial_pct.
  *  - Flat plan: a set amount per service type, paid in full up front; no bonus, holds or clawbacks.
+ *  - Salary plan (change 93): a set weekly salary (comp_assignments.salary, from salary_from or January 1) instead
+ *    of up fronts. Commission is figured exactly as on the commission plan (termite and mosquito earn their up-front
+ *    amount), and each quarter check = earned so far this year − salary paid − earlier checks, with the same hold and
+ *    clawbacks. A quarter that doesn't beat the salary pays nothing; the shortfall carries through the year only.
+ *  - All pay is processed on Mondays and paid on Wednesdays (John, 2026-11-25); "payday" here is the Monday.
  */
 
 export const GROUPS = ['pest', 'termite', 'mosquito'];
 export const GROUP_LABEL = { pest: 'Pest', termite: 'Termite bait', mosquito: 'Mosquito' };
-export const PLAN_LABEL = { commission: 'Commission plan', flat: 'Flat rate plan' };
+export const PLAN_LABEL = { commission: 'Commission plan', flat: 'Flat rate plan', salary: 'Salary plan' };
 
 export const n = (v) => (v === null || v === undefined || v === '' || Number.isNaN(Number(v)) ? 0 : Number(v));
 export const cents = (v) => Math.round(n(v) * 100) / 100;
@@ -60,8 +65,11 @@ export function bonusRate(settings, cv) {
 }
 export function upfrontFor(settings, a, grp) {
   if (a?.plan === 'flat') return n(settings?.[`flat_${grp}`]);
+  if (a?.plan === 'salary') return 0;          // salary replaces up fronts
   return a?.upfront ?? n(settings?.upfront);
 }
+/** What a sale earns at the up-front amount on the commission math (salary plan: termite and mosquito commission). */
+export const commissionUpfront = (settings, a) => (a?.upfront ?? n(settings?.upfront));
 /** The share (%) of a termite sale's initial price this rep is paid up front: their own, else the company's (change 90). */
 export const termitePct = (settings, a) => {
   if (!a?.plan) return 0;
@@ -72,8 +80,18 @@ export const termitePct = (settings, a) => {
 export function termiteInitial(settings, a, init) {
   return (n(init) * termitePct(settings, a)) / 100;
 }
-/** Everything paid up front on one sale. */
-export const saleUpfront = (settings, a, x) => upfrontFor(settings, a, x.g) + (x.g === 'termite' ? termiteInitial(settings, a, x.init) : 0);
+/** Everything paid up front on one sale (nothing on the salary plan). */
+export const saleUpfront = (settings, a, x) => (a?.plan === 'salary' ? 0 : upfrontFor(settings, a, x.g) + (x.g === 'termite' ? termiteInitial(settings, a, x.init) : 0));
+/** What a termite or mosquito sale earns in the quarter math: its up front, or on salary what the commission plan would pay up front. */
+const flatEarned = (settings, a, x) => (a?.plan === 'salary' ? commissionUpfront(settings, a) + (x.g === 'termite' ? termiteInitial(settings, a, x.init) : 0) : saleUpfront(settings, a, x));
+/** Salary paydays (Mondays) in a year: each Monday whose Monday–Sunday week before it falls in the year, from salary_from on. */
+export function salaryWeeks(a, year, through) {
+  if (a?.plan !== 'salary' || !(n(a.salary) > 0)) return [];
+  const from = a.salary_from && String(a.salary_from).slice(0, 4) === String(year) ? String(a.salary_from).slice(0, 10) : `${year}-01-01`;
+  const out = [];
+  for (let p = payMonday(from); addDays(p, -1) <= `${year}-12-31` && p <= through; p = addDays(p, 7)) out.push(p);
+  return out;
+}
 export const planOf = (data, emp, year) => (data?.plans || []).find((p) => p.employee_id === emp && p.year === year) || null;
 
 // ---------- statement ----------
@@ -96,28 +114,36 @@ export function statement(data, emp, year, today, { prior = true } = {}) {
   const cancelledBy = (x, asOf) => x.can && x.can <= asOf && daysBetween(x.served, x.can) <= n(s.clawback_days);
   const pastDue = (x) => n(x.bal) > 0 && n(x.age) > n(s.past_due_days);
 
-  // Weekly up-fronts
-  const byMonday = new Map();
+  // Weekly up-fronts (and the weekly salary on the salary plan, through next Monday)
+  const salary = a.plan === 'salary' ? cents(a.salary) : 0;
+  const salaryDays = salaryWeeks(a, year, nextMonday(today));
+  const byMonday = new Map(salaryDays.map((m) => [m, []]));
   mine.forEach((x) => {
     const m = payMonday(x.served);
     if (!byMonday.has(m)) byMonday.set(m, []);
     byMonday.get(m).push(x);
   });
-  out.weeks = [...byMonday.entries()].sort(([p], [q]) => (p < q ? 1 : -1)).map(([payday, list]) => ({
-    payday, from: addDays(payday, -7), to: addDays(payday, -1), sales: list.map((x) => ({ ...x, upfront: up(x) })),
-    total: cents(list.reduce((t, x) => t + up(x), 0)), paid: payday <= today,
-  }));
-  const upfrontsThrough = (d) => cents(mine.filter((x) => payMonday(x.served) <= d).reduce((t, x) => t + up(x), 0));
-  out.upfrontYtd = upfrontsThrough(today);
+  const paysSalary = new Set(salaryDays);
+  out.weeks = [...byMonday.entries()].sort(([p], [q]) => (p < q ? 1 : -1)).map(([payday, list]) => {
+    const sal = paysSalary.has(payday) ? salary : 0;
+    return {
+      payday, from: addDays(payday, -7), to: addDays(payday, -1), sales: list.map((x) => ({ ...x, upfront: up(x) })),
+      salary: sal, total: cents(sal + list.reduce((t, x) => t + up(x), 0)), paid: payday <= today,
+    };
+  });
+  const salaryThrough = (d) => cents(salaryDays.filter((m) => m <= d).length * salary);
+  out.salaryYtd = salaryThrough(today);
+  out.upfrontYtd = cents(mine.filter((x) => payMonday(x.served) <= today).reduce((t, x) => t + up(x), 0) + out.salaryYtd);
 
   if (a.plan === 'flat') return out;
 
   // Last year: clawbacks for its sales cancelled this year, and anything it left owing
   if (prior) {
     const last = statement(data, emp, year - 1, today, { prior: false });
-    if (last.plan?.plan === 'commission' && last.quarters.length === 4) {
+    if (['commission', 'salary'].includes(last.plan?.plan) && last.quarters.length === 4) {
       const q4 = last.quarters[3];
-      out.carryIn = Math.min(0, q4.check);
+      // A salary year that didn't beat its salary isn't owed back; clawbacks still are
+      out.carryIn = last.plan.plan === 'salary' ? 0 : Math.min(0, q4.check);
       const ends = `${year - 1}-12-31`;
       const rateOf = Object.fromEntries(q4.lines.map((l) => [l.id, l]));
       last.sales.forEach((x) => {
@@ -147,21 +173,24 @@ export function statement(data, emp, year, today, { prior = true } = {}) {
     lines.forEach((l) => {
       l.bonus = l.g === 'pest' ? bonusRate(s, l.cv) : 0;
       l.rate = l.g === 'pest' ? Math.max(rate, l.bonus) : null;
-      l.earned = cents(l.g === 'pest' ? (n(l.cv) * l.rate) / 100 : up(l));
+      l.earned = cents(l.g === 'pest' ? (n(l.cv) * l.rate) / 100 : flatEarned(s, a, l));
       l.upfront = up(l);
     });
     const owed = cents(lines.filter((l) => l.good).reduce((t, l) => t + l.earned, 0));
-    const upfronts = cents(lines.reduce((t, l) => t + l.upfront, 0));
+    // Up fronts on this year's sales; on the salary plan, the salary paid for weeks through this quarter
+    const salaryPaid = salary ? cents(salaryDays.filter((m) => addDays(m, -1) <= asOf).length * salary) : 0;
+    const upfronts = cents(lines.reduce((t, l) => t + l.upfront, 0) + salaryPaid);
     const priorBack = cents(out.priorClawbacks.filter((x) => x.can <= asOf).reduce((t, x) => t + x.amount, 0));
     const net = owed - priorBack + out.carryIn;                 // what the year has earned, all told
     const keepHold = q < 4 || (rep && rep.active === false);
     const above = Math.max(0, net - upfronts);
     const target = upfronts + (keepHold ? above * (1 - n(s.hold_pct) / 100) : net - upfronts);
     const raw = cents(target - upfronts - checksPaid);
-    const check = raw;
+    // Salary plan: a quarter that doesn't beat the salary just pays nothing (the year-to-date math carries it)
+    const check = a.plan === 'salary' ? Math.max(0, raw) : raw;
     const paidOut = Math.max(0, raw);
     out.quarters.push({
-      q, start, end, asOf, payDate, done: end < today, count, rate, lines, owed, upfronts, priorBack,
+      q, start, end, asOf, payDate, done: end < today, count, rate, lines, owed, upfronts, salaryPaid, priorBack,
       held: keepHold ? cents(above * n(s.hold_pct) / 100) : 0,
       forfeited: q === 4 && rep && rep.active === false,
       check, paidOut, checksBefore: cents(checksPaid),
@@ -198,14 +227,17 @@ export function project(settings, a, { days, perDay, mix, pestCv, cancelPct, ter
   const rate = rateAt(scale, good);
   const bonus = bonusRate(settings, pestCv);
   const pestRate = Math.max(rate, bonus);
-  const upAmt = upfrontFor(settings, a, 'pest');
+  const upAmt = a.plan === 'salary' ? commissionUpfront(settings, a) : upfrontFor(settings, a, 'pest');
   const by = {
     pest: count.pest * keep * n(pestCv) * pestRate / 100,
     termite: count.termite * keep * (upFor(settings, a, 'termite') + termiteInitial(settings, a, termiteInit)),
     mosquito: count.mosquito * keep * upFor(settings, a, 'mosquito'),
   };
-  const year = GROUPS.reduce((t, g) => t + by[g], 0);
-  const upfront = total * upAmt + count.termite * termiteInitial(settings, a, termiteInit);   // up fronts go out on every serviced sale
+  const earned = GROUPS.reduce((t, g) => t + by[g], 0);
+  // Salary plan: the salary is guaranteed; commission above it comes in the quarter checks
+  const salaryYear = a.plan === 'salary' ? n(a.salary) * 52 : 0;
+  const year = a.plan === 'salary' ? Math.max(earned, salaryYear) : earned;
+  const upfront = a.plan === 'salary' ? salaryYear : total * upAmt + count.termite * termiteInitial(settings, a, termiteInit);   // up fronts go out on every serviced sale
   const ladder = [];
   for (let k = 0; ; k += 1) {
     const at = k * scale.every;
@@ -216,7 +248,7 @@ export function project(settings, a, { days, perDay, mix, pestCv, cancelPct, ter
   }
   return { total, count, good, by, year, upfront, backend: year - upfront, rate, bonus, pestRate, ladder, scale, perSale: total ? year / total : 0 };
 }
-const upFor = (settings, a, g) => upfrontFor(settings, a, g);
+const upFor = (settings, a, g) => (a?.plan === 'salary' ? commissionUpfront(settings, a) : upfrontFor(settings, a, g));
 
 /** Sales per day needed to reach `goal` dollars a year (binary search over the projection). */
 export function perDayFor(settings, a, inputs, goal) {

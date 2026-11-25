@@ -42,7 +42,7 @@ export default function Calculator({ data, year, rep }) {
 
   // Reps on the commission plan only see the commission plan (flat rate is going away).
   // Managers and the President, and reps without a plan or on flat rate, can compare both.
-  const commissionOnly = !data.boss && mine?.plan === 'commission';
+  const commissionOnly = !data.boss && ['commission', 'salary'].includes(mine?.plan);
   const [plan, setPlan] = useState(mine?.plan || 'commission');
   const [scale, setScale] = useState(mine?.scale || 'first_year');
   const [daysWk, setDaysWk] = useState(5);
@@ -63,7 +63,7 @@ export default function Calculator({ data, year, rep }) {
   const other = project(s, { plan: plan === 'flat' ? 'commission' : 'flat', scale: 'first_year' }, inputs);
   const needed = goal ? perDayFor(s, a, inputs, n(goal)) : null;
   const tiers = [...(s.bonus || [])].sort((x, y) => n(x.min) - n(y.min));
-  const nextTier = plan === 'commission' ? tiers.find((t) => n(pestCv) < n(t.min) && n(t.rate) > p.pestRate) : null;
+  const nextTier = plan !== 'flat' ? tiers.find((t) => n(pestCv) < n(t.min) && n(t.rate) > p.pestRate) : null;
   const boosted = nextTier ? project(s, a, { ...inputs, pestCv: n(nextTier.min) }) : null;
 
   // Keep the mix adding to 100: moving one slider takes the difference from the others, in proportion
@@ -86,16 +86,16 @@ export default function Calculator({ data, year, rep }) {
           <div className="calc-row">
             {!commissionOnly && (
               <div className="rc-seg" role="group" aria-label="Plan">
-                {['commission', 'flat'].map((k) => <button key={k} type="button" className={plan === k ? 'on' : ''} onClick={() => setPlan(k)}>{k === 'commission' ? 'Commission' : 'Flat rate'}</button>)}
+                {['commission', 'flat', ...(mine?.plan === 'salary' ? ['salary'] : [])].map((k) => <button key={k} type="button" className={plan === k ? 'on' : ''} onClick={() => setPlan(k)}>{{ commission: 'Commission', flat: 'Flat rate', salary: 'Salary' }[k]}</button>)}
               </div>
             )}
-            {plan === 'commission' && (
+            {plan !== 'flat' && (
               <div className="rc-seg" role="group" aria-label="Pay scale">
                 {scaleOpts.map(([k, v]) => <button key={k} type="button" className={scale === k ? 'on' : ''} onClick={() => setScale(k)}>{v.name}</button>)}
               </div>
             )}
           </div>
-          {mine && <p className="calc-hint">{commissionOnly ? `You’re on the ${PLAN_LABEL.commission.toLowerCase()} for ${year}.` : mine.plan === plan && (plan === 'flat' || mine.scale === scale) ? `This is your ${year} plan.` : `Your ${year} plan is the ${PLAN_LABEL[mine.plan].toLowerCase()}. Plans change only on January 1.`}</p>}
+          {mine && <p className="calc-hint">{commissionOnly ? `You’re on the ${PLAN_LABEL[mine.plan].toLowerCase()} for ${year}.` : mine.plan === plan && (plan === 'flat' || mine.scale === scale) ? `This is your ${year} plan.` : `Your ${year} plan is the ${PLAN_LABEL[mine.plan].toLowerCase()}. Plans change only on January 1.`}</p>}
 
           <h2 className="calc-h cp-h"><BugTile kind="ant" tone="forest" size={28} /> How much you’ll work</h2>
           <div className="calc-days" role="group" aria-label="Days a week">
@@ -114,7 +114,7 @@ export default function Calculator({ data, year, rep }) {
           {GROUPS.map((g) => <Slider key={g} label={GROUP_LABEL[g]} value={mix[g]} onChange={(v) => setShare(g, v)} min={0} max={100} step={5} show={(v) => `${v}%`} />)}
           <Num label="Average pest contract value" value={pestCv} onChange={setPestCv} prefix="$" step={10}
             hint={`Yearly billing plus the initial. ${myPest.length ? `Yours this year: $${avgCv}.` : ''}`} />
-          {plan === 'commission' && (
+          {plan !== 'flat' && (
             <div className="calc-chips calc-cv">
               {[420, 470, ...tiers.map((t) => n(t.min))].map((v) => (
                 <button key={v} type="button" className={n(pestCv) === v ? 'on' : ''} onClick={() => setPestCv(v)}>
@@ -140,11 +140,21 @@ export default function Calculator({ data, year, rep }) {
           <div className="calc-hero-grid">
             <div><span className="rc-label">Sales</span><strong>{p.total}</strong><small>{GROUPS.map((g) => `${p.count[g]} ${GROUP_LABEL[g].toLowerCase()}`).join(' · ')}</small></div>
             <div><span className="rc-label">Per sale</span><strong>{money0(p.perSale)}</strong><small>after cancels</small></div>
-            {plan === 'commission'
+            {plan !== 'flat'
               ? <div><span className="rc-label">Pest rate</span><strong>{p.pestRate}%</strong><small>{p.bonus > p.rate ? 'bonus rate' : `${p.scale.name} after ${p.good} good sales`}</small></div>
               : <div><span className="rc-label">Up front</span><strong>all of it</strong><small>no holdback or clawbacks</small></div>}
           </div>
         </div>
+
+        {plan === 'salary' && (
+          <div className="calc-card">
+            <h3 className="cp-h"><BugTile kind="termite" tone="sage" size={26} /> How it’s paid</h3>
+            <ul className="calc-paid">
+              <li><span>Every week, your salary (processed Monday, paid Wednesday)</span><strong>{money0(n(a.salary))} a week</strong></li>
+              <li><span>Commission above your salary in quarter checks on Apr 20, Jul 20, Oct 20, with {n(s.hold_pct)}% held until Jan 20</span><strong>{money0(Math.max(0, p.backend))} a year</strong></li>
+            </ul>
+          </div>
+        )}
 
         {plan === 'commission' && (
           <div className="calc-card">
@@ -156,7 +166,7 @@ export default function Calculator({ data, year, rep }) {
           </div>
         )}
 
-        {plan === 'commission' && (
+        {plan !== 'flat' && (
           <div className="calc-card">
             <h3 className="cp-h"><BugTile kind="cricket" tone="lime" size={26} /> Your rate climbs every {p.scale.every} sales</h3>
             <p className="calc-hint">Every serviced sale counts toward the next step. The rate goes back to all of the year’s pest sales, and starts over each January.</p>

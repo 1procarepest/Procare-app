@@ -39,12 +39,13 @@ function Tile({ label, value, sub, bug = 'ant' }) {
 const planLine = (st) => {
   if (!st.plan) return 'No plan set';
   if (st.plan.plan === 'flat') return PLAN_LABEL.flat;
+  if (st.plan.plan === 'salary') return `${PLAN_LABEL.salary} · ${money0(st.plan.salary)}/wk · ${st.scale.name}`;
   return `${PLAN_LABEL.commission} · ${st.scale.name}`;
 };
 
 /** Where a commission rep stands: rate now and how far to the next step. */
 function rateNow(st) {
-  if (st.plan?.plan !== 'commission') return null;
+  if (!['commission', 'salary'].includes(st.plan?.plan)) return null;
   const q = st.quarters[st.quarters.length - 1];
   const count = q ? q.count : 0;
   const rate = rateAt(st.scale, count);
@@ -140,13 +141,14 @@ function Statement({ st, today, open }) {
     );
   }
   const isFlat = st.plan.plan === 'flat';
+  const isSalary = st.plan.plan === 'salary';
 
   return (
     <>
       <div className="rc-tiles pay-tiles">
         <Tile bug="spider" label="Plan" value={isFlat ? 'Flat rate' : `${now.rate}%`} sub={isFlat ? 'paid in full up front' : `${st.scale.name} · ${now.count} sales this year${now.nextAt ? ` · ${now.nextRate}% at ${now.nextAt}` : ' · top rate'}`} />
         <Tile bug="ant" label={`Next Monday, ${nice(next)}`} value={money(nextWeek?.total || 0)} sub={`${nextWeek?.sales.length || 0} serviced last week`} />
-        <Tile bug="cricket" label="Up front this year" value={money0(st.upfrontYtd)} sub={`${st.weeks.filter((w) => w.paid).length} paydays`} />
+        <Tile bug="cricket" label={isSalary ? 'Salary this year' : 'Up front this year'} value={money0(st.upfrontYtd)} sub={isSalary ? `${money0(st.plan.salary)} a week` : `${st.weeks.filter((w) => w.paid).length} paydays`} />
         {!isFlat && <Tile bug="termite" label={openQ ? `Q${openQ.q} check, ${nice(openQ.payDate)}` : 'Quarter checks'} value={money(openQ ? openQ.paidOut : 0)} sub={openQ && !openQ.done ? 'so far this quarter' : 'estimate'} />}
         {!isFlat && <Tile bug="tick" label="Held back" value={money0(held)} sub={`paid with the Jan 20 check`} />}
       </div>
@@ -163,7 +165,7 @@ function Statement({ st, today, open }) {
               <tr><th scope="row">Earned on good sales (pest at {q.rate}% or bonus rate, others at their up-front amount)</th><td>{money(q.owed)}</td></tr>
               {q.priorBack > 0 && <tr><th scope="row">Clawbacks on last year’s sales</th><td>−{money(q.priorBack)}</td></tr>}
               {st.carryIn < 0 && <tr><th scope="row">Owed back from last year</th><td>{money(st.carryIn)}</td></tr>}
-              <tr><th scope="row">Up fronts paid this year</th><td>−{money(q.upfronts)}</td></tr>
+              <tr><th scope="row">{isSalary ? 'Salary paid this year' : 'Up fronts paid this year'}</th><td>−{money(q.upfronts)}</td></tr>
               {q.checksBefore > 0 && <tr><th scope="row">Earlier quarter checks</th><td>−{money(q.checksBefore)}</td></tr>}
               {q.held > 0 && <tr><th scope="row">Held back until the Jan 20 check</th><td>−{money(q.held - (st.quarters[q.q - 2]?.held || 0))}</td></tr>}
               {q.forfeited && <tr><th scope="row">No longer with Procare: the held amount isn’t paid</th><td /></tr>}
@@ -194,13 +196,13 @@ function Statement({ st, today, open }) {
         </Panel>
       )}
 
-      <Panel bug="ant" tone="forest" title="Weekly up fronts" summary={`${st.weeks.length} weeks · ${money0(st.weeks.reduce((t, w) => t + w.total, 0))}`} open={isFlat}>
+      <Panel bug="ant" tone="forest" title={isSalary ? 'Weekly pay' : 'Weekly up fronts'} summary={`${st.weeks.length} weeks · ${money0(st.weeks.reduce((t, w) => t + w.total, 0))}`} open={isFlat}>
         {st.weeks.length === 0 && <p className="note">No serviced sales yet this year.</p>}
         {st.weeks.map((w) => (
           <details key={w.payday} className="pay-week">
             <summary>
               <span>{w.paid ? 'Paid' : 'Pays'} Monday {nice(w.payday)}</span>
-              <span className="pay-muted">serviced {nice(w.from)}–{nice(w.to)} · {w.sales.length}</span>
+              <span className="pay-muted">{w.salary ? `salary ${money0(w.salary)} · ` : ''}serviced {nice(w.from)}–{nice(w.to)} · {w.sales.length}</span>
               <strong>{money(w.total)}</strong>
             </summary>
             <Lines rows={w.sales} cols={[custCol, typeCol, servedCol, { k: 'u', h: 'Up front', v: (r) => money(r.upfront) }]} />
