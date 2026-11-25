@@ -274,7 +274,62 @@ function Agreements({ team }) {
   );
 }
 
-export default function OnboardingView({ data, agreements = { mine: [], team: [] } }) {
+/** A test card (change 94): passed, or take / retake it. */
+function QuizCard({ z }) {
+  const passed = !!z.passed_at;
+  return (
+    <article className={`ob-card ob-quiz${z.mine && !passed ? ' ob-due' : ''}`}>
+      <div className="ob-card-top">
+        <span className="ob-kind ob-kind-test">Test</span>
+        {z.mine && (passed
+          ? <span className="ev-chip ev-ok">Passed {day(z.passed_at)}</span>
+          : <span className="ev-chip ev-warn">{z.tries ? `Last try ${z.last_score}/${z.ask_count}` : 'Needs your 100%'}</span>)}
+      </div>
+      {passed && <img className="ob-quiz-sticker" src="/stickers/best-in-pest-cybertruck-320.png" alt="" aria-hidden="true" />}
+      <h3 className="ob-title"><Link href={`/onboarding/quiz/${z.id}`}>{z.title}</Link></h3>
+      <p className="note">{z.ask_count} questions · {z.pass_pct}% to pass · retake as often as you like</p>
+      <div className="ob-actions"><Link className="btn btn-small" href={`/onboarding/quiz/${z.id}`}>{passed ? 'Take it again' : z.tries ? 'Try again' : 'Take the test'}</Link></div>
+    </article>
+  );
+}
+
+/** Who has passed each test (C-Suite and HR: everyone; managers: their people). */
+function QuizStatus({ list }) {
+  const [open, setOpen] = useState({});
+  const shown = list.filter((s) => s.people.length);
+  if (!shown.length) return null;
+  return (
+    <section className="ob-signoffs">
+      <h2 className="fin-h2">Tests</h2>
+      {shown.map((s) => {
+        const done = s.people.filter((p) => p.passed_at);
+        return (
+          <div key={s.id} className="ob-so">
+            <div className="ob-so-head">
+              <strong>{s.title}</strong>
+              <span className={`ev-chip ${done.length === s.people.length ? 'ev-ok' : 'ev-warn'}`}>{done.length} of {s.people.length} passed</span>
+            </div>
+            <div className="ob-so-bar" aria-hidden="true"><span style={{ width: `${(done.length / s.people.length) * 100}%` }} /></div>
+            <Toggle small checked={!!open[s.id]} onChange={(v) => setOpen({ ...open, [s.id]: v })}>Show who</Toggle>
+            {open[s.id] && (
+              <ul className="ob-so-list">
+                {s.people.map((p) => (
+                  <li key={p.id}>
+                    <span>{p.name}<small>{DEPT_LABEL[p.department] || ''}{p.office ? ` · ${OFFICE_NAME[p.office] || p.office}` : ''}</small></span>
+                    {p.passed_at ? <span className="ev-chip ev-ok">{day(p.passed_at)}</span>
+                      : <span className="ev-chip ev-warn">{p.tries ? `${p.tries} tr${p.tries === 1 ? 'y' : 'ies'} · best ${p.best}%` : 'Not taken'}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+export default function OnboardingView({ data, agreements = { mine: [], team: [] }, quizzes: qd = { quizzes: [], status: [] } }) {
   const manage = !!data.can_manage;
   const people = data.people || [];
   const peopleById = useMemo(() => Object.fromEntries(people.map((p) => [p.id, p])), [people]);
@@ -283,22 +338,24 @@ export default function OnboardingView({ data, agreements = { mine: [], team: []
   const docs = (data.docs || []).filter((d) => d.mine || (manage && all));
   const due = (data.docs || []).filter((d) => d.mine && d.needs_signoff && !d.signed);
   const agDue = agreements.mine.filter((a) => a.state === 'unsigned' || a.state === 'resign');
+  const myQuizzes = (qd.quizzes || []).filter((z) => z.mine || (manage && all));
+  const quizDue = (qd.quizzes || []).filter((z) => z.mine && !z.passed_at);
   const categories = [...new Set([...CATEGORIES, ...(data.docs || []).map((d) => d.category)])];
-  const groups = [...new Set(docs.map((d) => d.category))].sort((a, b) => {
+  const groups = [...new Set([...docs.map((d) => d.category), ...myQuizzes.map((z) => z.category)])].sort((a, b) => {
     const ia = CATEGORIES.indexOf(a), ib = CATEGORIES.indexOf(b);
     return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
   });
 
   return (
     <>
-      <OpsHero kicker="Onboarding" title="Training &" em="documents" bug="ant">
+      <OpsHero kicker="Onboarding" title="Training &" em="documents" bug="ant" badge="/stickers/best-in-pest-cybertruck-320.png">
         The handbook, training, sales aids and contracts for you. Tap one to open it.
       </OpsHero>
 
-      {due.length + agDue.length > 0 && (
+      {due.length + agDue.length + quizDue.length > 0 && (
         <p className="ob-due-bar" role="status">
           <Bug kind="spider" size={20} />
-          <span><strong>{due.length + agDue.length} to sign.</strong> Open {due.length + agDue.length === 1 ? 'it' : 'each one'}, read it, then sign.</span>
+          <span><strong>{due.length + agDue.length + quizDue.length} to do.</strong> {[due.length + agDue.length ? `${due.length + agDue.length} to read and sign` : '', quizDue.length ? `${quizDue.length} test${quizDue.length === 1 ? '' : 's'} to pass with 100%` : ''].filter(Boolean).join(', ')}.</span>
         </p>
       )}
 
@@ -330,12 +387,13 @@ export default function OnboardingView({ data, agreements = { mine: [], team: []
       )}
       {edit === 'new' && <DocForm people={people} categories={categories} onDone={() => setEdit(null)} />}
 
-      {!docs.length && !agreements.mine.length && <p className="panel">{manage ? 'Nothing here yet. Add the employee handbook first, with Needs sign-off on.' : 'Nothing here for you yet.'}</p>}
+      {!docs.length && !agreements.mine.length && !myQuizzes.length && <p className="panel">{manage ? 'Nothing here yet. Add the employee handbook first, with Needs sign-off on.' : 'Nothing here for you yet.'}</p>}
 
       {groups.map((g) => (
         <section key={g} className="inv-cat ob-cat">
           <h2 className="fin-h2">{g}</h2>
           <div className="ob-grid">
+            {myQuizzes.filter((z) => z.category === g).map((z) => <QuizCard key={z.id} z={z} />)}
             {docs.filter((d) => d.category === g).map((d) => (
               edit === d.id
                 ? <DocForm key={d.id} doc={d} people={people} categories={categories} onDone={() => setEdit(null)} />
@@ -346,6 +404,7 @@ export default function OnboardingView({ data, agreements = { mine: [], team: []
       ))}
 
       <Agreements team={agreements.team} />
+      <QuizStatus list={qd.status || []} />
       <Signoffs list={data.signoffs || []} />
     </>
   );

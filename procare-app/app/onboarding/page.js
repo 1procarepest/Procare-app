@@ -18,7 +18,10 @@ export default async function OnboardingPage() {
   const { me } = await getMe(supabase);
   const thisYear = Number(todayYmd().slice(0, 4));
   const years = [thisYear, thisYear + 1];
-  const [{ data, error }, { data: payBoss }] = await Promise.all([supabase.rpc('onboarding_data'), supabase.rpc('can_manage_pay')]);
+  const [{ data, error }, { data: payBoss }, { data: quizData }] = await Promise.all([
+    supabase.rpc('onboarding_data'), supabase.rpc('can_manage_pay'),
+    supabase.rpc('onboarding_quiz_data'),   // tests (change 94); empty until that change is run
+  ]);
   if (error) {
     const missing = /onboarding_data|schema cache|does not exist/i.test(error.message);
     return <p className="error">{missing ? 'Onboarding turns on once database change 92 is run in Supabase.' : `Onboarding couldn’t load: ${error.message}`}</p>;
@@ -30,5 +33,5 @@ export default async function OnboardingPage() {
     mine: ag.list.filter((x) => x.employee_id === me.id).map(brief),
     team: boss ? ag.list.filter((x) => x.active).map(brief) : [],
   } : { mine: [], team: [] };
-  return <OnboardingView data={data || { docs: [], signoffs: [] }} agreements={agreements} />;
+  return <OnboardingView data={data || { docs: [], signoffs: [] }} agreements={agreements} quizzes={quizData || { quizzes: [], status: [] }} />;
 }
