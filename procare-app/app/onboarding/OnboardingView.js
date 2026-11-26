@@ -5,12 +5,13 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { DEPT_LABEL, OFFICES, OFFICE_NAME } from '@/lib/labels';
+import { groupOf } from '@/lib/onboarding';
 import OpsHero from '../ops/OpsHero';
 import Picker from '../Picker';
 import Toggle from '../Toggle';
 import Bug from '../Bug';
 
-const CATEGORIES = ['Handbook', 'Training', 'Sales aids', 'Contracts', 'Policies'];
+const GROUP_HEAD = { Onboarding: 'Onboarding · required', Training: 'Training · when you need it' };
 const DEPTS = ['technician', 'sales', 'administrative', 'wildlife'];
 const day = (t) => (t ? new Date(t).toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric' }) : '');
 const kindOf = (d) => (d.kind === 'link' ? 'Link' : /^image\//.test(d.mime || '') ? 'Picture' : 'PDF');
@@ -38,9 +39,9 @@ async function uploadFile(file) {
 function DocForm({ doc, people, categories, onDone }) {
   const router = useRouter();
   const [f, setF] = useState(() => ({
-    title: doc?.title || '', description: doc?.description || '', category: doc?.category || 'Training',
+    title: doc?.title || '', description: doc?.description || '', category: doc ? groupOf(doc.category) : 'Onboarding',
     kind: doc?.kind || 'file', url: doc?.url || '', departments: doc?.departments || [], offices: doc?.offices || [], people: doc?.people || [],
-    needs_signoff: !!doc?.needs_signoff, new_version: false,
+    needs_signoff: doc ? !!doc.needs_signoff : true, new_version: false,
   }));
   const [who, setWho] = useState(doc?.people?.length ? 'people' : doc?.departments?.length || doc?.offices?.length ? 'depts' : 'all');
   const [file, setFile] = useState(null);
@@ -57,7 +58,7 @@ function DocForm({ doc, people, categories, onDone }) {
       if (who === 'depts' && !f.departments.length && !f.offices.length) throw new Error('Pick at least one department or office, or choose Everyone.');
       if (who === 'people' && !f.people.length) throw new Error('Add at least one person, or choose Everyone.');
       const up = f.kind === 'file' && file ? await uploadFile(file) : {};
-      const p = { ...f, ...up, departments: who === 'depts' ? f.departments : [], offices: who === 'depts' ? f.offices : [], people: who === 'people' ? f.people : [] };
+      const p = { ...f, ...up, needs_signoff: f.category === 'Onboarding' && f.needs_signoff, departments: who === 'depts' ? f.departments : [], offices: who === 'depts' ? f.offices : [], people: who === 'people' ? f.people : [] };
       const { error } = await createClient().rpc('save_onboarding_doc', { p_id: doc?.id || null, p });
       if (error) throw new Error(error.message);
       // A replaced file: remove the old one
@@ -86,10 +87,12 @@ function DocForm({ doc, people, categories, onDone }) {
       <h3 className="ob-form-h">{doc ? `Change “${doc.title}”` : 'Add a document'}</h3>
       <div className="tr-grid">
         <label className="tr-field tr-wide"><span>Title</span><input value={f.title} onChange={(e) => set('title', e.target.value)} placeholder="e.g. Employee handbook" /></label>
-        <label className="tr-field"><span>Section</span>
-          <input list="ob-cats" value={f.category} onChange={(e) => set('category', e.target.value)} />
-          <datalist id="ob-cats">{categories.map((c) => <option key={c} value={c} />)}</datalist>
-        </label>
+        <div className="tr-field tr-wide"><span>Section</span>
+          <div className="rc-seg" role="group" aria-label="Section">
+            <button type="button" className={f.category === 'Onboarding' ? 'on' : ''} onClick={() => setF((x) => ({ ...x, category: 'Onboarding', needs_signoff: true }))}>Onboarding · required</button>
+            <button type="button" className={f.category === 'Training' ? 'on' : ''} onClick={() => setF((x) => ({ ...x, category: 'Training', needs_signoff: false }))}>Training · optional</button>
+          </div>
+        </div>
         <label className="tr-field tr-wide"><span>What it is (optional)</span><input value={f.description} onChange={(e) => set('description', e.target.value)} placeholder="One line people see under the title" /></label>
       </div>
 
@@ -147,11 +150,13 @@ function DocForm({ doc, people, categories, onDone }) {
         </div>
       )}
 
-      <Toggle checked={f.needs_signoff} onChange={(v) => set('needs_signoff', v)}>
-        <span>Needs sign-off</span>
-        <span className="note">Each person taps “I’ve read this”, and the date is kept.</span>
-      </Toggle>
-      {doc && f.needs_signoff && (
+      {f.category === 'Onboarding' && (
+        <Toggle checked={f.needs_signoff} onChange={(v) => set('needs_signoff', v)}>
+          <span>Read and sign</span>
+          <span className="note">Each person taps “I’ve read this”, and the date is kept. Turn off when a test covers it (like the handbook).</span>
+        </Toggle>
+      )}
+      {doc && f.category === 'Onboarding' && f.needs_signoff && (
         <Toggle checked={f.new_version} onChange={(v) => set('new_version', v)}>
           <span>Ask everyone to sign again</span>
           <span className="note">Use this when the document changed in a way people need to read.</span>
@@ -353,11 +358,8 @@ export default function OnboardingView({ data, agreements = { mine: [], team: []
   const agDue = agreements.mine.filter((a) => a.state === 'unsigned' || a.state === 'resign');
   const myQuizzes = (qd.quizzes || []).filter((z) => z.mine || (manage && all));
   const quizDue = (qd.quizzes || []).filter((z) => z.mine && !z.passed_at);
-  const categories = [...new Set([...CATEGORIES, ...(data.docs || []).map((d) => d.category)])];
-  const groups = [...new Set([...docs.map((d) => d.category), ...myQuizzes.map((z) => z.category)])].sort((a, b) => {
-    const ia = CATEGORIES.indexOf(a), ib = CATEGORIES.indexOf(b);
-    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
-  });
+  const categories = ['Onboarding', 'Training'];
+  const groups = categories.filter((g) => docs.some((d) => groupOf(d.category) === g) || myQuizzes.some((z) => groupOf(z.category) === g));
 
   return (
     <>
@@ -400,14 +402,14 @@ export default function OnboardingView({ data, agreements = { mine: [], team: []
       )}
       {edit === 'new' && <DocForm people={people} categories={categories} onDone={() => setEdit(null)} />}
 
-      {!docs.length && !agreements.mine.length && !myQuizzes.length && <p className="panel">{manage ? 'Nothing here yet. Add the employee handbook first, with Needs sign-off on.' : 'Nothing here for you yet.'}</p>}
+      {!docs.length && !agreements.mine.length && !myQuizzes.length && <p className="panel">{manage ? 'Nothing here yet. Add the employee handbook under Onboarding first.' : 'Nothing here for you yet.'}</p>}
 
       {groups.map((g) => (
         <section key={g} className="inv-cat ob-cat">
-          <h2 className="fin-h2">{g}</h2>
+          <h2 className="fin-h2">{GROUP_HEAD[g]}</h2>
           <div className="ob-grid">
-            {myQuizzes.filter((z) => z.category === g).map((z) => <QuizCard key={z.id} z={z} />)}
-            {docs.filter((d) => d.category === g).map((d) => (
+            {myQuizzes.filter((z) => groupOf(z.category) === g).map((z) => <QuizCard key={z.id} z={z} />)}
+            {docs.filter((d) => groupOf(d.category) === g).map((d) => (
               edit === d.id
                 ? <DocForm key={d.id} doc={d} people={people} categories={categories} onDone={() => setEdit(null)} />
                 : <DocCard key={d.id} d={d} manage={manage} peopleById={peopleById} onEdit={() => setEdit(d.id)} />

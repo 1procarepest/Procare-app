@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import QuizView from './QuizView';
+import { groupOf } from '@/lib/onboarding';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,8 @@ export default async function QuizPage({ params }) {
   if (error) return <>{back}<p className="error">Tests turn on once database change 94 is run in Supabase.</p></>;
   const quiz = (data?.quizzes || []).find((z) => z.id === params.id);
   if (!quiz) return <>{back}<p className="panel">That test isn’t one of yours.</p></>;
-  // The document to reread: the first one of mine in the test's section (e.g. the handbook)
-  const doc = (ob?.docs || []).find((d) => d.mine && d.category === quiz.category) || null;
+  // The document to reread: mine in the test's section, preferring one named like the test (the handbook)
+  const mine = (ob?.docs || []).filter((d) => d.mine && groupOf(d.category) === groupOf(quiz.category));
+  const doc = mine.find((d) => quiz.key && d.title.toLowerCase().includes(quiz.key)) || mine[0] || null;
   return <QuizView quiz={quiz} doc={doc ? { id: doc.id, title: doc.title, kind: doc.kind, url: doc.url } : null} />;
 }
