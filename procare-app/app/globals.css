@@ -2075,6 +2075,9 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
 .ob-url { flex: 1 1 240px; min-width: 0; }
 .ob-pick { cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ob-chips { margin-top: -4px; }
+.ob-groups { display: grid; gap: 6px; margin-top: -4px; }
+.ob-groups .rc-label { margin: 4px 0 0; }
+.ob-groups .rc-label .note { text-transform: none; letter-spacing: 0; font-family: var(--sans); }
 .ob-people { display: grid; gap: 8px; max-width: 480px; }
 .ob-remove { margin-left: auto; color: var(--danger); }
 .ob-form .rc-label { margin: 0 0 -4px; }

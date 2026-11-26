@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { DEPT_LABEL, OFFICE_NAME } from '@/lib/labels';
+import { DEPT_LABEL, OFFICES, OFFICE_NAME } from '@/lib/labels';
 import OpsHero from '../ops/OpsHero';
 import Picker from '../Picker';
 import Toggle from '../Toggle';
@@ -19,7 +19,9 @@ const openHref = (d) => (d.kind === 'link' ? d.url : `/api/onboarding-doc?id=${d
 /** Who a document is for, in words (shown to the people who manage Onboarding). */
 function audience(d, peopleById) {
   if (d.people?.length) return d.people.map((id) => peopleById[id]?.name || 'someone who left').join(', ');
-  if (d.departments?.length) return d.departments.map((k) => DEPT_LABEL[k] || k).join(', ');
+  const depts = (d.departments || []).map((k) => DEPT_LABEL[k] || k).join(', ');
+  const offices = (d.offices || []).map((k) => OFFICE_NAME[k] || k).join(', ');
+  if (depts || offices) return [depts || 'Every department', offices ? `in ${offices}` : ''].filter(Boolean).join(' ');
   return 'Everyone';
 }
 
@@ -37,10 +39,10 @@ function DocForm({ doc, people, categories, onDone }) {
   const router = useRouter();
   const [f, setF] = useState(() => ({
     title: doc?.title || '', description: doc?.description || '', category: doc?.category || 'Training',
-    kind: doc?.kind || 'file', url: doc?.url || '', departments: doc?.departments || [], people: doc?.people || [],
+    kind: doc?.kind || 'file', url: doc?.url || '', departments: doc?.departments || [], offices: doc?.offices || [], people: doc?.people || [],
     needs_signoff: !!doc?.needs_signoff, new_version: false,
   }));
-  const [who, setWho] = useState(doc?.people?.length ? 'people' : doc?.departments?.length ? 'depts' : 'all');
+  const [who, setWho] = useState(doc?.people?.length ? 'people' : doc?.departments?.length || doc?.offices?.length ? 'depts' : 'all');
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -52,10 +54,10 @@ function DocForm({ doc, people, categories, onDone }) {
     try {
       if (!f.title.trim()) throw new Error('Give it a title.');
       if (f.kind === 'file' && !doc?.path && !file) throw new Error('Pick a file to upload.');
-      if (who === 'depts' && !f.departments.length) throw new Error('Pick at least one department, or choose Everyone.');
+      if (who === 'depts' && !f.departments.length && !f.offices.length) throw new Error('Pick at least one department or office, or choose Everyone.');
       if (who === 'people' && !f.people.length) throw new Error('Add at least one person, or choose Everyone.');
       const up = f.kind === 'file' && file ? await uploadFile(file) : {};
-      const p = { ...f, ...up, departments: who === 'depts' ? f.departments : [], people: who === 'people' ? f.people : [] };
+      const p = { ...f, ...up, departments: who === 'depts' ? f.departments : [], offices: who === 'depts' ? f.offices : [], people: who === 'people' ? f.people : [] };
       const { error } = await createClient().rpc('save_onboarding_doc', { p_id: doc?.id || null, p });
       if (error) throw new Error(error.message);
       // A replaced file: remove the old one
@@ -109,15 +111,26 @@ function DocForm({ doc, people, categories, onDone }) {
       <p className="rc-label">Who sees it</p>
       <div className="rc-seg" role="group" aria-label="Who sees it">
         <button type="button" className={who === 'all' ? 'on' : ''} onClick={() => setWho('all')}>Everyone</button>
-        <button type="button" className={who === 'depts' ? 'on' : ''} onClick={() => setWho('depts')}>Departments</button>
+        <button type="button" className={who === 'depts' ? 'on' : ''} onClick={() => setWho('depts')}>Departments &amp; offices</button>
         <button type="button" className={who === 'people' ? 'on' : ''} onClick={() => setWho('people')}>Certain people</button>
       </div>
       {who === 'depts' && (
-        <div className="chips ob-chips">
-          {DEPTS.map((k) => (
-            <button key={k} type="button" className={`chip${f.departments.includes(k) ? ' on' : ''}`}
-              onClick={() => set('departments', f.departments.includes(k) ? f.departments.filter((x) => x !== k) : [...f.departments, k])}>{DEPT_LABEL[k]}</button>
-          ))}
+        <div className="ob-groups">
+          <p className="rc-label">Departments <span className="note">(none picked = every department)</span></p>
+          <div className="chips">
+            {DEPTS.map((k) => (
+              <button key={k} type="button" className={`chip${f.departments.includes(k) ? ' on' : ''}`}
+                onClick={() => set('departments', f.departments.includes(k) ? f.departments.filter((x) => x !== k) : [...f.departments, k])}>{DEPT_LABEL[k]}</button>
+            ))}
+          </div>
+          <p className="rc-label">Offices <span className="note">(none picked = every office)</span></p>
+          <div className="chips">
+            {OFFICES.map((o) => (
+              <button key={o.key} type="button" className={`chip${f.offices.includes(o.key) ? ' on' : ''}`}
+                onClick={() => set('offices', f.offices.includes(o.key) ? f.offices.filter((x) => x !== o.key) : [...f.offices, o.key])}>{o.name}</button>
+            ))}
+          </div>
+          <p className="note">Sent to: {audience({ departments: f.departments, offices: f.offices }, {})}</p>
         </div>
       )}
       {who === 'people' && (
