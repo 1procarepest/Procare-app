@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export default async function QuizPage({ params }) {
   const supabase = createClient();
   const [{ data, error }, { data: ob }] = await Promise.all([supabase.rpc('onboarding_quiz_data'), supabase.rpc('onboarding_data')]);
-  const back = <p><Link href="/onboarding">‹ Back to Onboarding</Link></p>;
+  const back = <p><Link href="/onboarding">‹ Back to Training</Link></p>;
   if (error) return <>{back}<p className="error">Tests turn on once database change 94 is run in Supabase.</p></>;
   const quiz = (data?.quizzes || []).find((z) => z.id === params.id);
   if (!quiz) return <>{back}<p className="panel">That test isn’t one of yours.</p></>;

@@ -91,7 +91,7 @@ export default function AgreementView({ item, agreement: ag, state, oldCopy, his
   return (
     <>
       <div className="ag-bar no-print">
-        <Link href="/onboarding" className="ag-back">‹ Onboarding</Link>
+        <Link href="/onboarding" className="ag-back">‹ Training</Link>
         <div className="ag-bar-actions">
           {canEdit && <Toggle small checked={edit} onChange={setEdit}><span>Agreement settings</span></Toggle>}
           <button type="button" className="btn btn-small btn-quiet" onClick={() => window.print()}>Print or save as PDF</button>

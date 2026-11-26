@@ -29,13 +29,13 @@ export async function POST(request) {
   const a = await setup();
   if (a.error) return a.error;
   const { data: boss } = await a.supabase.rpc('can_manage_onboarding');
-  if (!boss) return reply(403, { error: 'Only C-Suite, the President and HR can change Onboarding.' });
+  if (!boss) return reply(403, { error: 'Only C-Suite, the President and HR can change Training.' });
   const body = await request.json().catch(() => ({}));
 
   if (body.action === 'start') {
     const path = `docs/${crypto.randomUUID()}-${safeName(body.name)}`;
     const { data, error } = await a.admin.storage.from(BUCKET).createSignedUploadUrl(path);
-    if (error) return reply(500, { error: /not found/i.test(error.message) ? 'Onboarding storage isn’t set up yet (run change 92).' : error.message });
+    if (error) return reply(500, { error: /not found/i.test(error.message) ? 'Training storage isn’t set up yet (run change 92).' : error.message });
     return reply(200, { path: data.path, token: data.token });
   }
   if (body.action === 'delete') {

@@ -24,7 +24,7 @@ export default async function OnboardingPage() {
   ]);
   if (error) {
     const missing = /onboarding_data|schema cache|does not exist/i.test(error.message);
-    return <p className="error">{missing ? 'Onboarding turns on once database change 92 is run in Supabase.' : `Onboarding couldn’t load: ${error.message}`}</p>;
+    return <p className="error">{missing ? 'Training turns on once database change 92 is run in Supabase.' : `Training couldn’t load: ${error.message}`}</p>;
   }
   // Sales agreements (change 93): mine, and everyone's for the people who manage pay
   const boss = me.rank >= 4 || !!payBoss;

@@ -45,12 +45,12 @@ export default function QuizView({ quiz, doc }) {
 
   return (
     <>
-      <div className="ag-bar"><Link href="/onboarding" className="ag-back">‹ Onboarding</Link></div>
+      <div className="ag-bar"><Link href="/onboarding" className="ag-back">‹ Training</Link></div>
 
       <header className="qz-hero">
         <img className="qz-truck" src="/brand/cybertruck-1024.png" alt="" aria-hidden="true" />
         <div className="qz-hero-text">
-          <p className="ag-kicker"><Bug kind="spider" size={13} />Onboarding · Test</p>
+          <p className="ag-kicker"><Bug kind="spider" size={13} />Training · Test</p>
           <h1 className="ag-title">{quiz.title}</h1>
           <p className="ag-sub">{quiz.ask_count} questions a try, picked from {quiz.pool} · {quiz.pass_pct}% to pass · retake as often as you like</p>
         </div>
@@ -78,8 +78,8 @@ export default function QuizView({ quiz, doc }) {
             <div>
               <p className="ag-kicker qz-kicker-dark">Passed</p>
               <h2 className="qz-big">{result.score} of {result.total}. You’re all set.</h2>
-              <p>Thanks for reading the handbook and knowing it. It’s saved on your Onboarding page.</p>
-              <div className="panel-buttons"><Link className="btn" href="/onboarding">Back to Onboarding</Link></div>
+              <p>Thanks for reading the handbook and knowing it. It’s saved on your Training page.</p>
+              <div className="panel-buttons"><Link className="btn" href="/onboarding">Back to Training</Link></div>
             </div>
           </section>
         ) : (

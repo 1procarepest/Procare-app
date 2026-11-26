@@ -16,7 +16,7 @@ export default async function AgreementPage({ searchParams }) {
   const boss = me.rank >= 4 || !!payBoss;
   const emp = boss && /^[0-9a-f-]{36}$/.test(searchParams?.rep || '') ? searchParams.rep : me.id;
   const { ready, co, list } = await loadAgreements(supabase, { years: [year], onlyEmp: emp });
-  const back = <p><Link href="/onboarding">‹ Back to Onboarding</Link></p>;
+  const back = <p><Link href="/onboarding">‹ Back to Training</Link></p>;
   if (!ready) return <>{back}<p className="error">Sales agreements turn on once database change 93 is run in Supabase.</p></>;
   const it = list[0];
   if (!it) return <>{back}<p className="panel">There’s no {year} pay plan {emp === me.id ? 'for you' : 'for this rep'} yet, so there’s no agreement. A sales manager sets plans in Sales → Pay → Plans.</p></>;

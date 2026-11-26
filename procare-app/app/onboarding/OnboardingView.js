@@ -80,7 +80,7 @@ function DocForm({ doc, people, categories, onDone }) {
     setBusy(false);
   };
   const remove = async () => {
-    if (!window.confirm(`Remove “${doc.title}” from Onboarding? The file and everyone’s sign-offs on it are deleted too.`)) return;
+    if (!window.confirm(`Remove “${doc.title}” from Training? The file and everyone’s sign-offs on it are deleted too.`)) return;
     setBusy(true);
     const res = await fetch('/api/onboarding-doc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', id: doc.id }) });
     const j = await res.json().catch(() => ({}));
@@ -413,7 +413,7 @@ export default function OnboardingView({ data, agreements = { mine: [], team: []
 
   return (
     <>
-      <OpsHero kicker="Onboarding" title="Training &" em="documents" bug="ant" badge="/stickers/best-in-pest-cybertruck-320.png">
+      <OpsHero kicker="Training" title="Training &" em="documents" bug="ant" badge="/stickers/best-in-pest-cybertruck-320.png">
         The handbook, training, sales aids and contracts for you. Tap one to open it.
       </OpsHero>
 
