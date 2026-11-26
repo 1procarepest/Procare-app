@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { DEPT_LABEL, OFFICES, OFFICE_NAME } from '@/lib/labels';
 import { groupOf } from '@/lib/onboarding';
+import { clearThumb, fillMissingThumbs, linkThumb, makeThumb, setThumb } from '@/lib/onboardingThumb';
 import OpsHero from '../ops/OpsHero';
 import Picker from '../Picker';
 import Toggle from '../Toggle';
@@ -45,6 +46,8 @@ function DocForm({ doc, people, categories, onDone }) {
   }));
   const [who, setWho] = useState(doc?.people?.length ? 'people' : doc?.departments?.length || doc?.offices?.length ? 'depts' : 'all');
   const [file, setFile] = useState(null);
+  const [pic, setPic] = useState(null);          // a card picture picked by hand
+  const [dropPic, setDropPic] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
@@ -59,8 +62,15 @@ function DocForm({ doc, people, categories, onDone }) {
       if (who === 'people' && !f.people.length) throw new Error('Add at least one person, or choose Everyone.');
       const up = f.kind === 'file' && file ? await uploadFile(file) : {};
       const p = { ...f, ...up, needs_signoff: f.category === 'Onboarding' && f.needs_signoff, departments: who === 'depts' ? f.departments : [], offices: who === 'depts' ? f.offices : [], people: who === 'people' ? f.people : [] };
-      const { error } = await createClient().rpc('save_onboarding_doc', { p_id: doc?.id || null, p });
+      const { data: id, error } = await createClient().rpc('save_onboarding_doc', { p_id: doc?.id || null, p });
       if (error) throw new Error(error.message);
+      // Card picture (change 96): one picked by hand, else the new file's first page / the picture, else a link's preview
+      try {
+        if (pic) await setThumb(id, (await makeThumb(pic)) || pic);
+        else if (dropPic) await clearThumb(id);
+        else if (f.kind === 'file' && file) { const j = await makeThumb(file); if (j) await setThumb(id, j); }
+        else if (f.kind === 'link' && (!doc || doc.url !== f.url)) await linkThumb(id);
+      } catch { /* the card shows a placeholder; managers' pages fill it in later */ }
       // A replaced file: remove the old one
       if (doc?.path && (up.path || f.kind === 'link')) {
         fetch('/api/onboarding-doc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cleanup', path: doc.path }) }).catch(() => {});
@@ -163,6 +173,21 @@ function DocForm({ doc, people, categories, onDone }) {
         </Toggle>
       )}
 
+      <div className="ob-pic-row">
+        {doc?.has_thumb && !pic && !dropPic && <img className="ob-pic-now" src={thumbSrc(doc)} alt="" />}
+        <div>
+          <p className="rc-label">Card picture</p>
+          <p className="note">{f.kind === 'link' ? 'Made from the website’s preview picture when it has one.' : 'Made from the first page of the PDF, or the picture itself.'} Or pick your own.</p>
+          <div className="panel-buttons">
+            <label className={`btn btn-small btn-quiet ob-pick${busy ? ' disabled' : ''}`}>
+              {pic ? pic.name : 'Choose a picture'}
+              <input type="file" accept="image/*" hidden disabled={busy} onChange={(e) => { setPic(e.target.files?.[0] || null); setDropPic(false); }} />
+            </label>
+            {doc?.has_thumb && !dropPic && <button type="button" className="btn btn-small btn-quiet" onClick={() => { setDropPic(true); setPic(null); }}>Remove picture</button>}
+          </div>
+        </div>
+      </div>
+
       {msg && <p className="error" role="status">{msg}</p>}
       <div className="panel-buttons">
         <button type="button" className="btn btn-small" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
@@ -174,6 +199,21 @@ function DocForm({ doc, people, categories, onDone }) {
 }
 
 /* ---------- One document ---------- */
+const thumbSrc = (d) => `/api/onboarding-doc?id=${d.id}&thumb=1&v=${encodeURIComponent(d.updated_at || '')}`;
+
+/** The picture at the top of a card (change 96), or a branded placeholder until there is one. */
+function Thumb({ d, src }) {
+  const [broken, setBroken] = useState(false);
+  const url = src || (d?.has_thumb ? thumbSrc(d) : null);
+  return (
+    <a className={`ob-thumb${d?.kind === 'file' && /pdf/i.test(d?.mime || '') ? ' ob-thumb-page' : ''}`} href={d ? openHref(d) : undefined} target="_blank" rel="noreferrer" tabIndex={-1} aria-hidden="true">
+      {url && !broken
+        ? <img src={url} alt="" loading="lazy" onError={() => setBroken(true)} />
+        : <span className="ob-thumb-blank"><Bug kind={d?.kind === 'link' ? 'spider' : 'ant'} size={44} /></span>}
+    </a>
+  );
+}
+
 function DocCard({ d, manage, peopleById, onEdit }) {
   const router = useRouter();
   const [ask, setAsk] = useState(false);
@@ -189,6 +229,7 @@ function DocCard({ d, manage, peopleById, onEdit }) {
   const toSign = d.mine && d.needs_signoff && !d.signed;
   return (
     <article className={`ob-card${toSign ? ' ob-due' : ''}`}>
+      <Thumb d={d} />
       <div className="ob-card-top">
         <span className={`ob-kind ob-kind-${kindOf(d).toLowerCase()}`}>{kindOf(d)}</span>
         {d.needs_signoff && d.mine && (d.signed
@@ -297,6 +338,7 @@ function QuizCard({ z }) {
   const passed = !!z.passed_at;
   return (
     <article className={`ob-card ob-quiz${z.mine && !passed ? ' ob-due' : ''}`}>
+      <Link className="ob-thumb ob-thumb-truck" href={`/onboarding/quiz/${z.id}`} tabIndex={-1} aria-hidden="true"><img src="/brand/cybertruck-1024.png" alt="" /></Link>
       <div className="ob-card-top">
         <span className="ob-kind ob-kind-test">Test</span>
         {z.mine && (passed
@@ -353,6 +395,14 @@ export default function OnboardingView({ data, agreements = { mine: [], team: []
   const peopleById = useMemo(() => Object.fromEntries(people.map((p) => [p.id, p])), [people]);
   const [edit, setEdit] = useState(null);   // doc id or 'new'
   const [all, setAll] = useState(false);    // managers: show every document, not just their own
+  const router = useRouter();
+  // Managers' browsers give older documents a card picture, quietly, once a session (change 96)
+  useEffect(() => {
+    if (!manage) return;
+    const missing = (data.docs || []).filter((d) => !d.has_thumb);
+    if (!missing.length) return;
+    fillMissingThumbs(missing).then((changed) => { if (changed) router.refresh(); });
+  }, [manage, data.docs, router]);
   const docs = (data.docs || []).filter((d) => d.mine || (manage && all));
   const due = (data.docs || []).filter((d) => d.mine && d.needs_signoff && !d.signed);
   const agDue = agreements.mine.filter((a) => a.state === 'unsigned' || a.state === 'resign');

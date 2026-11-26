@@ -2145,6 +2145,23 @@ button.link { color: var(--forest); text-decoration: underline; font-size: 14px;
   .ag-exhibit { break-before: page; }
 }
 
+/* Onboarding card pictures (change 96): the PDF's first page, the picture, or the link's preview; navy placeholder until then */
+.ob-card { overflow: hidden; }
+.ob-thumb { display: block; margin: -14px -16px 6px; height: 160px; background: var(--sage); border-bottom: 1px solid var(--line); overflow: hidden; }
+.ob-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; transition: transform 0.25s; }
+.ob-card:hover .ob-thumb img { transform: scale(1.03); }
+.ob-thumb-blank { display: grid; place-items: center; width: 100%; height: 100%; background: url(/patterns/lines-navy.svg) center / cover no-repeat, var(--ink); }
+.ob-thumb-blank .bug { color: var(--lime); opacity: 0.85; }
+.ob-thumb-page { background: url(/patterns/lines-sage.svg) center / cover no-repeat, var(--sage); }
+.ob-thumb-page img { object-fit: contain; object-position: center; padding: 10px 0; filter: drop-shadow(0 4px 8px rgba(6, 47, 53, 0.25)); }
+.ob-card:hover .ob-thumb-page img { transform: scale(1.06); }
+.ob-thumb-truck { background: url(/patterns/lines-navy.svg) center / cover no-repeat, var(--ink); }
+.ob-thumb-truck img { object-fit: contain; object-position: center; padding: 10px 14px; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35)); }
+.ob-pic-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.ob-pic-row .rc-label { margin: 0; }
+.ob-pic-row .note { margin: 2px 0 6px; }
+.ob-pic-now { width: 120px; height: 80px; object-fit: cover; object-position: top; border-radius: 10px; border: 1px solid var(--line); }
+
 /* Onboarding tests (change 94): Cybertruck header, big tap-friendly answer cards, the Best in Pest sticker on a pass */
 .ob-kind-test { background: var(--lime); color: var(--ink); }
 .ob-quiz { overflow: hidden; }
